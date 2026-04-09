@@ -31,12 +31,10 @@ export default function App() {
           return;
         }
         const data = await res.json();
-        const configured = !!data.isConfigured;
+        // Outbound webhooks (below) are only needed if this app should call Zapier/Make.
+        // Inbound reviews use POST /api/webhooks/zapier/reviews — no URLs needed here.
+        const configured = !!(data.syncWebhookUrl && data.replyWebhookUrl);
         setIsConfigured(configured);
-
-        if (!configured && activeTab !== 'settings' && activeTab !== 'docs') {
-          setActiveTab('settings');
-        }
       } catch (error) {
         console.error('Failed to check configuration:', error);
         setIsConfigured(false);
