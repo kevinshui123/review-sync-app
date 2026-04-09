@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && prisma generate",
+    "build": "rm -rf node_modules package-lock.json && npm install && vite build && npx prisma generate",
     "start": "node dist/server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",
