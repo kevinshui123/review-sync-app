@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  
+  // A User can belong to multiple Tenants
+  tenants      Tenant[] @relation("UserTenants")
+}
+
+model Tenant {
+  id                 String   @id @default(uuid())
+  name               String
+  
+  // API Configurations
+  syncWebhookUrl     String?
+  replyWebhookUrl    String?
+  yelpApiKey         String?
+  openaiApiKey       String?
+  geminiApiKey       String?
+  isConfigured       Boolean  @default(false)
+
+  // A Tenant can have multiple Users
+  users       User[]   @relation("UserTenants")
+  
+  // 1-to-many relations
+  locations   Location[]
+  commentTasks CommentTask[]
+}
+
+model Location {
+  id            String   @id @default(uuid())
+  tenantId      String
+  googlePlaceId String?  @unique
+  name          String
+  address       String?
+  phone         String?
+  businessHours String?
+  isSynced      Boolean  @default(false)
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reviews       Review[]
+  posts         Post[]
+  commentTasks  CommentTask[]
+
+  @@index([tenantId])
+  @@index([googlePlaceId])
+}
+
+model Review {
+  id             String   @id @default(uuid())
+  locationId     String
+  googleReviewId String   @unique
+  reviewerName   String
+  rating         Int
+  comment        String?
+  replyText      String?
+  isRepliedByAI  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model Post {
+  id             String   @id @default(uuid())
+  locationId     String
+  content        String
+  type           String   @default("UPDATE") // UPDATE, OFFER, EVENT
+  status         String   @default("DRAFT") // DRAFT, SCHEDULED, PUBLISHED
+  scheduledFor   DateTime?
+  imageUrl       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model GoogleAccount {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  
+  tasks     CommentTask[]
+}
+
+model CommentTask {
+  id              String        @id @default(uuid())
+  tenantId        String
+  googleAccountId String
+  locationId      String?
+  keywords        String?
+  content         String
+  imageUrls       String      @default("[]") // Array of base64 strings or URLs
+  status          String        @default("DRAFT") // DRAFT, READY, EXECUTED
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  googleAccount   GoogleAccount @relation(fields: [googleAccountId], references: [id], onDelete: Cascade)
+  location        Location?     @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([googleAccountId])
+  @@index([createdAt])
+}
