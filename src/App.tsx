@@ -25,16 +25,17 @@ export default function App() {
     const checkConfig = async () => {
       try {
         const res = await fetch('/api/settings');
-        if (res.ok) {
-          const data = await res.json();
-          // Use the isConfigured flag from the backend
-          const configured = !!data.isConfigured;
-          setIsConfigured(configured);
-          
-          // Force redirect to settings if not configured and trying to access other pages
-          if (!configured && activeTab !== 'settings' && activeTab !== 'docs') {
-            setActiveTab('settings');
-          }
+        if (!res.ok) {
+          console.error('Settings check failed:', res.status, res.statusText);
+          setIsConfigured(false);
+          return;
+        }
+        const data = await res.json();
+        const configured = !!data.isConfigured;
+        setIsConfigured(configured);
+
+        if (!configured && activeTab !== 'settings' && activeTab !== 'docs') {
+          setActiveTab('settings');
         }
       } catch (error) {
         console.error('Failed to check configuration:', error);
