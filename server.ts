@@ -284,10 +284,15 @@ async function startServer() {
                          reviewData.starRating === 'THREE' ? 3 : 
                          reviewData.starRating === 'TWO' ? 2 : 1);
 
+      const reviewerName =
+        typeof reviewData.reviewer === 'string' && reviewData.reviewer.trim()
+          ? reviewData.reviewer.trim()
+          : reviewData.reviewer?.displayName || 'Anonymous';
+
       const review = await prisma.review.upsert({
         where: { googleReviewId: reviewData.reviewId },
         update: { 
-          reviewerName: reviewData.reviewer?.displayName || 'Anonymous', 
+          reviewerName, 
           rating: ratingNum, 
           comment: reviewData.comment || '',
           createdAt: reviewData.createTime ? new Date(reviewData.createTime) : new Date()
@@ -295,7 +300,7 @@ async function startServer() {
         create: { 
           locationId: defaultLocation.id,
           googleReviewId: reviewData.reviewId,
-          reviewerName: reviewData.reviewer?.displayName || 'Anonymous',
+          reviewerName,
           rating: ratingNum, 
           comment: reviewData.comment || '',
           createdAt: reviewData.createTime ? new Date(reviewData.createTime) : new Date()
