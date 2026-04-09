@@ -263,9 +263,11 @@ async function startServer() {
       
       console.log('Received webhook from Zapier:', reviewData);
 
-      if (!reviewData || !reviewData.reviewId) {
+      if (!reviewData || (!reviewData.reviewId && !reviewData.googleReviewId)) {
         return res.status(400).json({ error: 'Invalid review data received from Zapier' });
       }
+
+      const reviewId = reviewData.googleReviewId || reviewData.reviewId;
 
       const tenant = await prisma.tenant.findFirst();
       if (!tenant) {
@@ -289,21 +291,28 @@ async function startServer() {
           ? reviewData.reviewer.trim()
           : reviewData.reviewer?.displayName || 'Anonymous';
 
+      const parsedCreateTime = reviewData.createTime
+        ? (() => {
+            const d = new Date(reviewData.createTime);
+            return isNaN(d.getTime()) ? new Date() : d;
+          })()
+        : new Date();
+
       const review = await prisma.review.upsert({
-        where: { googleReviewId: reviewData.reviewId },
-        update: { 
-          reviewerName, 
-          rating: ratingNum, 
+        where: { googleReviewId: reviewId },
+        update: {
+          reviewerName,
+          rating: ratingNum,
           comment: reviewData.comment || '',
-          createdAt: reviewData.createTime ? new Date(reviewData.createTime) : new Date()
+          createdAt: parsedCreateTime
         },
-        create: { 
+        create: {
           locationId: defaultLocation.id,
           googleReviewId: reviewData.reviewId,
           reviewerName,
-          rating: ratingNum, 
+          rating: ratingNum,
           comment: reviewData.comment || '',
-          createdAt: reviewData.createTime ? new Date(reviewData.createTime) : new Date()
+          createdAt: parsedCreateTime
         }
       });
 
