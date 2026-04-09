@@ -1,0 +1,5 @@
+[nixpacks]
+  PRIMARY_COLOR = "#6366f1"
+
+[deploy]
+  startCommand = "npx prisma migrate deploy && node dist/server.js"
