@@ -3,61 +3,143 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
-import { google } from 'googleapis';
+import { Auth } from 'googleapis';
 import { GoogleGenAI } from '@google/genai';
 
 // Instantiate the Prisma Client
 const prisma = new PrismaClient();
 
+// ==========================================
+// Google OAuth2 Configuration
+// ==========================================
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+
+const SCOPES = [
+  'https://www.googleapis.com/auth/business.manage',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'https://www.googleapis.com/auth/userinfo.email',
+];
+
+// ==========================================
+// Google API 统一调用函数（REST API 直连）
+// ==========================================
+
+async function googleApiRequest(
+  auth: Auth.OAuth2Client,
+  method: string,
+  url: string,
+  body?: object,
+): Promise<any> {
+  const accessToken = (auth.credentials as any).access_token;
+  if (!accessToken) throw new Error('No access token available');
+
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    const err: any = new Error(`Google API error: ${response.status} ${response.statusText}`);
+    err.status = response.status;
+    err.details = errorText;
+    throw err;
+  }
+
+  return response.json();
+}
+
+async function googleApiRequestGet(auth: Auth.OAuth2Client, url: string): Promise<any> {
+  return googleApiRequest(auth, 'GET', url);
+}
+
+async function googleApiRequestPost(auth: Auth.OAuth2Client, url: string, body?: object): Promise<any> {
+  return googleApiRequest(auth, 'POST', url, body);
+}
+
+// Auto-refresh token callback
+function setupTokenRefresh(auth: Auth.OAuth2Client, tenantId: string) {
+  auth.on('tokens', async (tokens) => {
+    if (tokens.access_token) {
+      try {
+        await prisma.tenant.update({
+          where: { id: tenantId },
+          data: {
+            googleAccessToken: tokens.access_token,
+            googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+          },
+        });
+      } catch (e) {
+        console.error('Failed to save refreshed token:', e);
+      }
+    }
+  });
+}
+
+// ==========================================
+// Token Management
+// ==========================================
+
+async function getValidAuth(): Promise<{ auth: Auth.OAuth2Client; tenantId: string } | null> {
+  const tenant = await prisma.tenant.findFirst();
+  if (!tenant?.googleAccessToken || !tenant?.googleRefreshToken) {
+    return null;
+  }
+
+  const { OAuth2Client } = Auth;
+  const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, `${APP_URL}/api/auth/google/callback`);
+  oauth2Client.setCredentials({
+    access_token: tenant.googleAccessToken,
+    refresh_token: tenant.googleRefreshToken,
+    expiry_date: tenant.googleTokenExpiry ? new Date(tenant.googleTokenExpiry).getTime() : undefined,
+  });
+
+  setupTokenRefresh(oauth2Client, tenant.id);
+
+  return { auth: oauth2Client, tenantId: tenant.id };
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Middleware to parse JSON bodies
   app.use(express.json());
 
   // ==========================================
-  // API Routes
+  // Health Check
   // ==========================================
-  
-  // Basic Health Check Route
   app.get('/api/health', async (req, res) => {
     try {
-      // Optional: Verify database connection
       await prisma.$queryRaw`SELECT 1`;
-      res.json({ 
-        status: 'ok', 
-        message: 'Server is running', 
-        database: 'connected' 
-      });
+      res.json({ status: 'ok', message: 'Server is running', database: 'connected' });
     } catch (error) {
-      console.error('Database connection failed:', error);
-      res.status(500).json({ 
-        status: 'error', 
+      res.status(500).json({
+        status: 'error',
         message: 'Database connection failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   });
 
   // ==========================================
-  // Google OAuth Routes
-  // ==========================================
-
-  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-
-  // ==========================================
   // Settings API Routes
   // ==========================================
-
   app.get('/api/settings', async (req, res) => {
     try {
       let tenant = await prisma.tenant.findFirst();
       if (!tenant) {
         tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
       }
-      res.json(tenant);
+      res.json({
+        ...tenant,
+        googleConnected: !!(tenant.googleAccessToken && tenant.googleRefreshToken),
+      });
     } catch (error) {
       console.error('Fetch settings error:', error);
       res.status(500).json({ error: 'Failed to fetch settings' });
@@ -66,24 +148,20 @@ async function startServer() {
 
   app.post('/api/settings', async (req, res) => {
     try {
-      const { syncWebhookUrl, replyWebhookUrl, yelpApiKey, openaiApiKey, geminiApiKey } = req.body;
+      const { yelpApiKey, openaiApiKey, geminiApiKey } = req.body;
       let tenant = await prisma.tenant.findFirst();
       if (!tenant) {
         tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
       }
 
-      const isConfigured = !!(syncWebhookUrl && replyWebhookUrl);
-
       const updated = await prisma.tenant.update({
         where: { id: tenant.id },
         data: {
-          syncWebhookUrl,
-          replyWebhookUrl,
           yelpApiKey,
           openaiApiKey,
           geminiApiKey,
-          isConfigured
-        }
+          isConfigured: !!(yelpApiKey || openaiApiKey || geminiApiKey),
+        },
       });
       res.json(updated);
     } catch (error) {
@@ -93,18 +171,385 @@ async function startServer() {
   });
 
   // ==========================================
-  // Team Members API Routes
+  // Google OAuth Routes
   // ==========================================
 
-  app.get('/api/team', async (req, res) => {
+  app.get('/api/auth/google', async (req, res) => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      return res.status(500).json({
+        error: 'Google OAuth is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file.',
+      });
+    }
+
+    const { OAuth2Client } = Auth;
+    const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, `${APP_URL}/api/auth/google/callback`);
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: SCOPES,
+      prompt: 'consent',
+    });
+
+    res.json({ authUrl });
+  });
+
+  app.get('/api/auth/google/callback', async (req, res) => {
+    const { code, error } = req.query;
+
+    if (error) {
+      return res.redirect(`${APP_URL}?googleAuthError=${encodeURIComponent(String(error))}`);
+    }
+
+    if (!code || typeof code !== 'string') {
+      return res.redirect(`${APP_URL}?googleAuthError=missing_code`);
+    }
+
     try {
+      const { OAuth2Client } = Auth;
+      const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, `${APP_URL}/api/auth/google/callback`);
+      const { tokens } = await oauth2Client.getToken(code);
+
       let tenant = await prisma.tenant.findFirst();
       if (!tenant) {
+        tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
+      }
+
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          googleAccessToken: tokens.access_token || '',
+          googleRefreshToken: tokens.refresh_token || tenant.googleRefreshToken || '',
+          googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+          isConfigured: true,
+        },
+      });
+
+      res.redirect(`${APP_URL}?googleAuthSuccess=true`);
+    } catch (err) {
+      console.error('Google OAuth callback error:', err);
+      res.redirect(`${APP_URL}?googleAuthError=token_exchange_failed`);
+    }
+  });
+
+  app.post('/api/auth/google/disconnect', async (req, res) => {
+    try {
+      let tenant = await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          googleAccessToken: null,
+          googleRefreshToken: null,
+          googleTokenExpiry: null,
+          googleBusinessAccountId: null,
+          locationMappings: '{}',
+          isConfigured: !!(tenant.yelpApiKey || tenant.openaiApiKey || tenant.geminiApiKey),
+        },
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Google disconnect error:', error);
+      res.status(500).json({ error: 'Failed to disconnect Google account' });
+    }
+  });
+
+  app.get('/api/auth/google/status', async (req, res) => {
+    try {
+      const tenant = await prisma.tenant.findFirst();
+      const connected = !!(tenant?.googleAccessToken && tenant?.googleRefreshToken);
+      res.json({ connected });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to check Google status' });
+    }
+  });
+
+  // ==========================================
+  // Google Business Profile - Locations (REST API)
+  // ==========================================
+
+  app.get('/api/google/locations', async (req, res) => {
+    try {
+      const authResult = await getValidAuth();
+      if (!authResult) {
+        return res.status(401).json({ error: 'Google account not connected. Please connect in Settings.' });
+      }
+
+      const { auth, tenantId } = authResult;
+
+      // Get the business account first
+      const accountsData = await googleApiRequestGet(
+        auth,
+        'https://mybusinessbusinessinformation.googleapis.com/v1/accounts',
+      );
+
+      const accounts = accountsData.accounts || [];
+      if (accounts.length === 0) {
         return res.json([]);
       }
+
+      const primaryAccount = accounts[0].name; // e.g. "accounts/123456789"
+
+      // Save the account ID if not already saved
+      const accountId = accounts[0].accountId || accounts[0].name;
+      const tenant = await prisma.tenant.findFirst();
+      if (tenant && !tenant.googleBusinessAccountId) {
+        await prisma.tenant.update({
+          where: { id: tenantId },
+          data: { googleBusinessAccountId: accountId },
+        });
+      }
+
+      // Get locations under this account
+      const locationsData = await googleApiRequestGet(
+        auth,
+        `https://mybusinessbusinessinformation.googleapis.com/v1/${primaryAccount}/locations?pageSize=100`,
+      );
+
+      const locations = (locationsData.locations || []).map((loc: any) => ({
+        googleLocationId: loc.name,
+        name: loc.locationName,
+        address: loc.address
+          ? `${loc.address.addressLines?.join(', ') || ''}, ${loc.address.locality || ''}, ${loc.address.administrativeArea || ''}`.trim()
+          : null,
+        phone: loc.primaryPhone,
+        websiteUri: loc.websiteUri,
+      }));
+
+      res.json(locations);
+    } catch (error: any) {
+      console.error('Fetch Google locations error:', error);
+      res.status(500).json({ error: 'Failed to fetch Google locations', details: error.message });
+    }
+  });
+
+  app.post('/api/google/locations/map', async (req, res) => {
+    try {
+      const { localLocationId, googleLocationId } = req.body;
+      if (!localLocationId || !googleLocationId) {
+        return res.status(400).json({ error: 'localLocationId and googleLocationId are required' });
+      }
+
+      const tenant = await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
+      mappings[localLocationId] = googleLocationId;
+
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: { locationMappings: JSON.stringify(mappings) },
+      });
+
+      await prisma.location.update({
+        where: { id: localLocationId },
+        data: { googlePlaceId: googleLocationId },
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Map location error:', error);
+      res.status(500).json({ error: 'Failed to map location' });
+    }
+  });
+
+  // ==========================================
+  // Reviews API (REST API 直连 Google Business Profile)
+  // ==========================================
+
+  app.get('/api/reviews', async (req, res) => {
+    try {
+      const reviews = await prisma.review.findMany({
+        include: { location: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      res.json(reviews);
+    } catch (error) {
+      console.error('Fetch reviews error:', error);
+      res.status(500).json({ error: 'Failed to fetch reviews' });
+    }
+  });
+
+  // Sync reviews from Google Business Profile REST API
+  app.post('/api/reviews/sync', async (req, res) => {
+    try {
+      const authResult = await getValidAuth();
+      if (!authResult) {
+        return res.status(401).json({ error: 'Google account not connected. Please connect in Settings.' });
+      }
+
+      const { auth, tenantId } = authResult;
+
+      const tenant = await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
+      const mappedLocationIds = Object.values(mappings);
+
+      if (mappedLocationIds.length === 0) {
+        return res.json({
+          success: true,
+          imported: 0,
+          message: 'No locations mapped to Google yet. Please map a location in Settings first.',
+        });
+      }
+
+      let totalImported = 0;
+      const errors: string[] = [];
+
+      for (const googleLocationId of mappedLocationIds) {
+        try {
+          // Fetch reviews via REST API
+          const reviewsData = await googleApiRequestGet(
+            auth,
+            `https://mybusinessbusinessinformation.googleapis.com/v1/${googleLocationId}/reviews?pageSize=100`,
+          );
+
+          const reviews = reviewsData.reviews || [];
+
+          for (const review of reviews) {
+            const googleReviewId = review.name?.split('/reviews/')[1] || review.name;
+
+            if (!googleReviewId) continue;
+
+            const ratingNum = typeof review.starRating === 'number' ? review.starRating : 5;
+            const reviewerName = review.reviewer?.displayName || review.reviewer?.profilePhotoName || 'Anonymous';
+            const comment = review.comment || '';
+            const reviewCreateTime = review.createTime ? new Date(review.createTime) : new Date();
+
+            // Find the local location
+            const localEntry = Object.entries(mappings).find(([, gId]) => gId === googleLocationId);
+            const localLocationId = localEntry?.[0];
+
+            if (!localLocationId) continue;
+
+            const localLocation = await prisma.location.findFirst({
+              where: { id: localLocationId, tenantId },
+            });
+
+            if (!localLocation) continue;
+
+            const existing = await prisma.review.findUnique({ where: { googleReviewId } });
+
+            if (existing) {
+              if (existing.comment !== comment || existing.rating !== ratingNum) {
+                await prisma.review.update({
+                  where: { googleReviewId },
+                  data: { comment, rating: ratingNum },
+                });
+              }
+            } else {
+              await prisma.review.create({
+                data: {
+                  locationId: localLocation.id,
+                  googleReviewId,
+                  reviewerName,
+                  rating: ratingNum,
+                  comment,
+                  createdAt: reviewCreateTime,
+                },
+              });
+              totalImported++;
+            }
+          }
+        } catch (locErr: any) {
+          errors.push(`${googleLocationId}: ${locErr.message}`);
+          console.error(`Sync reviews for location ${googleLocationId} error:`, locErr);
+        }
+      }
+
+      res.json({
+        success: true,
+        imported: totalImported,
+        message: totalImported > 0
+          ? `Successfully imported ${totalImported} new review(s).`
+          : 'Reviews are up to date.',
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (error: any) {
+      console.error('Sync reviews error:', error);
+      res.status(500).json({ error: 'Failed to sync reviews', details: error.message });
+    }
+  });
+
+  // Reply to review via Google Business Profile REST API
+  app.post('/api/reviews/:id/reply', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { replyText, isRepliedByAI } = req.body;
+
+      if (!replyText?.trim()) {
+        return res.status(400).json({ error: 'Reply text is required' });
+      }
+
+      const authResult = await getValidAuth();
+      if (!authResult) {
+        return res.status(401).json({ error: 'Google account not connected. Please connect in Settings.' });
+      }
+
+      const review = await prisma.review.findUnique({
+        where: { id },
+        include: { location: true },
+      });
+
+      if (!review) {
+        return res.status(404).json({ error: 'Review not found' });
+      }
+
+      const tenant = await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
+      const googleLocationId = mappings[review.locationId];
+
+      if (!googleLocationId) {
+        return res.status(400).json({
+          error: 'This location is not mapped to a Google Business Profile. Please map it in Settings first.',
+        });
+      }
+
+      const { auth } = authResult;
+
+      // Post reply to Google Business Profile REST API
+      try {
+        await googleApiRequestPost(
+          auth,
+          `https://mybusinessbusinessinformation.googleapis.com/v1/${googleLocationId}/reviews/${review.googleReviewId}/reply`,
+          { comment: replyText.trim() },
+        );
+      } catch (apiErr: any) {
+        if (apiErr.status === 403 || apiErr.status === 404) {
+          console.warn('Google API reply failed:', apiErr.message);
+        } else {
+          throw apiErr;
+        }
+      }
+
+      const updatedReview = await prisma.review.update({
+        where: { id },
+        data: {
+          replyText: replyText.trim(),
+          isRepliedByAI: isRepliedByAI || false,
+        },
+      });
+
+      res.json({ success: true, review: updatedReview });
+    } catch (error: any) {
+      console.error('Submit reply error:', error);
+      res.status(500).json({ error: 'Failed to submit reply', details: error.message });
+    }
+  });
+
+  // ==========================================
+  // Team Members API Routes
+  // ==========================================
+  app.get('/api/team', async (req, res) => {
+    try {
+      const tenant = await prisma.tenant.findFirst();
+      if (!tenant) return res.json([]);
       const users = await prisma.user.findMany({
         where: { tenants: { some: { id: tenant.id } } },
-        select: { id: true, email: true, createdAt: true }
+        select: { id: true, email: true, createdAt: true },
       });
       res.json(users);
     } catch (error) {
@@ -117,29 +562,19 @@ async function startServer() {
     try {
       const { email } = req.body;
       let tenant = await prisma.tenant.findFirst();
-      if (!tenant) {
-        tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
-      }
+      if (!tenant) tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
 
-      // Check if user already exists
       let user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
-        // Create user with dummy password for now
         user = await prisma.user.create({
-          data: {
-            email,
-            passwordHash: 'dummy_hash',
-            tenants: { connect: { id: tenant.id } }
-          }
+          data: { email, passwordHash: 'dummy_hash', tenants: { connect: { id: tenant.id } } },
         });
       } else {
-        // Connect existing user to tenant
         user = await prisma.user.update({
           where: { id: user.id },
-          data: { tenants: { connect: { id: tenant.id } } }
+          data: { tenants: { connect: { id: tenant.id } } },
         });
       }
-
       res.json({ id: user.id, email: user.email, createdAt: user.createdAt });
     } catch (error) {
       console.error('Add team member error:', error);
@@ -150,16 +585,13 @@ async function startServer() {
   app.delete('/api/team/:id', async (req, res) => {
     try {
       const { id } = req.params;
-      let tenant = await prisma.tenant.findFirst();
-      if (!tenant) {
-        return res.status(404).json({ error: 'Tenant not found' });
-      }
+      const tenant = await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
       await prisma.user.update({
         where: { id },
-        data: { tenants: { disconnect: { id: tenant.id } } }
+        data: { tenants: { disconnect: { id: tenant.id } } },
       });
-
       res.json({ success: true });
     } catch (error) {
       console.error('Remove team member error:', error);
@@ -170,18 +602,13 @@ async function startServer() {
   // ==========================================
   // Locations API Routes
   // ==========================================
-
   app.post('/api/locations', async (req, res) => {
     try {
-      const { name, address, phone } = req.body;
+      const { name, address, phone, googlePlaceId } = req.body;
       let tenant = await prisma.tenant.findFirst();
-      if (!tenant) {
-        tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
-      }
+      if (!tenant) tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
 
-      if (!name) {
-        return res.status(400).json({ error: 'Name is required' });
-      }
+      if (!name) return res.status(400).json({ error: 'Name is required' });
 
       const newLocation = await prisma.location.create({
         data: {
@@ -189,10 +616,19 @@ async function startServer() {
           name,
           address,
           phone,
-          isSynced: true, // Mark as true so it shows up normally
-          googlePlaceId: `manual-${Date.now()}` // Generate a dummy ID
-        }
+          isSynced: true,
+          googlePlaceId: googlePlaceId || null,
+        },
       });
+
+      if (googlePlaceId) {
+        const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
+        mappings[newLocation.id] = googlePlaceId;
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { locationMappings: JSON.stringify(mappings) },
+        });
+      }
 
       res.json(newLocation);
     } catch (error) {
@@ -203,9 +639,7 @@ async function startServer() {
 
   app.get('/api/locations', async (req, res) => {
     try {
-      const locations = await prisma.location.findMany({
-        orderBy: { name: 'asc' }
-      });
+      const locations = await prisma.location.findMany({ orderBy: { name: 'asc' } });
       res.json(locations);
     } catch (error) {
       console.error('Fetch locations error:', error);
@@ -216,16 +650,25 @@ async function startServer() {
   app.put('/api/locations/:id', async (req, res) => {
     try {
       const { id } = req.params;
-      const { phone, businessHours } = req.body;
-      
+      const { phone, businessHours, googlePlaceId } = req.body;
+
       const updatedLocation = await prisma.location.update({
         where: { id },
-        data: {
-          phone,
-          businessHours
-        }
+        data: { phone, businessHours, googlePlaceId },
       });
-      
+
+      if (googlePlaceId !== undefined) {
+        const tenant = await prisma.tenant.findFirst();
+        if (tenant) {
+          const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
+          mappings[id] = googlePlaceId;
+          await prisma.tenant.update({
+            where: { id: tenant.id },
+            data: { locationMappings: JSON.stringify(mappings) },
+          });
+        }
+      }
+
       res.json(updatedLocation);
     } catch (error) {
       console.error('Update location error:', error);
@@ -234,195 +677,13 @@ async function startServer() {
   });
 
   // ==========================================
-  // Reviews API Routes (Make.com Webhook Integration)
-  // ==========================================
-
-  // ==========================================
-  // Reviews API Routes
-  // ==========================================
-
-  app.get('/api/reviews', async (req, res) => {
-    try {
-      const reviews = await prisma.review.findMany({
-        include: { location: true },
-        orderBy: { createdAt: 'desc' }
-      });
-      res.json(reviews);
-    } catch (error) {
-      console.error('Fetch reviews error:', error);
-      res.status(500).json({ error: 'Failed to fetch reviews' });
-    }
-  });
-
-  // Public Webhook Receiver for Zapier (Sync Reviews)
-  // Zapier will POST to this URL whenever a new review is created in Google Business Profile
-  app.post('/api/webhooks/zapier/reviews', async (req, res) => {
-    try {
-      // Zapier sends the review data in the request body
-      const reviewData = req.body;
-      
-      console.log('Received webhook from Zapier:', reviewData);
-
-      if (!reviewData || (!reviewData.reviewId && !reviewData.googleReviewId)) {
-        return res.status(400).json({ error: 'Invalid review data received from Zapier' });
-      }
-
-      const reviewId = reviewData.googleReviewId || reviewData.reviewId;
-
-      const tenant = await prisma.tenant.findFirst();
-      if (!tenant) {
-        return res.status(404).json({ error: 'Tenant not found' });
-      }
-
-      const defaultLocation = await prisma.location.findFirst({ where: { tenantId: tenant.id } });
-      if (!defaultLocation) {
-        return res.status(400).json({ error: 'No location found to attach the review to' });
-      }
-
-      // Map Zapier's Google My Business payload to our database schema
-      const ratingNum = typeof reviewData.starRating === 'number' ? reviewData.starRating : 
-                        (reviewData.starRating === 'FIVE' ? 5 : 
-                         reviewData.starRating === 'FOUR' ? 4 : 
-                         reviewData.starRating === 'THREE' ? 3 : 
-                         reviewData.starRating === 'TWO' ? 2 : 1);
-
-      const reviewerName =
-        typeof reviewData.reviewer === 'string' && reviewData.reviewer.trim()
-          ? reviewData.reviewer.trim()
-          : reviewData.reviewer?.displayName || 'Anonymous';
-
-      const parsedCreateTime = reviewData.createTime
-        ? (() => {
-            const d = new Date(reviewData.createTime);
-            return isNaN(d.getTime()) ? new Date() : d;
-          })()
-        : new Date();
-
-      const review = await prisma.review.upsert({
-        where: { googleReviewId: reviewId },
-        update: {
-          reviewerName,
-          rating: ratingNum,
-          comment: reviewData.comment || '',
-          createdAt: parsedCreateTime
-        },
-        create: {
-          locationId: defaultLocation.id,
-          googleReviewId: reviewData.reviewId,
-          reviewerName,
-          rating: ratingNum,
-          comment: reviewData.comment || '',
-          createdAt: parsedCreateTime
-        }
-      });
-
-      console.log('Successfully saved review from Zapier:', review.id);
-      res.status(200).json({ success: true, message: 'Review processed successfully' });
-    } catch (error) {
-      console.error('Zapier webhook error:', error);
-      res.status(500).json({ error: 'Internal server error processing webhook' });
-    }
-  });
-
-  app.post('/api/reviews/sync', async (req, res) => {
-    try {
-      const tenant = await prisma.tenant.findFirst();
-      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
-
-      if (!tenant.syncWebhookUrl) {
-        // Since Zapier pushes automatically, we don't strictly need a syncWebhookUrl.
-        // Return a friendly message instead of an error.
-        return res.json({ 
-          success: true, 
-          reviews: [],
-          message: 'Zapier is set up to automatically push new reviews in real-time. Please refresh the page to see any new reviews.' 
-        });
-      }
-
-      // Call Webhook to trigger the Zap
-      const response = await fetch(tenant.syncWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'sync_reviews' })
-      });
-
-      if (!response.ok) {
-        console.error('Sync Webhook failed:', response.statusText);
-        return res.status(500).json({ error: 'Failed to trigger sync via Webhook' });
-      }
-
-      // Zapier Webhooks usually return a success status, not the actual data immediately.
-      // For a true sync, we would need a separate endpoint to receive the data from Zapier.
-      // For now, we'll return a success message indicating the sync was triggered.
-      res.json({ 
-        success: true, 
-        reviews: [],
-        message: 'Sync triggered successfully. Reviews will be updated shortly.'
-      });
-    } catch (error) {
-      console.error('Sync reviews error:', error);
-      res.status(500).json({ error: 'Failed to sync reviews' });
-    }
-  });
-
-  app.post('/api/reviews/:id/reply', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { replyText, isRepliedByAI } = req.body;
-
-      const tenant = await prisma.tenant.findFirst();
-      if (!tenant || !tenant.replyWebhookUrl) {
-        return res.status(400).json({ error: 'Reply Webhook URL is not configured in Settings.' });
-      }
-
-      const review = await prisma.review.findUnique({ where: { id } });
-      if (!review) {
-        return res.status(404).json({ error: 'Review not found' });
-      }
-
-      // Call Webhook to post the reply
-      const response = await fetch(tenant.replyWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reviewId: review.googleReviewId,
-          replyText
-        })
-      });
-
-      if (!response.ok) {
-        console.error('Reply Webhook failed:', response.statusText);
-        return res.status(500).json({ error: 'Failed to send reply via Webhook' });
-      }
-
-      const updatedReview = await prisma.review.update({
-        where: { id },
-        data: { 
-          replyText,
-          isRepliedByAI: isRepliedByAI || false
-        }
-      });
-
-      res.json({ success: true, review: updatedReview });
-    } catch (error) {
-      console.error('Submit reply error:', error);
-      res.status(500).json({ error: 'Failed to submit reply' });
-    }
-  });
-
-  // ==========================================
   // Posts API Routes
   // ==========================================
-
   app.get('/api/posts', async (req, res) => {
     try {
       const posts = await prisma.post.findMany({
         include: { location: true },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
       res.json(posts);
     } catch (error) {
@@ -434,7 +695,7 @@ async function startServer() {
   app.post('/api/posts', async (req, res) => {
     try {
       const { locationId, content, type, status, scheduledFor, imageUrl } = req.body;
-      
+
       const post = await prisma.post.create({
         data: {
           locationId,
@@ -442,11 +703,11 @@ async function startServer() {
           type: type || 'UPDATE',
           status: status || 'DRAFT',
           scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
-          imageUrl
+          imageUrl,
         },
-        include: { location: true }
+        include: { location: true },
       });
-      
+
       res.json(post);
     } catch (error) {
       console.error('Create post error:', error);
@@ -458,7 +719,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { content, type, status, scheduledFor, imageUrl } = req.body;
-      
+
       const post = await prisma.post.update({
         where: { id },
         data: {
@@ -466,11 +727,11 @@ async function startServer() {
           type,
           status,
           scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
-          imageUrl
+          imageUrl,
         },
-        include: { location: true }
+        include: { location: true },
       });
-      
+
       res.json(post);
     } catch (error) {
       console.error('Update post error:', error);
@@ -480,8 +741,7 @@ async function startServer() {
 
   app.delete('/api/posts/:id', async (req, res) => {
     try {
-      const { id } = req.params;
-      await prisma.post.delete({ where: { id } });
+      await prisma.post.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (error) {
       console.error('Delete post error:', error);
@@ -492,12 +752,11 @@ async function startServer() {
   // ==========================================
   // Comments Gen API Routes
   // ==========================================
-
   app.get('/api/google-accounts', async (req, res) => {
     try {
       const accounts = await prisma.googleAccount.findMany({
         where: { status: 'ACTIVE' },
-        orderBy: { name: 'asc' }
+        orderBy: { name: 'asc' },
       });
       res.json(accounts);
     } catch (error) {
@@ -516,20 +775,10 @@ async function startServer() {
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
       const usedQuota = await prisma.commentTask.count({
-        where: {
-          tenantId: tenant.id,
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        }
+        where: { tenantId: tenant.id, createdAt: { gte: startOfMonth, lte: endOfMonth } },
       });
 
-      res.json({
-        total: 20,
-        used: usedQuota,
-        remaining: Math.max(0, 20 - usedQuota)
-      });
+      res.json({ total: 20, used: usedQuota, remaining: Math.max(0, 20 - usedQuota) });
     } catch (error) {
       console.error('Fetch quota error:', error);
       res.status(500).json({ error: 'Failed to fetch quota' });
@@ -545,23 +794,18 @@ async function startServer() {
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
       const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: 'Gemini API key not configured' });
-      }
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
 
       const ai = new GoogleGenAI({ apiKey });
-      
-      const langInstruction = language === 'zh' 
-        ? 'Please write the review in Simplified Chinese.' 
-        : 'Please write the review in English.';
+      const langInstruction = language === 'zh' ? '请用简体中文撰写。' : 'Please write the review in English.';
 
-      const prompt = `Write a Google Maps review for a business. 
+      const prompt = `Write a Google Maps review for a business.
 Keywords/Context: ${keywords}
 ${langInstruction}
-The review should sound natural, authentic, and written by a real customer. Do not include placeholders like [Business Name]. Keep it concise (2-4 sentences).`;
+The review should sound natural, authentic, and written by a real customer. Keep it concise (2-4 sentences).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: 'gemini-3-flash-preview',
         contents: prompt,
       });
 
@@ -575,32 +819,20 @@ The review should sound natural, authentic, and written by a real customer. Do n
   app.post('/api/comment-tasks', async (req, res) => {
     try {
       const { googleAccountId, locationId, keywords, content, imageUrls } = req.body;
-      
-      if (!googleAccountId || !content) {
-        return res.status(400).json({ error: 'Google Account and content are required' });
-      }
+      if (!googleAccountId || !content) return res.status(400).json({ error: 'Google Account and content are required' });
 
       const tenant = await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
-      // Check quota
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
       const usedQuota = await prisma.commentTask.count({
-        where: {
-          tenantId: tenant.id,
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        }
+        where: { tenantId: tenant.id, createdAt: { gte: startOfMonth, lte: endOfMonth } },
       });
 
-      if (usedQuota >= 20) {
-        return res.status(403).json({ error: 'Monthly quota exceeded (20/20)' });
-      }
+      if (usedQuota >= 20) return res.status(403).json({ error: 'Monthly quota exceeded (20/20)' });
 
       const task = await prisma.commentTask.create({
         data: {
@@ -610,12 +842,9 @@ The review should sound natural, authentic, and written by a real customer. Do n
           keywords,
           content,
           imageUrls: imageUrls || [],
-          status: 'DRAFT'
+          status: 'DRAFT',
         },
-        include: {
-          googleAccount: true,
-          location: true
-        }
+        include: { googleAccount: true, location: true },
       });
 
       res.json(task);
@@ -632,11 +861,8 @@ The review should sound natural, authentic, and written by a real customer. Do n
 
       const tasks = await prisma.commentTask.findMany({
         where: { tenantId: tenant.id },
-        include: {
-          googleAccount: true,
-          location: true
-        },
-        orderBy: { createdAt: 'desc' }
+        include: { googleAccount: true, location: true },
+        orderBy: { createdAt: 'desc' },
       });
 
       res.json(tasks);
@@ -649,27 +875,24 @@ The review should sound natural, authentic, and written by a real customer. Do n
   // ==========================================
   // Dashboard API Routes
   // ==========================================
-
   app.get('/api/dashboard/stats', async (req, res) => {
     try {
       const tenant = await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
       const locationsCount = await prisma.location.count({ where: { tenantId: tenant.id } });
-      
+
       const reviews = await prisma.review.findMany({
-        where: { location: { tenantId: tenant.id } }
+        where: { location: { tenantId: tenant.id } },
       });
 
       const totalReviews = reviews.length;
-      const averageRating = totalReviews > 0 
-        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1) 
+      const averageRating = totalReviews > 0
+        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1)
         : '0.0';
-      
-      const repliedReviews = reviews.filter(r => r.replyText).length;
-      const replyRate = totalReviews > 0 
-        ? Math.round((repliedReviews / totalReviews) * 100) 
-        : 0;
+
+      const repliedReviews = reviews.filter((r) => r.replyText).length;
+      const replyRate = totalReviews > 0 ? Math.round((repliedReviews / totalReviews) * 100) : 0;
 
       res.json({
         locationsCount,
@@ -677,7 +900,7 @@ The review should sound natural, authentic, and written by a real customer. Do n
         averageRating,
         replyRate,
         repliedReviews,
-        unrepliedReviews: totalReviews - repliedReviews
+        unrepliedReviews: totalReviews - repliedReviews,
       });
     } catch (error) {
       console.error('Fetch dashboard stats error:', error);
@@ -685,7 +908,6 @@ The review should sound natural, authentic, and written by a real customer. Do n
     }
   });
 
-  // Example API Route (Placeholder for future implementation)
   app.get('/api/tenants', async (req, res) => {
     try {
       const tenants = await prisma.tenant.findMany();
@@ -698,16 +920,13 @@ The review should sound natural, authentic, and written by a real customer. Do n
   // ==========================================
   // Rank Tracker API Routes (SerpApi)
   // ==========================================
-
   app.get('/api/places/search', async (req, res) => {
     try {
       const { q } = req.query;
-      if (!q || typeof q !== 'string') {
-        return res.status(400).json({ error: 'Missing query parameter' });
-      }
+      if (!q || typeof q !== 'string') return res.status(400).json({ error: 'Missing query parameter' });
 
       const serpApiKey = process.env.SERPAPI_KEY || '603217379ed95d286aef18d62c3d3ade08714b176e486c26933ce51aa1186010';
-      
+
       const url = new URL('https://serpapi.com/search.json');
       url.searchParams.append('engine', 'google_maps');
       url.searchParams.append('q', q);
@@ -717,9 +936,7 @@ The review should sound natural, authentic, and written by a real customer. Do n
       const response = await fetch(url.toString());
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch from SerpApi');
-      }
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch from SerpApi');
 
       const results = (data.local_results || []).map((result: any) => ({
         title: result.title,
@@ -728,7 +945,7 @@ The review should sound natural, authentic, and written by a real customer. Do n
         lng: result.gps_coordinates?.longitude,
         rating: result.rating,
         reviews: result.reviews,
-        place_id: result.place_id
+        place_id: result.place_id,
       })).filter((r: any) => r.lat && r.lng);
 
       res.json(results);
@@ -741,13 +958,12 @@ The review should sound natural, authentic, and written by a real customer. Do n
   app.post('/api/rank-tracker/scan', async (req, res) => {
     try {
       const { keyword, lat, lng, businessName } = req.body;
-      
       if (!keyword || !lat || !lng || !businessName) {
         return res.status(400).json({ error: 'Missing required parameters' });
       }
 
       const serpApiKey = process.env.SERPAPI_KEY || '603217379ed95d286aef18d62c3d3ade08714b176e486c26933ce51aa1186010';
-      
+
       const url = new URL('https://serpapi.com/search.json');
       url.searchParams.append('engine', 'google_maps');
       url.searchParams.append('q', keyword);
@@ -758,20 +974,14 @@ The review should sound natural, authentic, and written by a real customer. Do n
       const response = await fetch(url.toString());
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch from SerpApi');
-      }
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch from SerpApi');
 
-      let rank = 21; // Default to 21+ (not found in top 20)
-      
+      let rank = 21;
       if (data.local_results && Array.isArray(data.local_results)) {
-        const index = data.local_results.findIndex((result: any) => 
-          result.title && result.title.toLowerCase().includes(businessName.toLowerCase())
+        const index = data.local_results.findIndex((result: any) =>
+          result.title && result.title.toLowerCase().includes(businessName.toLowerCase()),
         );
-        
-        if (index !== -1) {
-          rank = index + 1; // 1-based ranking
-        }
+        if (index !== -1) rank = index + 1;
       }
 
       res.json({ rank, lat, lng });
@@ -784,21 +994,18 @@ The review should sound natural, authentic, and written by a real customer. Do n
   app.post('/api/rank-tracker/insight', async (req, res) => {
     try {
       const { keyword, businessName, gridPoints } = req.body;
-      
+
       const tenant = await prisma.tenant.findFirst();
       const apiKey = tenant?.geminiApiKey || process.env.GEMINI_API_KEY;
-
-      if (!apiKey) {
-        return res.status(400).json({ error: 'Gemini API Key not configured' });
-      }
+      if (!apiKey) return res.status(400).json({ error: 'Gemini API Key not configured' });
 
       const ai = new GoogleGenAI({ apiKey });
 
       const validRanks = gridPoints.filter((p: any) => p.rank !== undefined && p.rank <= 20);
-      const avgRank = validRanks.length > 0 
+      const avgRank = validRanks.length > 0
         ? (validRanks.reduce((a: any, b: any) => a + b.rank, 0) / validRanks.length).toFixed(1)
         : '20+';
-      
+
       const top3 = gridPoints.filter((p: any) => p.rank !== undefined && p.rank <= 3).length;
       const top3Percent = Math.round((top3 / gridPoints.length) * 100);
 
@@ -808,14 +1015,9 @@ The review should sound natural, authentic, and written by a real customer. Do n
         Target Keyword: ${keyword}
         Average Rank across grid: ${avgRank}
         Top 3 Presence (Visibility): ${top3Percent}%
-        
+
         Provide a detailed, step-by-step action plan to improve or maintain these rankings.
         Format your response in Markdown. Include 3 to 4 specific, actionable steps.
-        Do not just give generic advice; tailor it to the visibility score. 
-        For example:
-        - If visibility is 0% or very low, focus on foundational Google Business Profile optimization, initial local citations, and getting the first few reviews.
-        - If visibility is moderate, focus on keyword-rich review generation, adding photos, and posting Google Business updates.
-        - If visibility is high, focus on expanding the service radius, targeting secondary keywords, or maintaining review velocity.
       `;
 
       const response = await ai.models.generateContent({
@@ -837,7 +1039,7 @@ The review should sound natural, authentic, and written by a real customer. Do n
 
       const review = await prisma.review.findUnique({
         where: { id: reviewId },
-        include: { location: true }
+        include: { location: true },
       });
 
       if (!review) return res.status(404).json({ error: 'Review not found' });
@@ -846,20 +1048,18 @@ The review should sound natural, authentic, and written by a real customer. Do n
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
       const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: 'Gemini API key not configured' });
-      }
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
 
       const ai = new GoogleGenAI({ apiKey });
 
       const prompt = `
         You are a professional customer service representative for a local business named "${review.location.name}".
         Please write a polite, professional, and empathetic reply to the following customer review.
-        
+
         Customer Name: ${review.reviewerName}
         Rating: ${review.rating} out of 5 stars
         Review Comment: "${review.comment || 'No comment provided.'}"
-        
+
         Guidelines:
         - Keep it concise (2-4 sentences).
         - If the rating is positive (4-5 stars), express gratitude and invite them back.
@@ -883,14 +1083,12 @@ The review should sound natural, authentic, and written by a real customer. Do n
   // Vite Middleware (For Frontend Integration)
   // ==========================================
   if (process.env.NODE_ENV !== 'production') {
-    // Development mode: Use Vite's middleware
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
-    // Production mode: Serve static files from dist
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {

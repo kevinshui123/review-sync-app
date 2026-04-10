@@ -16,12 +16,15 @@ RUN npm install --ignore-scripts
 # Copy source code
 COPY . .
 
-# Generate Prisma client and build
+# Generate Prisma client (no DB connection needed)
 RUN npx prisma generate
+
+# Build the app
 RUN npm run build
 
 # Expose port
 EXPOSE 3000
 
-# Start the app
-CMD ["node", "dist/server.js"]
+# Start: push schema then run server
+# Railway injects DATABASE_URL and APP_URL as environment variables
+CMD ["sh", "-c", "npx prisma db push && node dist/server.js"]

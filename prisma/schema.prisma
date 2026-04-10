@@ -20,18 +20,31 @@ model User {
 model Tenant {
   id                 String   @id @default(uuid())
   name               String
-  
-  // API Configurations
+
+  // Deprecated: Using Google API directly now
   syncWebhookUrl     String?
   replyWebhookUrl    String?
+
+  // API Keys
   yelpApiKey         String?
   openaiApiKey       String?
   geminiApiKey       String?
+
+  // Google OAuth 2.0 (for Business Profile API)
+  googleAccessToken      String?
+  googleRefreshToken     String?
+  googleTokenExpiry      DateTime?
+  googleBusinessAccountId String?
+
+  // Location mapping: { "localId": "googleLocationId" }
+  // Format: JSON string, e.g. { "loc_abc123": "ChIJr...xxx" }
+  locationMappings   String?  @default("{}")
+
   isConfigured       Boolean  @default(false)
 
   // A Tenant can have multiple Users
   users       User[]   @relation("UserTenants")
-  
+
   // 1-to-many relations
   locations   Location[]
   commentTasks CommentTask[]
@@ -40,13 +53,13 @@ model Tenant {
 model Location {
   id            String   @id @default(uuid())
   tenantId      String
-  googlePlaceId String?  @unique
+  googlePlaceId String?
   name          String
   address       String?
   phone         String?
   businessHours String?
   isSynced      Boolean  @default(false)
-  
+
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   reviews       Review[]
   posts         Post[]

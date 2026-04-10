@@ -31,9 +31,7 @@ export default function App() {
           return;
         }
         const data = await res.json();
-        // Outbound webhooks (below) are only needed if this app should call Zapier/Make.
-        // Inbound reviews use POST /api/webhooks/zapier/reviews — no URLs needed here.
-        const configured = !!(data.syncWebhookUrl && data.replyWebhookUrl);
+        const configured = !!(data.googleConnected);
         setIsConfigured(configured);
       } catch (error) {
         console.error('Failed to check configuration:', error);
