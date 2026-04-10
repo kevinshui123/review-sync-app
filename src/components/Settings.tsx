@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings as SettingsIcon, Save, Key, ShieldCheck, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, Unlink, ExternalLink, MapPin } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, Unlink, ExternalLink, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -12,18 +12,13 @@ export function Settings() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
-  const [googleLocations, setGoogleLocations] = useState<any[]>([]);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
-  const [mappedLocationId, setMappedLocationId] = useState('');
-  const [selectedGoogleLocation, setSelectedGoogleLocation] = useState('');
-
   const [formData, setFormData] = useState({
     yelpApiKey: '',
     openaiApiKey: '',
     geminiApiKey: '',
+    googlePlacesApiKey: '',
   });
 
-  const [localLocations, setLocalLocations] = useState<any[]>([]);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -38,26 +33,12 @@ export function Settings() {
             yelpApiKey: data.yelpApiKey || '',
             openaiApiKey: data.openaiApiKey || '',
             geminiApiKey: data.geminiApiKey || '',
+            googlePlacesApiKey: data.googlePlacesApiKey || '',
           });
           setGoogleConnected(data.googleConnected || false);
         }
       } catch (error) {
         console.error('Failed to fetch settings:', error);
-      }
-    };
-
-    const fetchLocations = async () => {
-      try {
-        const res = await fetch('/api/locations');
-        if (res.ok) {
-          const data = await res.json();
-          setLocalLocations(data);
-          if (data.length > 0) {
-            setMappedLocationId(data[0].id);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch locations:', error);
       }
     };
 
@@ -84,35 +65,10 @@ export function Settings() {
       window.history.replaceState({}, '', window.location.pathname);
     }
 
-    Promise.all([fetchSettings(), fetchLocations(), fetchTeam()]).finally(() => {
+    Promise.all([fetchSettings(), fetchTeam()]).finally(() => {
       setIsLoading(false);
     });
   }, []);
-
-  // Fetch Google locations when connected
-  useEffect(() => {
-    if (googleConnected) {
-      fetchGoogleLocations();
-    }
-  }, [googleConnected]);
-
-  const fetchGoogleLocations = async () => {
-    setIsLoadingLocations(true);
-    try {
-      const res = await fetch('/api/google/locations');
-      if (res.ok) {
-        const data = await res.json();
-        setGoogleLocations(data);
-      } else {
-        const err = await res.json();
-        console.error('Failed to fetch Google locations:', err);
-      }
-    } catch (error) {
-      console.error('Failed to fetch Google locations:', error);
-    } finally {
-      setIsLoadingLocations(false);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -163,32 +119,9 @@ export function Settings() {
       const res = await fetch('/api/auth/google/disconnect', { method: 'POST' });
       if (res.ok) {
         setGoogleConnected(false);
-        setGoogleLocations([]);
       }
     } catch (error) {
       console.error('Failed to disconnect Google:', error);
-    }
-  };
-
-  const handleMapLocation = async () => {
-    if (!mappedLocationId || !selectedGoogleLocation) return;
-    try {
-      const res = await fetch('/api/google/locations/map', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          localLocationId: mappedLocationId,
-          googleLocationId: selectedGoogleLocation,
-        }),
-      });
-      if (res.ok) {
-        alert('Location mapped successfully! You can now sync reviews.');
-      } else {
-        const err = await res.json();
-        alert(`Failed to map location: ${err.error}`);
-      }
-    } catch (error) {
-      console.error('Failed to map location:', error);
     }
   };
 
@@ -263,6 +196,40 @@ export function Settings() {
 
       <div className="space-y-8">
 
+        {/* Google Places API — own card so it is visible (not only inside OAuth block) */}
+        <section
+          id="google-places-api-key"
+          className="bg-surface-container rounded-2xl p-8 border border-outline-variant/20 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-tertiary/5 rounded-full blur-3xl -mr-10 -mt-10" />
+          <div className="flex items-start gap-4 relative z-10">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <MapPin className="w-6 h-6 text-primary" />
+            </div>
+            <div className="space-y-4 flex-1 min-w-0">
+              <div>
+                <h3 className="text-xl font-bold text-on-surface">{t('settings.googlePlacesSectionTitle')}</h3>
+                <p className="text-sm text-on-surface-variant mt-1">{t('settings.googlePlacesApiKeyDesc')}</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-outline uppercase tracking-widest block">
+                  {t('settings.googlePlacesApiKey')}
+                </label>
+                <input
+                  type="password"
+                  name="googlePlacesApiKey"
+                  value={formData.googlePlacesApiKey}
+                  onChange={handleChange}
+                  placeholder="AIza..."
+                  autoComplete="off"
+                  className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                />
+                <p className="text-xs text-outline leading-relaxed">{t('settings.googlePlacesApiKeyHint')}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Google Business Profile Section */}
         <section className="bg-surface-container rounded-2xl p-8 border border-outline-variant/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
@@ -278,10 +245,8 @@ export function Settings() {
             </div>
             <div className="space-y-6 flex-1">
               <div>
-                <h3 className="text-xl font-bold text-on-surface">Google Business Profile</h3>
-                <p className="text-sm text-on-surface-variant mt-1">
-                  Connect your Google account to sync reviews and reply directly via the Google Business Profile API.
-                </p>
+                <h3 className="text-xl font-bold text-on-surface">{t('settings.googleOAuthTitle')}</h3>
+                <p className="text-sm text-on-surface-variant mt-1">{t('settings.googleOAuthDesc')}</p>
               </div>
 
               {googleError && (
@@ -292,103 +257,38 @@ export function Settings() {
               )}
 
               {googleConnected ? (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
-                    <div>
-                      <p className="font-bold text-emerald-700 dark:text-emerald-400">Google account connected</p>
-                      <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Reviews will sync directly from Google API</p>
-                    </div>
-                    <button
-                      onClick={handleDisconnectGoogle}
-                      className="ml-auto flex items-center gap-2 px-4 py-2 text-error hover:bg-error/10 rounded-lg transition-colors text-sm font-medium"
-                    >
-                      <Unlink className="w-4 h-4" />
-                      Disconnect
-                    </button>
+                <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
+                  <div>
+                    <p className="font-bold text-emerald-700 dark:text-emerald-400">Google account connected</p>
+                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Reviews will sync directly from Google API</p>
                   </div>
-
-                  {/* Location Mapping */}
-                  <div className="bg-surface-container-low p-4 rounded-lg border border-outline-variant/20 space-y-4">
-                    <div>
-                      <p className="text-xs font-bold text-outline uppercase tracking-widest flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        Map Local Location to Google Business
-                      </p>
-                      <p className="text-xs text-on-surface-variant mt-1">
-                        Link your local location to a Google Business Profile to enable review syncing and replies.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Local Location</label>
-                        <select
-                          value={mappedLocationId}
-                          onChange={(e) => setMappedLocationId(e.target.value)}
-                          className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
-                        >
-                          <option value="">Select a location...</option>
-                          {localLocations.map((loc) => (
-                            <option key={loc.id} value={loc.id}>{loc.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Google Business Profile</label>
-                        <select
-                          value={selectedGoogleLocation}
-                          onChange={(e) => setSelectedGoogleLocation(e.target.value)}
-                          className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
-                          disabled={isLoadingLocations}
-                        >
-                          <option value="">Select Google location...</option>
-                          {googleLocations.map((loc) => (
-                            <option key={loc.googleLocationId} value={loc.googleLocationId}>
-                              {loc.name} {loc.address ? `- ${loc.address}` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleMapLocation}
-                      disabled={!mappedLocationId || !selectedGoogleLocation}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all disabled:opacity-50"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      Map This Location
-                    </button>
-
-                    {isLoadingLocations && (
-                      <div className="flex items-center gap-2 text-sm text-outline">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Loading Google locations...
-                      </div>
-                    )}
-
-                    {googleLocations.length === 0 && !isLoadingLocations && googleConnected && (
-                      <p className="text-xs text-on-surface-variant">
-                        No Google Business locations found. Make sure you have a verified Google Business Profile.
-                      </p>
-                    )}
-                  </div>
+                  <button
+                    onClick={handleDisconnectGoogle}
+                    className="ml-auto flex items-center gap-2 px-4 py-2 text-error hover:bg-error/10 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    <Unlink className="w-4 h-4" />
+                    Disconnect
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-sm text-on-surface-variant">
-                    You need a Google Cloud project with the Business Profile API enabled. Get your OAuth credentials from the Google Cloud Console.
-                  </p>
+                  <div className="p-4 bg-surface-container-low rounded-lg border border-outline-variant/20">
+                    <p className="text-xs font-medium text-on-surface-variant mb-2">Setup Steps:</p>
+                    <ol className="text-xs text-on-surface-variant space-y-1 list-decimal list-inside">
+                      <li>Enable My Business Business Information API in Google Cloud Console</li>
+                      <li>Configure OAuth consent screen</li>
+                      <li>Click "Connect Google Account" below</li>
+                    </ol>
+                  </div>
                   <a
                     href="https://console.cloud.google.com/apis/library/businessprofileinformation.googleapis.com"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm bg-primary text-on-primary hover:brightness-105 transition-all"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Enable Business Profile API
+                    Enable Business Information API
                   </a>
                   <button
                     onClick={handleConnectGoogle}

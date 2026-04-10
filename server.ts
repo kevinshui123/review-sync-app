@@ -148,7 +148,7 @@ async function startServer() {
 
   app.post('/api/settings', async (req, res) => {
     try {
-      const { yelpApiKey, openaiApiKey, geminiApiKey } = req.body;
+      const { yelpApiKey, openaiApiKey, geminiApiKey, googlePlacesApiKey } = req.body;
       let tenant = await prisma.tenant.findFirst();
       if (!tenant) {
         tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
@@ -160,7 +160,8 @@ async function startServer() {
           yelpApiKey,
           openaiApiKey,
           geminiApiKey,
-          isConfigured: !!(yelpApiKey || openaiApiKey || geminiApiKey),
+          googlePlacesApiKey,
+          isConfigured: !!(yelpApiKey || openaiApiKey || geminiApiKey || googlePlacesApiKey),
         },
       });
       res.json(updated);
@@ -265,61 +266,143 @@ async function startServer() {
   });
 
   // ==========================================
-  // Google Business Profile - Locations (REST API)
+  // Google Business Profile - 根据 Place ID 获取商家信息 (Business Information API)
   // ==========================================
 
-  app.get('/api/google/locations', async (req, res) => {
+  // 搜索地点 - 使用 Google Places API (这个API容易申请)
+  app.get('/api/google/places/search', async (req, res) => {
     try {
-      const authResult = await getValidAuth();
-      if (!authResult) {
-        return res.status(401).json({ error: 'Google account not connected. Please connect in Settings.' });
+      const { query } = req.query;
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: 'Search query is required' });
       }
 
-      const { auth, tenantId } = authResult;
-
-      // Get the business account first
-      const accountsData = await googleApiRequestGet(
-        auth,
-        'https://mybusinessbusinessinformation.googleapis.com/v1/accounts',
-      );
-
-      const accounts = accountsData.accounts || [];
-      if (accounts.length === 0) {
-        return res.json([]);
-      }
-
-      const primaryAccount = accounts[0].name; // e.g. "accounts/123456789"
-
-      // Save the account ID if not already saved
-      const accountId = accounts[0].accountId || accounts[0].name;
       const tenant = await prisma.tenant.findFirst();
-      if (tenant && !tenant.googleBusinessAccountId) {
-        await prisma.tenant.update({
-          where: { id: tenantId },
-          data: { googleBusinessAccountId: accountId },
+      const apiKey = tenant?.googlePlacesApiKey || process.env.GOOGLE_PLACES_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ 
+          error: 'Google Places API key not configured. Please set GOOGLE_PLACES_API_KEY in .env file.',
+          setupRequired: true 
         });
       }
 
-      // Get locations under this account
-      const locationsData = await googleApiRequestGet(
-        auth,
-        `https://mybusinessbusinessinformation.googleapis.com/v1/${primaryAccount}/locations?pageSize=100`,
+      // 使用 Google Places API Text Search
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`
       );
+      const data = await response.json();
 
-      const locations = (locationsData.locations || []).map((loc: any) => ({
-        googleLocationId: loc.name,
-        name: loc.locationName,
-        address: loc.address
-          ? `${loc.address.addressLines?.join(', ') || ''}, ${loc.address.locality || ''}, ${loc.address.administrativeArea || ''}`.trim()
-          : null,
-        phone: loc.primaryPhone,
-        websiteUri: loc.websiteUri,
+      if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+        throw new Error(`Places API error: ${data.status}`);
+      }
+
+      const results = (data.results || []).map((place: any) => ({
+        placeId: place.place_id,
+        name: place.name,
+        address: place.formatted_address,
+        location: place.geometry?.location,
+        rating: place.rating,
+        userRatingsTotal: place.user_ratings_total,
+        types: place.types,
       }));
 
-      res.json(locations);
+      res.json(results);
     } catch (error: any) {
-      console.error('Fetch Google locations error:', error);
-      res.status(500).json({ error: 'Failed to fetch Google locations', details: error.message });
+      console.error('Places search error:', error);
+      res.status(500).json({ error: 'Failed to search places', details: error.message });
+    }
+  });
+
+  // 根据 Place ID 获取详细信息
+  app.get('/api/google/places/:placeId', async (req, res) => {
+    try {
+      const { placeId } = req.params;
+      if (!placeId) {
+        return res.status(400).json({ error: 'Place ID is required' });
+      }
+
+      const tenant = await prisma.tenant.findFirst();
+      const apiKey = tenant?.googlePlacesApiKey || process.env.GOOGLE_PLACES_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ 
+          error: 'Google Places API key not configured. Please set GOOGLE_PLACES_API_KEY in .env file.',
+          setupRequired: true 
+        });
+      }
+
+      // 使用 Google Places API Details
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,formatted_address,geometry,formatted_phone_number,opening_hours,rating,user_ratings_total,photos,website,types&key=${apiKey}`
+      );
+      const data = await response.json();
+
+      if (data.status !== 'OK') {
+        throw new Error(`Places API error: ${data.status}`);
+      }
+
+      const place = data.result;
+      const result = {
+        placeId: place.place_id,
+        name: place.name,
+        address: place.formatted_address,
+        phone: place.formatted_phone_number,
+        website: place.website,
+        location: place.geometry?.location,
+        rating: place.rating,
+        userRatingsTotal: place.user_ratings_total,
+        types: place.types,
+        openingHours: place.opening_hours?.weekday_text || [],
+        photoReferences: (place.photos || []).slice(0, 5).map((p: any) => p.photo_reference),
+      };
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Place details error:', error);
+      res.status(500).json({ error: 'Failed to get place details', details: error.message });
+    }
+  });
+
+  // 验证用户提供的 Place ID
+  app.post('/api/google/validate-place-id', async (req, res) => {
+    try {
+      const { placeId } = req.body;
+      if (!placeId) {
+        return res.status(400).json({ error: 'Place ID is required' });
+      }
+
+      const tenant = await prisma.tenant.findFirst();
+      const apiKey = tenant?.googlePlacesApiKey || process.env.GOOGLE_PLACES_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ 
+          error: 'Google Places API key not configured.',
+          setupRequired: true 
+        });
+      }
+
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=place_id,name,formatted_address&key=${apiKey}`
+      );
+      const data = await response.json();
+
+      if (data.status !== 'OK') {
+        return res.status(400).json({ 
+          valid: false, 
+          error: 'Invalid Place ID or Place not found',
+          status: data.status 
+        });
+      }
+
+      res.json({
+        valid: true,
+        place: {
+          placeId: data.result.place_id,
+          name: data.result.name,
+          address: data.result.formatted_address,
+        }
+      });
+    } catch (error: any) {
+      console.error('Validate place ID error:', error);
+      res.status(500).json({ error: 'Failed to validate Place ID', details: error.message });
     }
   });
 

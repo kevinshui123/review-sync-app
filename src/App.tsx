@@ -31,8 +31,13 @@ export default function App() {
           return;
         }
         const data = await res.json();
-        const configured = !!(data.googleConnected);
-        setIsConfigured(configured);
+        const hasPlaces = !!(data.googlePlacesApiKey && String(data.googlePlacesApiKey).trim());
+        const hasOAuth = !!data.googleConnected;
+        const hasAi = !!(
+          (data.geminiApiKey && String(data.geminiApiKey).trim()) ||
+          (data.openaiApiKey && String(data.openaiApiKey).trim())
+        );
+        setIsConfigured(hasOAuth || hasPlaces || hasAi);
       } catch (error) {
         console.error('Failed to check configuration:', error);
         setIsConfigured(false);
@@ -121,11 +126,6 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         </main>
-
-        {/* Floating Action Button (Global) */}
-        <button className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl shadow-primary/20 flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40">
-          <span className="text-3xl leading-none font-light">+</span>
-        </button>
       </div>
     </div>
   );

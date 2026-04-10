@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, RefreshCw, Unlock, AlertTriangle, Edit, MapPin, Calendar, X, Plus, ChevronDown } from 'lucide-react';
+import { Sparkles, RefreshCw, Unlock, AlertTriangle, Edit, MapPin, Calendar, X, Plus, ChevronDown, Search, Check, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+
+interface GooglePlace {
+  placeId: string;
+  name: string;
+  address: string;
+  phone?: string;
+  location?: { lat: number; lng: number };
+  rating?: number;
+}
 
 export function Listings() {
   const { t } = useLanguage();
@@ -9,7 +18,18 @@ export function Listings() {
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  
+  const [needsPlacesApiKey, setNeedsPlacesApiKey] = useState(false);
+
+  // Google Place Search State
+  const [showPlaceSearch, setShowPlaceSearch] = useState(false);
+  const [placeSearchQuery, setPlaceSearchQuery] = useState('');
+  const [placeSearchResults, setPlaceSearchResults] = useState<GooglePlace[]>([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [manualPlaceId, setManualPlaceId] = useState('');
+  const [isValidatingPlaceId, setIsValidatingPlaceId] = useState(false);
+  const [manualPlaceError, setManualPlaceError] = useState<string | null>(null);
+  const [manualPlaceInfo, setManualPlaceInfo] = useState<GooglePlace | null>(null);
+
   // AI Optimizer State
   const [showOptimizer, setShowOptimizer] = useState(true);
   const [isApplyingRecommendation, setIsApplyingRecommendation] = useState(false);
@@ -28,7 +48,6 @@ export function Listings() {
         const data = await res.json();
         setLocations(data);
         if (data.length > 0) {
-          // Only set if not already set to avoid overwriting user selection
           setSelectedLocation((prev: any) => prev || data[0]);
         }
       }
@@ -42,21 +61,97 @@ export function Listings() {
   }, []);
 
   useEffect(() => {
-    if (selectedLocation) {
-      setFormData({
-        phone: selectedLocation.phone || '',
-        businessHours: selectedLocation.businessHours || {
-          Monday: '09:00 AM - 05:00 PM',
-          Tuesday: '09:00 AM - 05:00 PM',
-          Wednesday: '09:00 AM - 05:00 PM',
-          Thursday: '09:00 AM - 05:00 PM',
-          Friday: '09:00 AM - 05:00 PM',
-          Saturday: 'Closed',
-          Sunday: 'Closed',
-        }
-      });
+    if (!selectedLocation) return;
+    const defaultHours = {
+      Monday: '09:00 AM - 05:00 PM',
+      Tuesday: '09:00 AM - 05:00 PM',
+      Wednesday: '09:00 AM - 05:00 PM',
+      Thursday: '09:00 AM - 05:00 PM',
+      Friday: '09:00 AM - 05:00 PM',
+      Saturday: 'Closed',
+      Sunday: 'Closed',
+    };
+    let businessHours = defaultHours;
+    const raw = selectedLocation.businessHours;
+    if (raw) {
+      try {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (parsed && typeof parsed === 'object') businessHours = { ...defaultHours, ...parsed };
+      } catch {
+        /* legacy plain text */
+      }
     }
+    setFormData({ phone: selectedLocation.phone || '', businessHours });
   }, [selectedLocation]);
+
+  // Google Place Search Functions
+  const handleSearchPlaces = async () => {
+    if (!placeSearchQuery.trim()) return;
+    setIsSearchingPlaces(true);
+    setSyncError(null);
+    try {
+      const res = await fetch(`/api/google/places/search?query=${encodeURIComponent(placeSearchQuery)}`);
+      const data = await res.json();
+      if (data.setupRequired) {
+        setNeedsPlacesApiKey(true);
+      } else if (data.error) {
+        setSyncError(data.error);
+      } else {
+        setPlaceSearchResults(data);
+      }
+    } catch (error) {
+      console.error('Search places error:', error);
+      setSyncError('Failed to search places');
+    } finally {
+      setIsSearchingPlaces(false);
+    }
+  };
+
+  const handleSelectPlace = async (place: GooglePlace) => {
+    setNewLocationData({
+      name: place.name,
+      address: place.address,
+      phone: place.phone || '',
+    });
+    setManualPlaceId(place.placeId);
+    setManualPlaceInfo(place);
+    setShowPlaceSearch(false);
+    setPlaceSearchResults([]);
+    setPlaceSearchQuery('');
+  };
+
+  const handleValidateManualPlaceId = async () => {
+    if (!manualPlaceId.trim()) return;
+    setIsValidatingPlaceId(true);
+    setManualPlaceError(null);
+    setManualPlaceInfo(null);
+    try {
+      const res = await fetch('/api/google/validate-place-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeId: manualPlaceId.trim() })
+      });
+      const data = await res.json();
+      if (data.setupRequired) {
+        setNeedsPlacesApiKey(true);
+        setManualPlaceError(t('listings.placesApiKeyManualError'));
+      } else if (!data.valid) {
+        setManualPlaceError(data.error || 'Invalid Place ID');
+      } else {
+        setManualPlaceInfo(data.place);
+        setNewLocationData({
+          name: data.place.name,
+          address: data.place.address,
+          phone: '',
+        });
+      }
+    } catch (error) {
+      console.error('Validate place ID error:', error);
+      setManualPlaceError('Failed to validate Place ID');
+    } finally {
+      setIsValidatingPlaceId(false);
+    }
+  };
 
   const handleAddLocation = async () => {
     if (!newLocationData.name) {
@@ -69,12 +164,19 @@ export function Listings() {
       const res = await fetch('/api/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newLocationData)
+        body: JSON.stringify({
+          ...newLocationData,
+          googlePlaceId: manualPlaceId || null,
+        })
       });
       if (res.ok) {
         await fetchLocations();
         setIsAddingLocation(false);
         setNewLocationData({ name: '', address: '', phone: '' });
+        setManualPlaceId('');
+        setManualPlaceInfo(null);
+        setIsValidatingPlaceId(false);
+        setManualPlaceError(null);
       } else {
         const err = await res.json();
         setSyncError(err.error || 'Failed to add location');
@@ -95,7 +197,10 @@ export function Listings() {
       const res = await fetch(`/api/locations/${selectedLocation.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          phone: formData.phone,
+          businessHours: JSON.stringify(formData.businessHours),
+        })
       });
       if (res.ok) {
         setSaveMessage({ type: 'success', text: 'Profile saved successfully!' });
@@ -208,40 +313,177 @@ export function Listings() {
 
         {isAddingLocation && (
           <div className="bg-surface-container-high p-6 rounded-2xl border border-primary/20 mb-6">
-            <h4 className="text-lg font-bold mb-4">Add New Location</h4>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-bold">Add New Location</h4>
+              <button 
+                onClick={() => {
+                  setIsAddingLocation(false);
+                  setShowPlaceSearch(false);
+                  setPlaceSearchResults([]);
+                  setManualPlaceId('');
+                  setManualPlaceInfo(null);
+                }}
+                className="p-1 hover:bg-surface-container-highest rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Place ID Section */}
+            <div className="mb-6 p-4 bg-surface-container-low rounded-xl border border-outline-variant/20">
+              <div className="flex items-center gap-2 mb-3">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="text-sm font-bold">Link to Google Business Profile</span>
+              </div>
+              <p className="text-xs text-on-surface-variant mb-3">
+                Enter a Google Place ID to link this location to your Google Business Profile.
+                {!needsPlacesApiKey && (
+                  <button 
+                    onClick={() => setShowPlaceSearch(!showPlaceSearch)}
+                    className="ml-2 text-primary hover:underline"
+                  >
+                    {showPlaceSearch ? 'I have a Place ID' : 'Search for a business'}
+                  </button>
+                )}
+              </p>
+
+              {/* Search for Business */}
+              {showPlaceSearch && (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Search for a business name..."
+                      className="flex-1 bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-2.5 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
+                      value={placeSearchQuery}
+                      onChange={(e) => setPlaceSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchPlaces()}
+                    />
+                    <button 
+                      onClick={handleSearchPlaces}
+                      disabled={isSearchingPlaces}
+                      className="px-4 py-2 bg-primary text-on-primary rounded-lg font-bold text-sm hover:brightness-110 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isSearchingPlaces ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      Search
+                    </button>
+                  </div>
+
+                  {placeSearchResults.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {placeSearchResults.map((place) => (
+                        <div 
+                          key={place.placeId}
+                          className="flex items-center justify-between p-3 bg-surface-container-lowest rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"
+                          onClick={() => handleSelectPlace(place)}
+                        >
+                          <div>
+                            <p className="text-sm font-bold">{place.name}</p>
+                            <p className="text-xs text-on-surface-variant">{place.address}</p>
+                          </div>
+                          <Check className="w-4 h-4 text-primary shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Manual Place ID Input */}
+              {!showPlaceSearch && (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter Google Place ID (e.g. ChIJr...xxx)"
+                      className="flex-1 bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-2.5 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none font-mono"
+                      value={manualPlaceId}
+                      onChange={(e) => {
+                        setManualPlaceId(e.target.value);
+                        setManualPlaceInfo(null);
+                        setManualPlaceError(null);
+                      }}
+                    />
+                    <button 
+                      onClick={handleValidateManualPlaceId}
+                      disabled={isValidatingPlaceId || !manualPlaceId.trim()}
+                      className="px-4 py-2 bg-primary text-on-primary rounded-lg font-bold text-sm hover:brightness-110 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isValidatingPlaceId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      Validate
+                    </button>
+                  </div>
+
+                  {manualPlaceError && (
+                    <p className="text-xs text-error">{manualPlaceError}</p>
+                  )}
+
+                  {needsPlacesApiKey && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <p className="text-xs text-amber-500 font-medium">{t('listings.placesApiKeyBanner')}</p>
+                    </div>
+                  )}
+
+                  {manualPlaceInfo && (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                      <p className="text-xs text-emerald-500 font-bold mb-1">Place verified:</p>
+                      <p className="text-sm font-medium">{manualPlaceInfo.name}</p>
+                      <p className="text-xs text-on-surface-variant">{manualPlaceInfo.address}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Basic Info Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <input 
-                type="text" 
-                placeholder="Location Name (e.g. New York Store)" 
-                className="bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
-                value={newLocationData.name}
-                onChange={e => setNewLocationData({...newLocationData, name: e.target.value})}
-              />
-              <input 
-                type="text" 
-                placeholder="Address" 
-                className="bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
-                value={newLocationData.address}
-                onChange={e => setNewLocationData({...newLocationData, address: e.target.value})}
-              />
-              <input 
-                type="text" 
-                placeholder="Phone Number" 
-                className="bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
-                value={newLocationData.phone}
-                onChange={e => setNewLocationData({...newLocationData, phone: e.target.value})}
-              />
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Location Name *</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. New York Store" 
+                  className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
+                  value={newLocationData.name}
+                  onChange={e => setNewLocationData({...newLocationData, name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Phone</label>
+                <input 
+                  type="text" 
+                  placeholder="+1 (555) 123-4567" 
+                  className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
+                  value={newLocationData.phone}
+                  onChange={e => setNewLocationData({...newLocationData, phone: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Address</label>
+                <input 
+                  type="text" 
+                  placeholder="Full address" 
+                  className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none"
+                  value={newLocationData.address}
+                  onChange={e => setNewLocationData({...newLocationData, address: e.target.value})}
+                />
+              </div>
             </div>
             <div className="flex gap-3">
               <button 
                 onClick={handleAddLocation}
-                disabled={isSyncing}
+                disabled={isSyncing || !newLocationData.name}
                 className="px-4 py-2 bg-primary text-on-primary rounded-lg font-bold text-sm hover:brightness-110 disabled:opacity-50"
               >
                 {isSyncing ? 'Adding...' : 'Save Location'}
               </button>
               <button 
-                onClick={() => setIsAddingLocation(false)}
+                onClick={() => {
+                  setIsAddingLocation(false);
+                  setShowPlaceSearch(false);
+                  setPlaceSearchResults([]);
+                  setManualPlaceId('');
+                  setManualPlaceInfo(null);
+                }}
                 className="px-4 py-2 bg-surface-container-highest text-on-surface rounded-lg font-bold text-sm hover:brightness-110"
               >
                 Cancel

@@ -29,6 +29,7 @@ model Tenant {
   yelpApiKey         String?
   openaiApiKey       String?
   geminiApiKey       String?
+  googlePlacesApiKey String?
 
   // Google OAuth 2.0 (for Business Profile API)
   googleAccessToken      String?

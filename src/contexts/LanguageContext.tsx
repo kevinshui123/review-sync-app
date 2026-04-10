@@ -142,6 +142,11 @@ const translations: Record<Language, Record<string, string>> = {
     'reviews.repliedBy': 'Replied by',
     'reviews.aiGenerated': 'AI Generated',
 
+    'listings.placesApiKeyBanner':
+      'Google Places API key required. Add it at the top of Settings → Google Business Profile, or set GOOGLE_PLACES_API_KEY in .env.',
+    'listings.placesApiKeyManualError':
+      'Configure the Google Places API key in Settings (Google Business Profile section at the top), or set GOOGLE_PLACES_API_KEY in .env.',
+
     // Settings
     'settings.title': 'API Settings',
     'settings.subtitle': 'Configure your API keys to connect your local business data. These keys are stored securely and are required to sync your listings and reviews.',
@@ -150,6 +155,15 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.googleClientSecret': 'Google Client Secret',
     'settings.geminiApi': 'Google Gemini API',
     'settings.geminiApiKey': 'Gemini API Key',
+    'settings.googlePlacesApiKey': 'Google Places API Key',
+    'settings.googlePlacesSectionTitle': 'Google Places API',
+    'settings.googlePlacesApiKeyDesc':
+      'Used to search and validate Google Business locations on the Listings page. Separate from OAuth (Business Profile sync).',
+    'settings.googlePlacesApiKeyHint':
+      'Enable Places API in Google Cloud Console, then create an API key (restrict it to Places for production).',
+    'settings.googleOAuthTitle': 'Google Business Profile (OAuth)',
+    'settings.googleOAuthDesc':
+      'Required to sync reviews from Google and post replies. Separate from the Places API key above. Link each store to Google in Listings using Place ID.',
     'settings.saveBtn': 'Save Configuration',
     'settings.saving': 'Saving...',
     'settings.success': 'Settings saved successfully.',
@@ -312,6 +326,11 @@ const translations: Record<Language, Record<string, string>> = {
     'reviews.selectReview': '选择一条评价以查看详情',
     'reviews.noReviewsAvailable': '暂无评价',
 
+    'listings.placesApiKeyBanner':
+      '需要 Google Places API 密钥。请在「系统设置 → Google 商家资料」区块顶部填写，或在 .env 中设置 GOOGLE_PLACES_API_KEY。',
+    'listings.placesApiKeyManualError':
+      '请在「系统设置 → Google 商家资料」区块顶部填写 Google Places API 密钥，或在 .env 中设置 GOOGLE_PLACES_API_KEY。',
+
     // Settings
     'settings.title': 'API 设置',
     'settings.subtitle': '配置您的 API 密钥以连接本地业务数据。这些密钥将被安全存储，并用于同步您的门店和评价。',
@@ -320,6 +339,15 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.googleClientSecret': 'Google 客户端密钥',
     'settings.geminiApi': 'Google Gemini API',
     'settings.geminiApiKey': 'Gemini API 密钥',
+    'settings.googlePlacesApiKey': 'Google Places API 密钥',
+    'settings.googlePlacesSectionTitle': 'Google Places API',
+    'settings.googlePlacesApiKeyDesc':
+      '用于在「门店管理」中搜索并校验 Google 商家地点。与下方 OAuth（商家资料同步）是两套配置。',
+    'settings.googlePlacesApiKeyHint':
+      '在 Google Cloud 控制台启用 Places API，再创建 API 密钥（生产环境建议限制为仅 Places）。',
+    'settings.googleOAuthTitle': 'Google 商家资料（OAuth 登录）',
+    'settings.googleOAuthDesc':
+      '用于从 Google 同步评价并发布回复，与上方的 Places API 密钥不同。在「门店管理」里用 Place ID 关联门店后即可同步。',
     'settings.saveBtn': '保存配置',
     'settings.saving': '保存中...',
     'settings.success': '设置保存成功。',
