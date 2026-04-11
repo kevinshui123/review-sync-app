@@ -19,6 +19,7 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { EditBusinessInfo } from './EditBusinessInfo';
 
 interface ListingsProps {
   setActiveTab: (tab: string) => void;
@@ -59,6 +60,7 @@ export function Listings({ setActiveTab }: ListingsProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [embedSources, setEmbedSources] = useState<EmbedSocialSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -715,15 +717,163 @@ export function Listings({ setActiveTab }: ListingsProps) {
                 >
                   Close
                 </button>
-                <a
-                  href={selectedLocation.websiteUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors text-center"
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setShowEditModal(true);
+                  }}
+                  className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors"
                 >
-                  View on Google
-                </a>
+                  Edit Business Info
+                </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* View Details Modal - Business Info Style */}
+      <AnimatePresence>
+        {showDetailModal && selectedLocation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowDetailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl w-full max-w-[900px] max-h-[90vh] overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-primary to-primary/80 px-8 py-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">{selectedLocation.name}</h2>
+                  <p className="text-white/80 text-sm mt-1 flex items-center gap-2">
+                    <LocationOn className="w-4 h-4" />
+                    {selectedLocation.address || 'No address'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setShowEditModal(true);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-primary rounded-xl font-semibold hover:bg-white/90 transition-all shadow-lg"
+                >
+                  <span className="material-symbols-outlined text-lg">edit</span>
+                  Edit Business Info
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex flex-col md:flex-row max-h-[calc(90vh-100px)] overflow-hidden">
+                {/* Left - Map placeholder */}
+                <div className="w-full md:w-2/5 bg-slate-100 flex items-center justify-center min-h-[200px]">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center mx-auto mb-3">
+                      <LocationOn className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <p className="text-sm text-slate-500">Map View</p>
+                    <p className="text-xs text-slate-400 mt-1">{selectedLocation.address}</p>
+                  </div>
+                </div>
+
+                {/* Right - Details */}
+                <div className="flex-1 p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+                  {/* Rating & Reviews */}
+                  <div className="flex items-center gap-6 mb-6 p-4 bg-amber-50 rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl font-bold text-amber-600">{selectedLocation.averageRating?.toFixed(1) ?? '0.0'}</span>
+                      <div className="flex">
+                        {[1,2,3,4,5].map((star) => (
+                          <span key={star} className={`text-lg ${star <= Math.round(selectedLocation.averageRating ?? 0) ? 'text-amber-400' : 'text-slate-200'}`}>★</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="h-8 w-px bg-amber-200"></div>
+                    <div>
+                      <span className="text-xl font-bold text-slate-700">{selectedLocation.totalReviews ?? 0}</span>
+                      <span className="text-sm text-slate-500 ml-1">reviews</span>
+                    </div>
+                  </div>
+
+                  {/* Contact Section */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Contact</h3>
+                    <div className="space-y-2">
+                      <a href={`tel:${selectedLocation.phoneNumber}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                        <span className="material-symbols-outlined text-primary">phone</span>
+                        <span className="text-slate-700">{selectedLocation.phoneNumber || 'No phone'}</span>
+                      </a>
+                      <a href={selectedLocation.websiteUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                        <span className="material-symbols-outlined text-primary">language</span>
+                        <span className="text-primary">{selectedLocation.websiteUrl || 'No website'}</span>
+                      </a>
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedLocation.address || '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                        <span className="material-symbols-outlined text-primary">directions</span>
+                        <span className="text-slate-700">Get directions</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Place ID */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Place ID</h3>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <code className="text-xs text-slate-600 break-all">{selectedLocation.googleId || 'N/A'}</code>
+                    </div>
+                  </div>
+
+                  {/* EmbedSocial ID */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">EmbedSocial ID</h3>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <code className="text-xs text-slate-600 break-all">{selectedLocation.embedSocialLocationId || 'N/A'}</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Business Info Modal */}
+      <AnimatePresence>
+        {showEditModal && selectedLocation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]"
+            onClick={() => setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl w-full max-w-[600px] shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <EditBusinessInfo
+                location={selectedLocation}
+                onClose={() => setShowEditModal(false)}
+                onSuccess={(updatedData) => {
+                  // Update local state with new data
+                  setLocations(locations.map(loc =>
+                    loc.embedId === selectedLocation.embedId
+                      ? { ...loc, ...updatedData }
+                      : loc
+                  ));
+                  setSelectedLocation({ ...selectedLocation, ...updatedData });
+                  setShowEditModal(false);
+                }}
+              />
             </motion.div>
           </motion.div>
         )}

@@ -1630,16 +1630,37 @@ async function startServer() {
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
-      // EmbedSocial uses "items" for reviews, source_ids[] is the correct param
+      // EmbedSocial uses "items" for reviews, fetch ALL with large pageSize and pagination
       const { location_id, source_names } = req.query;
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ pageSize: '200' });
       if (source_names) params.set('source_names[]', String(source_names));
       const queryString = params.toString();
-      const url = `/rest/v1/items${queryString ? '?' + queryString : ''}`;
+      const url = `/rest/v1/items?${queryString}`;
       console.log('[reviews] Fetching from:', url);
-      const data = await embedSocialFetchWithKey(apiKey, url);
-      console.log('[reviews] Raw response:', JSON.stringify(data)?.slice(0, 1000));
-      res.json(data);
+
+      // Fetch all pages of reviews
+      const allReviews: any[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const pageUrl = `/rest/v1/items?pageSize=200&page=${page}${source_names ? '&source_names[]=Google' : ''}`;
+        console.log(`[reviews] Fetching page ${page}:`, pageUrl);
+        const data = await embedSocialFetchWithKey(apiKey, pageUrl);
+
+        if (Array.isArray(data) && data.length > 0) {
+          allReviews.push(...data);
+          page++;
+          if (data.length < 200) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      console.log(`[reviews] Total reviews fetched: ${allReviews.length}`);
+      res.json(allReviews);
     } catch (error: any) {
       console.error('EmbedSocial reviews error:', error);
       res.status(500).json({ error: 'Failed to fetch reviews', details: error.message });
