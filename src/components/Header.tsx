@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Search, Notifications, History, Person } from '@mui/icons-material';
+import { Menu, Search, Notifications, History, Person, Translate } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface HeaderProps {
@@ -10,12 +10,24 @@ interface HeaderProps {
 }
 
 export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderProps) {
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'zh' : 'en');
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 h-16 flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
-        {/* Mobile menu button */}
+        {/* Language Toggle Button */}
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-bold hover:bg-primary/20 transition-colors"
+          title={language === 'en' ? '切换到中文' : 'Switch to English'}
+        >
+          <Translate className="w-4 h-4" />
+          <span>{language === 'en' ? '中文' : 'EN'}</span>
+        </button>
         <button
           className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
           onClick={onMenuClick}

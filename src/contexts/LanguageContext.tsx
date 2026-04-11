@@ -23,6 +23,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.posts': 'Posts',
     'nav.docs': 'Documentation',
     'nav.settings': 'Settings',
+    'nav.help': 'Help',
 
     // Header
     'header.search': 'Search...',
@@ -207,6 +208,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.posts': '贴文管理',
     'nav.docs': '使用文档',
     'nav.settings': '系统设置',
+    'nav.help': '帮助中心',
 
     // Header
     'header.search': '搜索...',

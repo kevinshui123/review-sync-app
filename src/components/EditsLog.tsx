@@ -5,7 +5,7 @@ import {
   CalendarMonth,
   History,
   Refresh,
-  Clock,
+  AccessTime,
   FilterList,
 } from '@mui/icons-material';
 import { motion } from 'motion/react';
@@ -227,7 +227,7 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
                     </div>
                     <p className="text-sm text-slate-600">{log.details}</p>
                     <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
-                      <Clock className="w-3 h-3" />
+                      <AccessTime className="w-3 h-3" />
                       <span>{formatDate(log.createdAt)}</span>
                     </div>
                   </div>

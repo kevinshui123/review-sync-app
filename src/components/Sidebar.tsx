@@ -95,17 +95,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
       {/* Bottom links */}
       <div className="mt-auto pt-4 border-t border-slate-200/50 space-y-1 px-2">
         {navItem('settings', 'nav.settings', Settings, activeTab === 'settings')}
-        <button
-          onClick={() => setActiveTab('help')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-            activeTab === 'help'
-              ? 'bg-primary text-white font-semibold shadow-sm'
-              : 'text-slate-500 hover:bg-slate-100 hover:text-primary'
-          }`}
-        >
-          <Help className="w-5 h-5" />
-          <span className="text-sm font-medium">Help</span>
-        </button>
+        {navItem('help', 'nav.help', Help, activeTab === 'help')}
         <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 rounded-xl transition-all">
           <Logout className="w-5 h-5" />
           <span className="text-sm font-medium">Logout</span>

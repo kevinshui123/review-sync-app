@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Help,
+  HelpOutline,
   Settings,
   Key,
   Api,
@@ -121,7 +121,7 @@ export function Help() {
       {/* Header */}
       <div className="mb-10 text-center">
         <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Help className="w-8 h-8 text-primary" />
+          <HelpOutline className="w-8 h-8 text-primary" />
         </div>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Help Center</h1>
         <p className="text-slate-500">Learn how to set up and use Review Sync App</p>
@@ -192,12 +192,13 @@ export function Help() {
               <AnimatePresence>
                 {expandedFaq === i && (
                   <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: 'auto' }}
-                    exit={{ height: 0 }}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-4 pb-4 pt-0 text-sm text-slate-600 border-t border-slate-100 pt-3">
+                    <div className="px-4 pb-4 pt-3 text-sm text-slate-600 border-t border-slate-100">
                       {faq.answer}
                     </div>
                   </motion.div>

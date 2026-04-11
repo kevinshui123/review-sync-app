@@ -57,7 +57,7 @@ export default function App() {
       case 'reports': return t('nav.reports');
       case 'seo': return t('nav.seo');
       case 'settings': return t('nav.settings');
-      case 'help': return 'Help';
+      case 'help': return t('nav.help');
       default: return t('nav.dashboard');
     }
   };

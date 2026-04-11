@@ -1079,10 +1079,32 @@ async function startServer() {
       }
       // EmbedSocial uses "listings" for the connected Google Business locations
       const data = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
-      res.json(data);
+      // Normalize the response to ensure it's an array
+      const listings = Array.isArray(data) ? data : (data.data || []);
+      res.json(listings);
     } catch (error: any) {
       console.error('EmbedSocial sources error:', error);
       res.status(500).json({ error: 'Failed to fetch sources', details: error.message });
+    }
+  });
+
+  // Get listing metrics from EmbedSocial
+  app.get('/api/embedsocial/metrics', async (req, res) => {
+    try {
+      const apiKey = await getEmbedSocialApiKey();
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+      // Get reviews metrics
+      const metricsRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_item_metrics');
+      const dailyRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_metrics');
+      res.json({
+        itemMetrics: metricsRes,
+        listingMetrics: dailyRes,
+      });
+    } catch (error: any) {
+      console.error('EmbedSocial metrics error:', error);
+      res.status(500).json({ error: 'Failed to fetch metrics', details: error.message });
     }
   });
 
