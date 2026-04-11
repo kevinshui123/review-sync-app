@@ -455,6 +455,8 @@ async function getEmbedSocialApiKey(tenantId?: string): Promise<string> {
 
 async function embedSocialFetchWithKey(apiKey: string, path: string, options: RequestInit = {}): Promise<any> {
   const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://app.embedsocial.com').replace(/\/$/, '');
+  console.log(`[embedSocialFetch] Using base: ${base}`);
+  console.log(`[embedSocialFetch] Full URL: ${base}${path}`);
 
   const res = await fetch(`${base}${path}`, {
     ...options,
@@ -485,11 +487,11 @@ function normalizeEmbedSocialReview(review: any, locationId: string): {
 } {
   return {
     embedSocialReviewId: String(review.id),
-    googleReviewId: review.identifier || String(review.id),
-    reviewerName: review.author || review.name || 'Anonymous',
+    googleReviewId: review.id || String(review.id),
+    reviewerName: review.authorName || review.author || 'Anonymous',
     rating: review.rating || 0,
-    comment: review.message || review.text || null,
-    createdAt: review.published_on ? new Date(review.published_on) : new Date(),
+    comment: review.captionText || review.message || review.text || null,
+    createdAt: review.originalCreatedOn ? new Date(review.originalCreatedOn) : new Date(),
   };
 }
 
@@ -880,10 +882,10 @@ async function startServer() {
 
           const reviewsData = await embedSocialFetchWithKey(
             apiKey,
-            `/rest/v1/reviews?location_id=${loc.embedSocialLocationId}&source_names[]=Google&page=1`,
+            `/rest/v1/items?source_id=${loc.embedSocialLocationId}&source_names[]=Google`,
           );
 
-          const reviewList: any[] = reviewsData.data || reviewsData.reviews || reviewsData.items || [];
+          const reviewList: any[] = Array.isArray(reviewsData) ? reviewsData : (reviewsData.data || []);
           console.log(`[syncReviews] Got ${reviewList.length} reviews for location "${loc.name}"`);
           console.log(`[syncReviews] Raw reviewsData keys: ${Object.keys(reviewsData).join(', ')}`);
           console.log(`[syncReviews] Raw reviewsData response:`, JSON.stringify(reviewsData));
@@ -923,10 +925,10 @@ async function startServer() {
         try {
           const allReviews = await embedSocialFetchWithKey(
             apiKey,
-            `/rest/v1/reviews?source_names[]=Google&page=1`,
+            `/rest/v1/items?source_names[]=Google`,
           );
 
-          const reviewList: any[] = allReviews.data || allReviews.reviews || allReviews.items || [];
+          const reviewList: any[] = Array.isArray(allReviews) ? allReviews : (allReviews.data || []);
           console.log(`[syncReviews] Got ${reviewList.length} total Google reviews from EmbedSocial`);
           console.log(`[syncReviews] Raw allReviews keys: ${Object.keys(allReviews).join(', ')}`);
           console.log(`[syncReviews] Raw allReviews response:`, JSON.stringify(allReviews));
@@ -1048,8 +1050,8 @@ async function startServer() {
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
-      // EmbedSocial uses "sources" for the connected Google Business locations
-      const data = await embedSocialFetchWithKey(apiKey, '/rest/v1/sources');
+      // EmbedSocial uses "listings" for the connected Google Business locations
+      const data = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
       res.json(data);
     } catch (error: any) {
       console.error('EmbedSocial sources error:', error);
@@ -1064,12 +1066,12 @@ async function startServer() {
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
-      const { location_id, source_names, page } = req.query;
+      // EmbedSocial uses "items" for reviews
       const params = new URLSearchParams();
-      if (location_id) params.set('location_id', String(location_id));
+      if (location_id) params.set('source_id', String(location_id));
       if (source_names) params.set('source_names[]', String(source_names));
       if (page) params.set('page', String(page));
-      const data = await embedSocialFetchWithKey(apiKey, `/rest/v1/reviews?${params}`);
+      const data = await embedSocialFetchWithKey(apiKey, `/rest/v1/items?${params}`);
       res.json(data);
     } catch (error: any) {
       console.error('EmbedSocial reviews error:', error);
