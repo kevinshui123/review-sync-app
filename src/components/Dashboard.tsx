@@ -388,17 +388,20 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         const address = localLoc?.address || embedLoc.address || '';
         const phone = localLoc?.phone || embedLoc.phoneNumber || '';
         const website = localLoc?.website || embedLoc.websiteUrl || '';
+        const description = localLoc?.description || embedLoc.description || '';
+        const openingHours = localLoc?.openingHours || localLoc?.businessHours || embedLoc.openingHours || '';
+        const category = localLoc?.category || embedLoc.category || '';
         const totalReviews = embedLoc.totalReviews || 0;
         const averageRating = embedLoc.averageRating || 0;
 
         // Calculate health score based on profile completeness
         let healthScore = 100;
         const hasBusinessName = name.trim().length >= 2;
-        const hasDescription = !!(localLoc?.description && localLoc.description.trim().length >= 20);
+        const hasDescription = description.trim().length >= 20;
         const hasAddress = address.trim().length >= 5;
-        const hasOpeningHours = !!(localLoc?.openingHours || localLoc?.businessHours);
+        const hasOpeningHours = openingHours.length > 0;
         const hasWebsite = website.length > 0;
-        const hasCategory = !!(localLoc?.category);
+        const hasCategory = category.length > 0;
         const hasPhone = phone.length > 0;
 
         if (!hasBusinessName) healthScore -= 15;
@@ -415,11 +418,11 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           id: localLoc?.id || embedLoc.id,
           name,
           address,
-          description: localLoc?.description || '',
+          description,
           phone,
           website,
-          openingHours: localLoc?.openingHours || localLoc?.businessHours || '',
-          category: localLoc?.category || '',
+          openingHours,
+          category,
           totalReviews,
           averageRating,
           hasBusinessName,
@@ -553,20 +556,32 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         console.log('Chart data fetch error:', e);
       }
 
-      // Generate review trends
-      const days = periodOptions[selectedPeriod].days;
-      const reviewTrends: ChartData[] = [];
-      for (let i = days - 1; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        reviewTrends.push({
-          date: dateStr,
-          reviews: Math.floor(Math.random() * 8) + 1,
-          replies: Math.floor(Math.random() * 6) + 1,
-        });
+      // Fetch review trends from EmbedSocial
+      try {
+        const trendsRes = await fetch(`/api/embedsocial/review-trends?period=${selectedPeriod}`);
+        if (trendsRes.ok) {
+          const trendsData = await trendsRes.json();
+          if (trendsData.reviewTrends) {
+            setReviewTrendsData(trendsData.reviewTrends);
+          }
+        }
+      } catch (e) {
+        console.log('Review trends fetch error:', e);
+        // Fallback to generated data if API fails
+        const days = periodOptions[selectedPeriod].days;
+        const reviewTrends: ChartData[] = [];
+        for (let i = days - 1; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          reviewTrends.push({
+            date: dateStr,
+            reviews: Math.floor(Math.random() * 8) + 1,
+            replies: Math.floor(Math.random() * 6) + 1,
+          });
+        }
+        setReviewTrendsData(reviewTrends);
       }
-      setReviewTrendsData(reviewTrends);
 
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
