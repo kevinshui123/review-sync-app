@@ -218,24 +218,6 @@ export function Settings() {
                   </div>
                 </div>
               )}
-
-              {embedSocialConnected && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest block">
-                    EmbedSocial API Base URL
-                  </label>
-                  <input
-                    type="text"
-                    name="embedSocialBaseUrl"
-                    value="https://embedsocial.com/app/api"
-                    readOnly
-                    className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface opacity-70"
-                  />
-                  <p className="text-xs text-outline leading-relaxed">
-                    Default: https://embedsocial.com/app/api (usually no need to change)
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </section>
