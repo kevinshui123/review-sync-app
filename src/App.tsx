@@ -11,12 +11,16 @@ import { Reports } from './components/Reports';
 import { SEO } from './components/SEO';
 import { Settings } from './components/Settings';
 import { Help } from './components/Help';
+import { EditBusinessPage } from './components/EditBusinessPage';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './contexts/LanguageContext';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [listingsSubTab, setListingsSubTab] = useState<string | null>(null);
+  const [editLocationData, setEditLocationData] = useState<any>(null);
+  const [selectedLocation, setSelectedLocation] = useState<any>(null);
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { t } = useLanguage();
@@ -114,7 +118,35 @@ export default function App() {
               className="flex-1 flex flex-col min-h-0"
             >
               {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
-              {activeTab === 'listings' && <Listings setActiveTab={setActiveTab} />}
+              {activeTab === 'listings' && (
+                listingsSubTab === 'edit' ? (
+                  <EditBusinessPage
+                    location={editLocationData}
+                    onBack={() => {
+                      setListingsSubTab(null);
+                      setEditLocationData(null);
+                    }}
+                    onSuccess={(data) => {
+                      // Update location data and go back
+                      setListingsSubTab(null);
+                      setEditLocationData(null);
+                    }}
+                  />
+                ) : (
+                  <Listings
+                    setActiveTab={setActiveTab}
+                    setListingsSubTab={(tab) => {
+                      if (tab) {
+                        setEditLocationData(selectedLocation);
+                      }
+                      setListingsSubTab(tab);
+                    }}
+                    listingsSubTab={listingsSubTab}
+                    setSelectedLocation={setSelectedLocation}
+                    selectedLocation={selectedLocation}
+                  />
+                )
+              )}
               {activeTab === 'reviews' && <Reviews />}
               {activeTab === 'bulk-edits' && <BulkEdits setActiveTab={setActiveTab} />}
               {activeTab === 'edits-log' && <EditsLog setActiveTab={setActiveTab} />}

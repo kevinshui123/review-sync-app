@@ -16,13 +16,28 @@ import {
   Close,
   Refresh,
   Link,
+  ArrowBack,
+  Edit,
+  Star,
+  Phone,
+  Language,
+  Directions,
+  Lock,
+  PhotoCamera,
+  Tag,
+  AccountCircle,
+  CheckCircle,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { EditBusinessInfo } from './EditBusinessInfo';
+import { EditBusinessPage } from './EditBusinessPage';
 
 interface ListingsProps {
   setActiveTab: (tab: string) => void;
+  setListingsSubTab?: (tab: string | null) => void;
+  listingsSubTab?: string | null;
+  setSelectedLocation?: (loc: Location | null) => void;
+  selectedLocation?: Location | null;
 }
 
 interface Location {
@@ -41,6 +56,15 @@ interface Location {
   totalReviews?: number;
   averageRating?: number;
   isLinked: boolean;
+  // Extended fields from EmbedSocial
+  openingHours?: string;
+  categories?: string[];
+  status?: string;
+  ownerName?: string;
+  photos?: string[];
+  tags?: string[];
+  latitude?: number;
+  longitude?: number;
 }
 
 interface EmbedSocialSource {
@@ -49,7 +73,7 @@ interface EmbedSocialSource {
   source_id?: string;
 }
 
-export function Listings({ setActiveTab }: ListingsProps) {
+export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation, selectedLocation }: ListingsProps) {
   const { t } = useLanguage();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,9 +83,7 @@ export function Listings({ setActiveTab }: ListingsProps) {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [embedSources, setEmbedSources] = useState<EmbedSocialSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
 
@@ -123,6 +145,14 @@ export function Listings({ setActiveTab }: ListingsProps) {
           totalReviews: embedLoc.totalReviews,
           averageRating: embedLoc.averageRating,
           isLinked: !!localLoc,
+          openingHours: embedLoc.openingHours || '',
+          categories: embedLoc.categories || [],
+          status: embedLoc.status || 'Active',
+          ownerName: embedLoc.ownerName || 'Arthur',
+          photos: embedLoc.photos || [],
+          tags: embedLoc.tags || [],
+          latitude: embedLoc.latitude,
+          longitude: embedLoc.longitude,
         };
       });
 
@@ -368,7 +398,7 @@ export function Listings({ setActiveTab }: ListingsProps) {
                       <button
                         onClick={() => {
                           setSelectedLocation(location);
-                          setShowDetailModal(true);
+                          setShowDetailDrawer(true);
                         }}
                         className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/10 hover:bg-primary-container transition-all"
                       >
@@ -628,254 +658,206 @@ export function Listings({ setActiveTab }: ListingsProps) {
         )}
       </AnimatePresence>
 
-      {/* View Details Modal */}
+      {/* View Details Drawer - Slide from right */}
       <AnimatePresence>
-        {showDetailModal && selectedLocation && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowDetailModal(false)}
-          >
+        {showDetailDrawer && selectedLocation && (
+          <>
+            {/* Backdrop */}
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-slate-900">Location Details</h2>
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
-                >
-                  <Close className="w-5 h-5 text-slate-400" />
-                </button>
-              </div>
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-40"
+              onClick={() => setShowDetailDrawer(false)}
+            />
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Store className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-lg text-slate-900">{selectedLocation.name}</div>
-                    <div className="text-sm text-slate-500 flex items-center gap-1">
-                      <LocationOn className="w-4 h-4" />
-                      {selectedLocation.address || 'No address'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-xl">
-                    <div className="text-xs font-bold text-slate-400 uppercase mb-1">Reviews</div>
-                    <div className="text-2xl font-bold text-slate-900">{selectedLocation.totalReviews ?? 0}</div>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-xl">
-                    <div className="text-xs font-bold text-slate-400 uppercase mb-1">Rating</div>
-                    <div className="text-2xl font-bold text-slate-900">{selectedLocation.averageRating?.toFixed(1) ?? '0.0'} ★</div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">Phone</span>
-                    <span className="text-sm font-medium text-slate-900">{selectedLocation.phoneNumber || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">Website</span>
-                    <span className="text-sm font-medium text-primary truncate max-w-[200px]">{selectedLocation.websiteUrl || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">Google ID</span>
-                    <span className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{selectedLocation.googleId || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">EmbedSocial ID</span>
-                    <span className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{selectedLocation.embedSocialLocationId || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">Last Sync</span>
-                    <span className="text-sm font-medium text-slate-900">{selectedLocation.lastSync}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">Status</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedLocation.isLinked ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                      {selectedLocation.isLinked ? 'Linked' : 'Not Linked'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => {
-                    setShowDetailModal(false);
-                    setShowEditModal(true);
-                  }}
-                  className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors"
-                >
-                  Edit Business Info
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* View Details Modal - Business Info Style */}
-      <AnimatePresence>
-        {showDetailModal && selectedLocation && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowDetailModal(false)}
-          >
+            {/* Drawer */}
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl w-full max-w-[900px] max-h-[90vh] overflow-hidden shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-[480px] bg-white shadow-2xl z-50 flex flex-col"
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-primary to-primary/80 px-8 py-6 flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-white">{selectedLocation.name}</h2>
-                  <p className="text-white/80 text-sm mt-1 flex items-center gap-2">
-                    <LocationOn className="w-4 h-4" />
-                    {selectedLocation.address || 'No address'}
-                  </p>
-                </div>
+              <div className="flex-shrink-0 bg-gradient-to-r from-primary to-primary/80 px-6 py-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowDetailDrawer(false)}
+                      className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                    >
+                      <ArrowBack className="text-white" />
+                    </button>
+                    <h2 className="text-xl font-bold text-white">Business Info</h2>
+                  </div>
                 <button
                   onClick={() => {
-                    setShowDetailModal(false);
-                    setShowEditModal(true);
+                    setShowDetailDrawer(false);
+                    setSelectedLocation?.(selectedLocation);
+                    setListingsSubTab?.('edit');
                   }}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-primary rounded-xl font-semibold hover:bg-white/90 transition-all shadow-lg"
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-primary rounded-xl font-semibold text-sm hover:bg-white/90 transition-all"
                 >
-                  <span className="material-symbols-outlined text-lg">edit</span>
-                  Edit Business Info
-                </button>
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </button>
+                </div>
               </div>
 
-              {/* Content */}
-              <div className="flex flex-col md:flex-row max-h-[calc(90vh-100px)] overflow-hidden">
-                {/* Left - Map placeholder */}
-                <div className="w-full md:w-2/5 bg-slate-100 flex items-center justify-center min-h-[200px]">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center mx-auto mb-3">
-                      <LocationOn className="w-8 h-8 text-slate-400" />
+              {/* Content - Scrollable */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Business Name & Rating */}
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">{selectedLocation.name}</h1>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-lg">
+                      <Star className="w-5 h-5 text-amber-500" />
+                      <span className="font-bold text-amber-700">{selectedLocation.averageRating?.toFixed(1) ?? '0.0'}</span>
                     </div>
-                    <p className="text-sm text-slate-500">Map View</p>
-                    <p className="text-xs text-slate-400 mt-1">{selectedLocation.address}</p>
+                    <span className="text-slate-500">({selectedLocation.totalReviews ?? 0} reviews)</span>
                   </div>
                 </div>
 
-                {/* Right - Details */}
-                <div className="flex-1 p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
-                  {/* Rating & Reviews */}
-                  <div className="flex items-center gap-6 mb-6 p-4 bg-amber-50 rounded-2xl">
-                    <div className="flex items-center gap-2">
-                      <span className="text-3xl font-bold text-amber-600">{selectedLocation.averageRating?.toFixed(1) ?? '0.0'}</span>
-                      <div className="flex">
-                        {[1,2,3,4,5].map((star) => (
-                          <span key={star} className={`text-lg ${star <= Math.round(selectedLocation.averageRating ?? 0) ? 'text-amber-400' : 'text-slate-200'}`}>★</span>
-                        ))}
+                {/* Business Information Section */}
+                <div className="bg-slate-50 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Business information</h3>
+
+                  <div className="space-y-4">
+                    {/* Name */}
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Name</div>
+                      <div className="font-semibold text-slate-900">{selectedLocation.name}</div>
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Address</div>
+                      <div className="flex items-start gap-2">
+                        <LocationOn className="w-4 h-4 text-slate-400 mt-0.5" />
+                        <span className="font-medium text-slate-700">{selectedLocation.address || 'No address'}</span>
                       </div>
                     </div>
-                    <div className="h-8 w-px bg-amber-200"></div>
+
+                    {/* Phone */}
                     <div>
-                      <span className="text-xl font-bold text-slate-700">{selectedLocation.totalReviews ?? 0}</span>
-                      <span className="text-sm text-slate-500 ml-1">reviews</span>
+                      <div className="text-xs text-slate-400 mb-1">Phone</div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-slate-400" />
+                        <a href={`tel:${selectedLocation.phoneNumber}`} className="font-medium text-primary">
+                          {selectedLocation.phoneNumber || 'No phone'}
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Website */}
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Website</div>
+                      <div className="flex items-center gap-2">
+                        <Language className="w-4 h-4 text-slate-400" />
+                        <a href={selectedLocation.websiteUrl || '#'} target="_blank" rel="noopener noreferrer" className="font-medium text-primary truncate">
+                          {selectedLocation.websiteUrl || 'No website'}
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Hours */}
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Hours</div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span className="font-medium text-slate-700">
+                          {selectedLocation.openingHours || 'Open'} {selectedLocation.openingHours ? '' : '(No hours info)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Category */}
+                    {(selectedLocation.categories?.length ?? 0) > 0 && (
+                      <div>
+                        <div className="text-xs text-slate-400 mb-1">Category</div>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedLocation.categories?.map((cat, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Lock and Protect Section */}
+                <div className="bg-slate-50 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Lock and protect profile</h3>
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200">
+                    <Lock className="w-5 h-5 text-slate-600" />
+                    <div className="flex-1">
+                      <div className="font-semibold text-slate-800">Lock Google listing updates</div>
+                      <div className="text-xs text-slate-500">Preventing any unauthorized updates or changes</div>
+                    </div>
+                    <div className="w-12 h-6 bg-slate-200 rounded-full relative">
+                      <div className="w-5 h-5 bg-white rounded-full shadow absolute top-0.5 right-0.5"></div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Contact Section */}
-                  <div className="mb-6">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Contact</h3>
-                    <div className="space-y-2">
-                      <a href={`tel:${selectedLocation.phoneNumber}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                        <span className="material-symbols-outlined text-primary">phone</span>
-                        <span className="text-slate-700">{selectedLocation.phoneNumber || 'No phone'}</span>
-                      </a>
-                      <a href={selectedLocation.websiteUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                        <span className="material-symbols-outlined text-primary">language</span>
-                        <span className="text-primary">{selectedLocation.websiteUrl || 'No website'}</span>
-                      </a>
-                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedLocation.address || '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                        <span className="material-symbols-outlined text-primary">directions</span>
-                        <span className="text-slate-700">Get directions</span>
-                      </a>
+                {/* Tags Section */}
+                <div className="bg-slate-50 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Tags</h3>
+                  <button className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-slate-400 hover:text-slate-600 transition-colors">
+                    <Tag className="w-4 h-4" />
+                    <span className="font-medium text-sm">Add tag</span>
+                  </button>
+                </div>
+
+                {/* Details Section */}
+                <div className="bg-slate-50 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Details</h3>
+
+                  <div className="space-y-4">
+                    {/* Connected account */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <AccountCircle className="w-8 h-8 text-slate-400" />
+                        <div>
+                          <div className="text-xs text-slate-400">Connected account</div>
+                          <div className="font-medium text-slate-800">{selectedLocation.ownerName || 'Arthur'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Listing status */}
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+                      <span className="text-sm text-slate-600">Listing status</span>
+                      <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
+                        Active as listing
+                      </span>
                     </div>
                   </div>
+                </div>
 
-                  {/* Place ID */}
-                  <div className="mb-6">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Place ID</h3>
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <code className="text-xs text-slate-600 break-all">{selectedLocation.googleId || 'N/A'}</code>
-                    </div>
+                {/* Photos Section */}
+                <div className="bg-slate-50 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Photos by owner</h3>
+                    <button className="flex items-center gap-1 text-primary text-sm font-medium">
+                      <PhotoCamera className="w-4 h-4" />
+                      Add photos
+                    </button>
                   </div>
-
-                  {/* EmbedSocial ID */}
-                  <div className="mb-6">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">EmbedSocial ID</h3>
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <code className="text-xs text-slate-600 break-all">{selectedLocation.embedSocialLocationId || 'N/A'}</code>
-                    </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="aspect-square bg-slate-200 rounded-xl flex items-center justify-center">
+                        <PhotoCamera className="w-6 h-6 text-slate-400" />
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Edit Business Info Modal */}
-      <AnimatePresence>
-        {showEditModal && selectedLocation && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]"
-            onClick={() => setShowEditModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl w-full max-w-[600px] shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <EditBusinessInfo
-                location={selectedLocation}
-                onClose={() => setShowEditModal(false)}
-                onSuccess={(updatedData) => {
-                  // Update local state with new data
-                  setLocations(locations.map(loc =>
-                    loc.embedId === selectedLocation.embedId
-                      ? { ...loc, ...updatedData }
-                      : loc
-                  ));
-                  setSelectedLocation({ ...selectedLocation, ...updatedData });
-                  setShowEditModal(false);
-                }}
-              />
-            </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
     </motion.div>
