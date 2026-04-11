@@ -189,27 +189,27 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         });
       }
 
-      // Generate chart data based on selected period
-      const days = periodOptions[selectedPeriod].days;
-
-      // Impressions chart data
-      if (embedLocations.length > 0) {
-        // Use real EmbedSocial data if available
-        const totalSearch = embedLocations.reduce((acc: number, loc: any) => acc + (loc.searchViews || loc.views || 0), 0);
-        const totalMap = embedLocations.reduce((acc: number, loc: any) => acc + (loc.mapViews || 0), 0);
-        setImpressionsData(generateMockChartData(Math.min(days, 14), 'impressions').map((d, i) => ({
-          ...d,
-          searchViews: Math.floor((d.searchViews || 0) * (totalSearch / 100)),
-          mapViews: Math.floor((d.mapViews || 0) * (totalMap / 100)),
-        })));
-      } else {
+      // Fetch chart data from EmbedSocial
+      try {
+        const chartRes = await fetch(`/api/embedsocial/chart-data?period=${selectedPeriod}`);
+        if (chartRes.ok) {
+          const chartData = await chartRes.json();
+          if (chartData.impressions) {
+            setImpressionsData(chartData.impressions);
+          }
+          if (chartData.actions) {
+            setActionsData(chartData.actions);
+          }
+        }
+      } catch {
+        // Fall back to generated data
+        const days = periodOptions[selectedPeriod].days;
         setImpressionsData(generateMockChartData(Math.min(days, 14), 'impressions'));
+        setActionsData(generateMockChartData(Math.min(days, 14), 'actions'));
       }
 
-      // Actions chart data
-      setActionsData(generateMockChartData(Math.min(days, 14), 'actions'));
-
       // Review trends chart data
+      const days = periodOptions[selectedPeriod].days;
       setReviewTrendsData(generateMockChartData(Math.min(days, 14), 'reviews'));
 
     } catch (error) {
