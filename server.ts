@@ -426,11 +426,11 @@ function embedSocialHeaders() {
 }
 
 async function embedSocialFetch(path: string, options: RequestInit = {}): Promise<any> {
-  // Try common EmbedSocial base URLs
-  const bases = [
-    'https://app.embedsocial.com/api/v1',
-    'https://app.your-white-label.com/api/v1',
-  ];
+  // Allow override via EMBEDSOCIAL_BASE_URL env var; fallback to embedsocial.com
+  const configured = process.env.EMBEDSOCIAL_BASE_URL?.replace(/\/$/, '');
+  const bases: string[] = configured
+    ? [`${configured}/api/v1`]
+    : ['https://app.embedsocial.com/api/v1'];
 
   let lastError: any;
   for (const base of bases) {
