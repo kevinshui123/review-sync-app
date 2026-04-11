@@ -1132,39 +1132,36 @@ async function startServer() {
           totalReviews += listing.totalReviews || 0;
           averageRating = listing.averageRating || averageRating;
 
-          // listing_metrics API - try GET with source_ids[] parameter
+          // listing_metrics API - requires startDate and endDate
           const sourceId = listing.googleId || listing.id;
 
           if (sourceId) {
             try {
-              // GET /rest/v1/listing_metrics?source_ids[]=xxx
-              const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?source_ids[]=${sourceId}`);
+              // GET /rest/v1/listing_metrics?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY&sourceId=xxx
+              const today = new Date();
+              const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+              const startDateStr = `${String(thirtyDaysAgo.getDate()).padStart(2, '0')}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${thirtyDaysAgo.getFullYear()}`;
+              const endDateStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+
+              const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}`);
               console.log(`[metrics] Listing metrics response for ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 1000));
 
-              if (metricsRes) {
-                // 解析 metrics 响应 - try both direct array and nested data
-                const metricsData = Array.isArray(metricsRes) ? metricsRes
-                  : (metricsRes.data || metricsRes.metrics || metricsRes.listings || []);
-                if (Array.isArray(metricsData)) {
-                  for (const m of metricsData) {
-                    totalSearchViews += m.searchViews || m.search_views || m.views || m.search_views_total || 0;
-                    totalMapViews += m.mapViews || m.map_views || m.map_views_total || 0;
-                    totalWebsiteClicks += m.websiteClicks || m.website_clicks || m.website_clicks_total || 0;
-                    totalDirectionRequests += m.directionRequests || m.direction_requests || m.direction_requests_total || 0;
-                    totalPhoneCalls += m.phoneCalls || m.phone_calls || m.phone_calls_total || 0;
-                  }
+              if (metricsRes && metricsRes.listings) {
+                for (const m of metricsRes.listings) {
+                  // searchViews = googleSearchDesktop + googleSearchMobile
+                  const searchViews = (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0);
+                  // mapViews = googleMapsDesktop + googleMapsMobile
+                  const mapViews = (m.googleMapsDesktop || 0) + (m.googleMapsMobile || 0);
+
+                  totalSearchViews += searchViews;
+                  totalMapViews += mapViews;
+                  totalWebsiteClicks += m.websiteClicks || 0;
+                  totalDirectionRequests += m.directions || 0;
+                  totalPhoneCalls += m.callClicks || 0;
                 }
               }
             } catch (e: any) {
               console.log(`[metrics] Listing metrics fetch error for ${sourceId}:`, e.message);
-            }
-
-            // 也尝试 listing_item_metrics
-            try {
-              const itemMetricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_item_metrics?source_ids[]=${sourceId}`);
-              console.log(`[metrics] Item metrics response for ${sourceId}:`, JSON.stringify(itemMetricsRes)?.slice(0, 500));
-            } catch (e: any) {
-              console.log(`[metrics] Item metrics fetch error for ${sourceId}:`, e.message);
             }
           }
 
@@ -1263,29 +1260,34 @@ async function startServer() {
       if (sourceIds.length > 0) {
         for (const sourceId of sourceIds) {
           try {
-            // GET /rest/v1/listing_metrics?source_ids[]=xxx
-            const dailyRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?source_ids[]=${sourceId}`);
+            // GET /rest/v1/listing_metrics?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY&sourceId=xxx
+            const today = new Date();
+            const periodDays = days;
+            const startDate = new Date(today.getTime() - periodDays * 24 * 60 * 60 * 1000);
+            const startDateStr = `${String(startDate.getDate()).padStart(2, '0')}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${startDate.getFullYear()}`;
+            const endDateStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+
+            const dailyRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=100`);
             console.log(`[chart-data] Metrics for ${sourceId}:`, JSON.stringify(dailyRes)?.slice(0, 500));
 
-            if (dailyRes) {
-              const metricsData = Array.isArray(dailyRes) ? dailyRes : (dailyRes.data || dailyRes.metrics || []);
-              if (metricsData.length > 0) {
-                hasRealData = true;
-                // Process and add to charts
-                for (const m of metricsData.slice(0, days)) {
-                  const dateStr = m.date || m.dateRange?.[0] || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                  impressions.push({
-                    date: dateStr,
-                    searchViews: m.searchViews || m.search_views || m.views || 0,
-                    mapViews: m.mapViews || m.map_views || 0,
-                  });
-                  actions.push({
-                    date: dateStr,
-                    websiteClicks: m.websiteClicks || m.website_clicks || 0,
-                    directionRequests: m.directionRequests || m.direction_requests || 0,
-                    phoneCalls: m.phoneCalls || m.phone_calls || 0,
-                  });
-                }
+            if (dailyRes && dailyRes.listings) {
+              hasRealData = true;
+              // Process and add to charts
+              for (const m of dailyRes.listings) {
+                const dateStr = m.date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const searchViews = (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0);
+                const mapViews = (m.googleMapsDesktop || 0) + (m.googleMapsMobile || 0);
+                impressions.push({
+                  date: dateStr,
+                  searchViews,
+                  mapViews,
+                });
+                actions.push({
+                  date: dateStr,
+                  websiteClicks: m.websiteClicks || 0,
+                  directionRequests: m.directions || 0,
+                  phoneCalls: m.callClicks || 0,
+                });
               }
             }
           } catch (e: any) {
