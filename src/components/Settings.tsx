@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, Unlink, ExternalLink, MapPin } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, ExternalLink, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -9,15 +9,17 @@ export function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-  const [googleError, setGoogleError] = useState<string | null>(null);
+
+
   const [formData, setFormData] = useState({
     yelpApiKey: '',
     openaiApiKey: '',
     geminiApiKey: '',
     googlePlacesApiKey: '',
+    embedSocialApiKey: '',
   });
+
+  const [embedSocialConnected, setEmbedSocialConnected] = useState(false);
 
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -34,8 +36,9 @@ export function Settings() {
             openaiApiKey: data.openaiApiKey || '',
             geminiApiKey: data.geminiApiKey || '',
             googlePlacesApiKey: data.googlePlacesApiKey || '',
+            embedSocialApiKey: data.embedSocialApiKey || '',
           });
-          setGoogleConnected(data.googleConnected || false);
+          setEmbedSocialConnected(data.embedSocialConnected || false);
         }
       } catch (error) {
         console.error('Failed to fetch settings:', error);
@@ -53,17 +56,6 @@ export function Settings() {
         console.error('Failed to fetch team:', error);
       }
     };
-
-    // Check for Google OAuth callback results
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('googleAuthSuccess')) {
-      setGoogleConnected(true);
-      setGoogleError(null);
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (params.get('googleAuthError')) {
-      setGoogleError(`Google authorization failed: ${params.get('googleAuthError')}`);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
 
     Promise.all([fetchSettings(), fetchTeam()]).finally(() => {
       setIsLoading(false);
@@ -93,35 +85,6 @@ export function Settings() {
       setSaveMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleConnectGoogle = async () => {
-    setIsConnectingGoogle(true);
-    setGoogleError(null);
-    try {
-      const res = await fetch('/api/auth/google');
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to get authorization URL');
-      }
-      const { authUrl } = await res.json();
-      window.location.href = authUrl;
-    } catch (error) {
-      setGoogleError(error instanceof Error ? error.message : 'Failed to connect Google');
-      setIsConnectingGoogle(false);
-    }
-  };
-
-  const handleDisconnectGoogle = async () => {
-    if (!confirm('Are you sure you want to disconnect your Google account? Reviews will no longer sync automatically.')) return;
-    try {
-      const res = await fetch('/api/auth/google/disconnect', { method: 'POST' });
-      if (res.ok) {
-        setGoogleConnected(false);
-      }
-    } catch (error) {
-      console.error('Failed to disconnect Google:', error);
     }
   };
 
@@ -230,82 +193,82 @@ export function Settings() {
           </div>
         </section>
 
-        {/* Google Business Profile Section */}
+        {/* EmbedSocial Section */}
         <section className="bg-surface-container rounded-2xl p-8 border border-outline-variant/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
           <div className="flex items-start gap-4 relative z-10">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
-                <path d="M42.3 21.6C42.3 16.8 39.3 12.6 35.4 10.5L24 8.1L12.6 10.5C8.7 12.6 5.7 16.8 5.7 21.6C5.7 26.4 8.7 30.6 12.6 32.7L24 35.1L35.4 32.7C39.3 30.6 42.3 26.4 42.3 21.6Z" fill="#4285F4"/>
-                <path d="M24 35.1L12.6 32.7C8.7 30.6 5.7 26.4 5.7 21.6C5.7 16.8 8.7 12.6 12.6 10.5L24 8.1V35.1Z" fill="#34A853"/>
-                <path d="M24 35.1V8.1L35.4 10.5C39.3 12.6 42.3 16.8 42.3 21.6C42.3 26.4 39.3 30.6 35.4 32.7L24 35.1Z" fill="#FBBC05"/>
-                <path d="M24 42.9L12.6 40.5C8.7 38.4 5.7 34.2 5.7 29.4C5.7 24.6 8.7 20.4 12.6 18.3L24 15.9L24 42.9Z" fill="#EA4335"/>
-                <path d="M24 42.9L24 15.9L35.4 18.3C39.3 20.4 42.3 24.6 42.3 29.4C42.3 34.2 39.3 38.4 35.4 40.5L24 42.9Z" fill="#C5221F"/>
-              </svg>
+              <Key className="w-6 h-6 text-primary" />
             </div>
             <div className="space-y-6 flex-1">
               <div>
-                <h3 className="text-xl font-bold text-on-surface">{t('settings.googleOAuthTitle')}</h3>
-                <p className="text-sm text-on-surface-variant mt-1">{t('settings.googleOAuthDesc')}</p>
+                <h3 className="text-xl font-bold text-on-surface">EmbedSocial</h3>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  Connect EmbedSocial to sync Google reviews, reply to customers, and manage your Business Profile — without your own Google API setup.
+                </p>
               </div>
 
-              {googleError && (
-                <div className="bg-error/10 text-error p-4 rounded-lg flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
-                  <span className="text-sm">{googleError}</span>
-                </div>
-              )}
-
-              {googleConnected ? (
+              {embedSocialConnected ? (
                 <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                   <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
                   <div>
-                    <p className="font-bold text-emerald-700 dark:text-emerald-400">Google account connected</p>
-                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Reviews will sync directly from Google API</p>
+                    <p className="font-bold text-emerald-700 dark:text-emerald-400">EmbedSocial connected</p>
+                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Reviews sync from EmbedSocial. Manage locations in Listings.</p>
                   </div>
-                  <button
-                    onClick={handleDisconnectGoogle}
-                    className="ml-auto flex items-center gap-2 px-4 py-2 text-error hover:bg-error/10 rounded-lg transition-colors text-sm font-medium"
-                  >
-                    <Unlink className="w-4 h-4" />
-                    Disconnect
-                  </button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="p-4 bg-surface-container-low rounded-lg border border-outline-variant/20">
                     <p className="text-xs font-medium text-on-surface-variant mb-2">Setup Steps:</p>
                     <ol className="text-xs text-on-surface-variant space-y-1 list-decimal list-inside">
-                      <li>Enable My Business Business Information API in Google Cloud Console</li>
-                      <li>Configure OAuth consent screen</li>
-                      <li>Click "Connect Google Account" below</li>
+                      <li>Copy your EmbedSocial API key from your account</li>
+                      <li>Paste it below and save</li>
+                      <li>Go to Listings → link your locations to EmbedSocial sources</li>
+                      <li>Sync reviews from the Reviews tab</li>
                     </ol>
+                    <a
+                      href="https://app.embedsocial.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-2 text-xs text-primary hover:underline"
+                    >
+                      Open EmbedSocial <ExternalLink className="w-3 h-3" />
+                    </a>
                   </div>
-                  <a
-                    href="https://console.cloud.google.com/apis/library/businessprofileinformation.googleapis.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Enable Business Information API
-                  </a>
-                  <button
-                    onClick={handleConnectGoogle}
-                    disabled={isConnectingGoogle}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-primary text-on-primary hover:brightness-105 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
-                  >
-                    {isConnectingGoogle ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                      <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
-                        <path d="M42.3 21.6C42.3 16.8 39.3 12.6 35.4 10.5L24 8.1L12.6 10.5C8.7 12.6 5.7 16.8 5.7 21.6C5.7 26.4 8.7 30.6 12.6 32.7L24 35.1L35.4 32.7C39.3 30.6 42.3 26.4 42.3 21.6Z" fill="#4285F4"/>
-                        <path d="M24 35.1L12.6 32.7C8.7 30.6 5.7 26.4 5.7 21.6C5.7 16.8 8.7 12.6 12.6 10.5L24 8.1V35.1Z" fill="#34A853"/>
-                        <path d="M24 35.1V8.1L35.4 10.5C39.3 12.6 42.3 16.8 42.3 21.6C42.3 26.4 39.3 30.6 35.4 32.7L24 35.1Z" fill="#FBBC05"/>
-                        <path d="M24 42.9L12.6 40.5C8.7 38.4 5.7 34.2 5.7 29.4C5.7 24.6 8.7 20.4 12.6 18.3L24 15.9L24 42.9Z" fill="#EA4335"/>
-                        <path d="M24 42.9L24 15.9L35.4 18.3C39.3 20.4 42.3 24.6 42.3 29.4C42.3 34.2 39.3 38.4 35.4 40.5L24 42.9Z" fill="#C5221F"/>
-                      </svg>
-                    )}
-                    Connect Google Account
-                  </button>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-outline uppercase tracking-widest block">
+                      EmbedSocial API Key
+                    </label>
+                    <input
+                      type="password"
+                      name="embedSocialApiKey"
+                      value={formData.embedSocialApiKey}
+                      onChange={handleChange}
+                      placeholder="esb09b2b08909c75e..."
+                      autoComplete="off"
+                      className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                    />
+                    <p className="text-xs text-outline leading-relaxed">
+                      Find your API key in EmbedSocial → Settings → API & Webhooks.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {embedSocialConnected && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest block">
+                    Update EmbedSocial API Key
+                  </label>
+                  <input
+                    type="password"
+                    name="embedSocialApiKey"
+                    value={formData.embedSocialApiKey}
+                    onChange={handleChange}
+                    placeholder="Leave blank to keep current key"
+                    autoComplete="off"
+                    className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                  />
                 </div>
               )}
             </div>

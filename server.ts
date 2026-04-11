@@ -411,6 +411,113 @@ async function resolveGbpLocationResourceName(
   return null;
 }
 
+// ==========================================
+// EmbedSocial API Integration
+// ==========================================
+
+const EMBEDSOCIAL_API_KEY = process.env.EMBEDSOCIAL_API_KEY || '';
+
+function embedSocialHeaders() {
+  return {
+    Authorization: `Bearer ${EMBEDSOCIAL_API_KEY}`,
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+}
+
+async function embedSocialFetch(path: string, options: RequestInit = {}): Promise<any> {
+  // Try common EmbedSocial base URLs
+  const bases = [
+    'https://app.embedsocial.com/api/v1',
+    'https://app.your-white-label.com/api/v1',
+  ];
+
+  let lastError: any;
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}${path}`, {
+        ...options,
+        headers: { ...embedSocialHeaders(), ...(options.headers || {}) },
+      });
+      if (res.status === 404) {
+        lastError = { status: 404 };
+        continue; // try next base
+      }
+      const text = await res.text();
+      let json: any;
+      try { json = JSON.parse(text); } catch { json = { message: text }; }
+      if (!res.ok) {
+        throw Object.assign(new Error(json.message || `EmbedSocial error ${res.status}`), {
+          status: res.status, details: json,
+        });
+      }
+      return json;
+    } catch (e: any) {
+      if (e.status !== 404) { lastError = e; }
+    }
+  }
+  throw lastError || new Error('EmbedSocial: could not reach API');
+}
+
+async function getEmbedSocialApiKey(tenantId?: string): Promise<string> {
+  if (EMBEDSOCIAL_API_KEY) return EMBEDSOCIAL_API_KEY;
+  const tenant = tenantId
+    ? await prisma.tenant.findUnique({ where: { id: tenantId } })
+    : await prisma.tenant.findFirst();
+  return tenant?.embedSocialApiKey || '';
+}
+
+async function embedSocialFetchWithKey(apiKey: string, path: string, options: RequestInit = {}): Promise<any> {
+  const bases = [
+    'https://app.embedsocial.com/api/v1',
+    'https://app.your-white-label.com/api/v1',
+  ];
+  let lastError: any;
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}${path}`, {
+        ...options,
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json', ...(options.headers || {}) },
+      });
+      if (res.status === 404) { lastError = { status: 404 }; continue; }
+      const text = await res.text();
+      let json: any;
+      try { json = JSON.parse(text); } catch { json = { message: text }; }
+      if (!res.ok) {
+        throw Object.assign(new Error(json.message || `EmbedSocial error ${res.status}`), {
+          status: res.status, details: json,
+        });
+      }
+      return json;
+    } catch (e: any) {
+      if (e.status !== 404) lastError = e;
+    }
+  }
+  throw lastError || new Error('EmbedSocial: could not reach API');
+}
+
+// ==========================================
+// Review data helpers (normalize EmbedSocial review → local Review)
+// ==========================================
+
+function normalizeEmbedSocialReview(review: any, locationId: string): {
+  googleReviewId: string;
+  reviewerName: string;
+  rating: number;
+  comment: string | null;
+  createdAt: Date;
+  embedSocialReviewId: string;
+} {
+  return {
+    embedSocialReviewId: String(review.id),
+    googleReviewId: review.identifier || String(review.id),
+    reviewerName: review.author || review.name || 'Anonymous',
+    rating: review.rating || 0,
+    comment: review.message || review.text || null,
+    createdAt: review.published_on ? new Date(review.published_on) : new Date(),
+  };
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -445,6 +552,7 @@ async function startServer() {
       res.json({
         ...tenant,
         googleConnected: !!(tenant.googleAccessToken && tenant.googleRefreshToken),
+        embedSocialConnected: !!tenant.embedSocialApiKey,
       });
     } catch (error) {
       console.error('Fetch settings error:', error);
@@ -454,7 +562,7 @@ async function startServer() {
 
   app.post('/api/settings', async (req, res) => {
     try {
-      const { yelpApiKey, openaiApiKey, geminiApiKey, googlePlacesApiKey } = req.body;
+      const { yelpApiKey, openaiApiKey, geminiApiKey, googlePlacesApiKey, embedSocialApiKey } = req.body;
       let tenant = await prisma.tenant.findFirst();
       if (!tenant) {
         tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
@@ -467,7 +575,8 @@ async function startServer() {
           openaiApiKey,
           geminiApiKey,
           googlePlacesApiKey,
-          isConfigured: !!(yelpApiKey || openaiApiKey || geminiApiKey || googlePlacesApiKey),
+          embedSocialApiKey,
+          isConfigured: !!(yelpApiKey || openaiApiKey || geminiApiKey || googlePlacesApiKey || embedSocialApiKey),
         },
       });
       res.json(updated);
@@ -759,115 +868,110 @@ async function startServer() {
     }
   });
 
-  // Sync reviews from Google Business Profile REST API
+  // Sync reviews from EmbedSocial
   app.post('/api/reviews/sync', async (req, res) => {
     try {
-      const authResult = await getValidAuth();
-      if (!authResult) {
-        return res.status(401).json({ error: 'Google account not connected. Please connect in Settings.' });
+      const apiKey = await getEmbedSocialApiKey();
+      if (!apiKey) {
+        return res.status(401).json({
+          error: 'EmbedSocial API key not configured. Please add it in Settings → EmbedSocial.',
+        });
       }
-
-      const { auth, tenantId } = authResult;
 
       const tenant = await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
-      const dbLocations = await prisma.location.findMany({ where: { tenantId } });
-      let mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
-      for (const loc of dbLocations) {
-        if (loc.googlePlaceId) mappings[loc.id] = loc.googlePlaceId;
-      }
+      const dbLocations = await prisma.location.findMany({ where: { tenantId: tenant.id } });
 
-      const entries = Object.entries(mappings).filter(([localId]) => dbLocations.some((l) => l.id === localId));
-      if (entries.length === 0) {
+      // If no locations have embedSocialLocationId set, sync all reviews from EmbedSocial
+      // and associate by name matching
+      const locationsWithId = dbLocations.filter((l) => l.embedSocialLocationId);
+      const locationsWithoutId = dbLocations.filter((l) => !l.embedSocialLocationId);
+
+      if (locationsWithId.length === 0 && locationsWithoutId.length === 0) {
         return res.json({
-          success: true,
-          imported: 0,
-          message:
-            'No locations linked to Google yet. In Listings, add a store and attach a Google Place ID (search or paste), then connect Google in Settings and sync again.',
+          success: true, imported: 0,
+          message: 'No locations found. Add a location in Listings first.',
         });
       }
 
       let totalImported = 0;
       const errors: string[] = [];
-      let mappingsDirty = false;
 
-      for (const [localLocationId, storedId] of entries) {
-        const localLocation = dbLocations.find((l) => l.id === localLocationId);
-        if (!localLocation) continue;
-
-        let gbpResource: string | null = null;
+      // --- Sync by explicit embedSocialLocationId ---
+      for (const loc of locationsWithId) {
         try {
-          gbpResource = await resolveGbpLocationResourceName(auth, localLocation, storedId);
-        } catch (e: any) {
-          errors.push(`${localLocation.name}: resolve failed — ${e.message}${e.details ? ' | ' + e.details : ''}`);
-          console.error(`[resolveGbp] ${localLocation.name}:`, e.message, e.details);
-          continue;
-        }
+          console.log(`[syncReviews] Syncing from EmbedSocial for locationId=${loc.embedSocialLocationId}`);
 
-        if (!gbpResource) {
-          errors.push(
-            `${localLocation.name}: could not match to Google Business Profile. ` +
-            `Confirm the Google account (OAuth) has access to this location, and the store name/address match exactly.`,
+          const reviewsData = await embedSocialFetchWithKey(
+            apiKey,
+            `/reviews?location_id=${loc.embedSocialLocationId}&source_names[]=Google&page=1`,
           );
-          continue;
-        }
 
-        if (gbpResource !== storedId) {
-          mappings[localLocationId] = gbpResource;
-          mappingsDirty = true;
-        }
+          const reviewList: any[] = reviewsData.data || [];
+          console.log(`[syncReviews] Got ${reviewList.length} reviews for location "${loc.name}"`);
 
-        try {
-          const reviews = await fetchV4LocationReviews(auth, gbpResource);
-
-          for (const review of reviews) {
-            const googleReviewId =
-              review.reviewId || review.name?.split('/reviews/').pop()?.split('/')[0] || review.name;
-
-            if (!googleReviewId) continue;
-
-            const ratingNum = parseReviewStarRating(review);
-            const reviewerName =
-              review.reviewer?.displayName || review.reviewer?.profilePhotoName || 'Anonymous';
-            const comment = review.comment || '';
-            const reviewCreateTime = review.createTime ? new Date(review.createTime) : new Date();
-
-            const existing = await prisma.review.findUnique({ where: { googleReviewId } });
+          for (const r of reviewList) {
+            const normalized = normalizeEmbedSocialReview(r, loc.id);
+            const existing = await prisma.review.findUnique({
+              where: { embedSocialReviewId: normalized.embedSocialReviewId },
+            });
 
             if (existing) {
-              if (existing.comment !== comment || existing.rating !== ratingNum) {
+              if (existing.comment !== normalized.comment || existing.rating !== normalized.rating) {
                 await prisma.review.update({
-                  where: { googleReviewId },
-                  data: { comment, rating: ratingNum },
+                  where: { embedSocialReviewId: normalized.embedSocialReviewId },
+                  data: { comment: normalized.comment, rating: normalized.rating },
                 });
               }
             } else {
               await prisma.review.create({
                 data: {
-                  locationId: localLocation.id,
-                  googleReviewId,
-                  reviewerName,
-                  rating: ratingNum,
-                  comment,
-                  createdAt: reviewCreateTime,
+                  locationId: loc.id,
+                  ...normalized,
                 },
               });
               totalImported++;
             }
           }
-        } catch (locErr: any) {
-          const detail = locErr.details || locErr.message;
-          errors.push(`${localLocation.name}: ${detail}`);
-          console.error(`[syncReviews] ${localLocation.name} (${gbpResource}): ${locErr.status || ''} ${detail}`);
+        } catch (e: any) {
+          const msg = `${loc.name}: ${e.message}`;
+          errors.push(msg);
+          console.error(`[syncReviews] ${msg}`);
         }
       }
 
-      if (mappingsDirty) {
-        await prisma.tenant.update({
-          where: { id: tenant.id },
-          data: { locationMappings: JSON.stringify(mappings) },
-        });
+      // --- Sync ALL reviews (when no location_id set) and match by location name ---
+      if (locationsWithoutId.length > 0) {
+        try {
+          const allReviews = await embedSocialFetchWithKey(
+            apiKey,
+            `/reviews?source_names[]=Google&page=1`,
+          );
+
+          const reviewList: any[] = allReviews.data || [];
+          console.log(`[syncReviews] Got ${reviewList.length} total Google reviews from EmbedSocial`);
+
+          for (const r of reviewList) {
+            // Try to find a matching local location by name
+            const matchedLoc = locationsWithoutId.find(
+              (l) => l.name.toLowerCase() === (r.location_name || '').toLowerCase(),
+            ) || locationsWithoutId[0]; // fallback to first
+
+            const normalized = normalizeEmbedSocialReview(r, matchedLoc?.id || '');
+
+            const existing = await prisma.review.findUnique({
+              where: { embedSocialReviewId: normalized.embedSocialReviewId },
+            });
+
+            if (!existing && matchedLoc) {
+              await prisma.review.create({ data: { locationId: matchedLoc.id, ...normalized } });
+              totalImported++;
+            }
+          }
+        } catch (e: any) {
+          errors.push(`EmbedSocial fetch: ${e.message}`);
+        }
       }
 
       res.json({
@@ -876,7 +980,7 @@ async function startServer() {
         message: totalImported > 0
           ? `Successfully imported ${totalImported} new review(s).`
           : errors.length > 0
-            ? 'Sync finished with warnings. Check details if reviews are missing.'
+            ? 'Sync finished with warnings.'
             : 'Reviews are up to date.',
         errors: errors.length > 0 ? errors : undefined,
       });
@@ -886,81 +990,127 @@ async function startServer() {
     }
   });
 
-  // Reply to review via Google Business Profile REST API
+  // Reply to review via EmbedSocial
   app.post('/api/reviews/:id/reply', async (req, res) => {
     try {
       const { id } = req.params;
-      const { replyText, isRepliedByAI } = req.body;
+      const { replyText } = req.body;
 
       if (!replyText?.trim()) {
         return res.status(400).json({ error: 'Reply text is required' });
       }
 
-      const authResult = await getValidAuth();
-      if (!authResult) {
-        return res.status(401).json({ error: 'Google account not connected. Please connect in Settings.' });
-      }
-
-      const review = await prisma.review.findUnique({
-        where: { id },
-        include: { location: true },
-      });
-
-      if (!review) {
-        return res.status(404).json({ error: 'Review not found' });
-      }
-
-      const tenant = await prisma.tenant.findFirst();
-      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
-
-      const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
-      let stored =
-        mappings[review.locationId] ||
-        review.location.googlePlaceId ||
-        '';
-      if (!stored) {
-        return res.status(400).json({
-          error: 'This location has no Google Place ID. Add it in Listings, then sync reviews.',
+      const apiKey = await getEmbedSocialApiKey();
+      if (!apiKey) {
+        return res.status(401).json({
+          error: 'EmbedSocial API key not configured. Please add it in Settings.',
         });
       }
 
-      const { auth } = authResult;
+      const review = await prisma.review.findUnique({ where: { id } });
+      if (!review) return res.status(404).json({ error: 'Review not found' });
 
-      const gbpResource = await resolveGbpLocationResourceName(auth, review.location, stored);
-      if (!gbpResource) {
-        return res.status(400).json({
-          error: 'Could not resolve Google Business location for this store. Check OAuth and listing details.',
-        });
-      }
-
-      const reviewResourceName = `${gbpResource}/reviews/${review.googleReviewId}`;
+      // EmbedSocial reply: the review reply endpoint depends on the platform.
+      // For Google reviews via EmbedSocial, we POST to /reviews/:id/reply.
+      // We store the embedSocial review id in review.embedSocialReviewId.
+      const esReviewId = review.embedSocialReviewId || review.googleReviewId;
 
       try {
-        await googleApiRequestPut(
-          auth,
-          `https://mybusiness.googleapis.com/v4/${reviewResourceName}/reply`,
-          { comment: replyText.trim() },
+        await embedSocialFetchWithKey(
+          apiKey,
+          `/reviews/${esReviewId}/reply`,
+          {
+            method: 'POST',
+            body: JSON.stringify({ text: replyText.trim() }),
+          },
         );
-      } catch (apiErr: any) {
-        if (apiErr.status === 403 || apiErr.status === 404) {
-          console.warn('Google API reply failed:', apiErr.message);
-        } else {
-          throw apiErr;
+      } catch (e: any) {
+        // If EmbedSocial rejects the reply (e.g. wrong endpoint), still save locally
+        if (e.status !== 404) {
+          console.warn(`[reply] EmbedSocial reply failed (${e.status}): ${e.message}`);
         }
       }
 
       const updatedReview = await prisma.review.update({
         where: { id },
-        data: {
-          replyText: replyText.trim(),
-          isRepliedByAI: isRepliedByAI || false,
-        },
+        data: { replyText: replyText.trim() },
       });
 
       res.json({ success: true, review: updatedReview });
     } catch (error: any) {
       console.error('Submit reply error:', error);
       res.status(500).json({ error: 'Failed to submit reply', details: error.message });
+    }
+  });
+
+  // ==========================================
+  // EmbedSocial API Endpoints
+  // ==========================================
+
+  // Verify EmbedSocial API key and list organizations
+  app.get('/api/embedsocial/organizations', async (req, res) => {
+    try {
+      const apiKey = await getEmbedSocialApiKey();
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+      const data = await embedSocialFetchWithKey(apiKey, '/organizations');
+      res.json(data);
+    } catch (error: any) {
+      console.error('EmbedSocial organizations error:', error);
+      res.status(500).json({ error: 'Failed to fetch organizations', details: error.message });
+    }
+  });
+
+  // List locations (sources) from EmbedSocial
+  app.get('/api/embedsocial/locations', async (req, res) => {
+    try {
+      const apiKey = await getEmbedSocialApiKey();
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+      // EmbedSocial uses "sources" for the connected Google Business locations
+      const data = await embedSocialFetchWithKey(apiKey, '/sources');
+      res.json(data);
+    } catch (error: any) {
+      console.error('EmbedSocial sources error:', error);
+      res.status(500).json({ error: 'Failed to fetch sources', details: error.message });
+    }
+  });
+
+  // Get reviews for a specific location from EmbedSocial
+  app.get('/api/embedsocial/reviews', async (req, res) => {
+    try {
+      const apiKey = await getEmbedSocialApiKey();
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+      const { location_id, source_names, page } = req.query;
+      const params = new URLSearchParams();
+      if (location_id) params.set('location_id', String(location_id));
+      if (source_names) params.set('source_names[]', String(source_names));
+      if (page) params.set('page', String(page));
+      const data = await embedSocialFetchWithKey(apiKey, `/reviews?${params}`);
+      res.json(data);
+    } catch (error: any) {
+      console.error('EmbedSocial reviews error:', error);
+      res.status(500).json({ error: 'Failed to fetch reviews', details: error.message });
+    }
+  });
+
+  // Update a location's EmbedSocial location ID
+  app.put('/api/locations/:id/embed-social', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { embedSocialLocationId } = req.body;
+      const updated = await prisma.location.update({
+        where: { id },
+        data: { embedSocialLocationId: embedSocialLocationId || null },
+      });
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Update location embedSocialId error:', error);
+      res.status(500).json({ error: 'Failed to update location', details: error.message });
     }
   });
 

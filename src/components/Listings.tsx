@@ -26,6 +26,7 @@ interface Location {
   address: string;
   phone?: string;
   googlePlaceId?: string;
+  embedSocialLocationId?: string;
   isSynced: boolean;
   businessHours?: any;
 }
@@ -44,7 +45,11 @@ export function Listings({ setActiveTab }: { setActiveTab?: (tab: string) => voi
   // Google OAuth + Places API status
   const [googleConnected, setGoogleConnected] = useState(false);
   const [googlePlacesKeyMissing, setGooglePlacesKeyMissing] = useState(false);
-  const [googleNotConnected, setGoogleNotConnected] = useState(false);
+
+  // EmbedSocial status
+  const [embedSocialConnected, setEmbedSocialConnected] = useState(false);
+  const [embedSocialSources, setEmbedSocialSources] = useState<any[]>([]);
+  const [isLoadingSources, setIsLoadingSources] = useState(false);
 
   // Add / Edit location modal
   const [showModal, setShowModal] = useState(false);
@@ -113,6 +118,7 @@ export function Listings({ setActiveTab }: { setActiveTab?: (tab: string) => voi
         const s = await settingsRes.json();
         setGoogleConnected(s.googleConnected ?? false);
         setGooglePlacesKeyMissing(!s.googlePlacesApiKey);
+        setEmbedSocialConnected(s.embedSocialConnected ?? false);
       }
     } catch (e) {
       console.error('Failed to fetch data', e);
@@ -120,6 +126,19 @@ export function Listings({ setActiveTab }: { setActiveTab?: (tab: string) => voi
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Fetch EmbedSocial sources when connected
+  useEffect(() => {
+    if (!embedSocialConnected) return;
+    setIsLoadingSources(true);
+    fetch('/api/embedsocial/locations')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.data) setEmbedSocialSources(data.data);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingSources(false));
+  }, [embedSocialConnected]);
 
   // ---------------------------------------------------------------------------
   // Selected location → populate editor
@@ -361,6 +380,20 @@ export function Listings({ setActiveTab }: { setActiveTab?: (tab: string) => voi
 
       {/* ── Setup banners ─────────────────────────────────────────────── */}
 
+      {/* EmbedSocial not connected */}
+      {!embedSocialConnected && (
+        <Banner type="info" title="Connect EmbedSocial to sync reviews" body={
+          <>Add your EmbedSocial API key in Settings to sync Google reviews.{' '}
+            <button onClick={() => setActiveTab('settings')} className="underline font-semibold">Go to Settings</button>
+          </>
+        } />
+      )}
+
+      {/* EmbedSocial connected but no locations */}
+      {embedSocialConnected && locations.length === 0 && (
+        <Banner type="success" title="EmbedSocial connected" body="Add your first location below and link it to an EmbedSocial source to start syncing reviews." />
+      )}
+
       {/* No Places API key */}
       {googlePlacesKeyMissing && (
         <Banner type="warning" title="Google Places API Key missing" body={
@@ -368,20 +401,6 @@ export function Listings({ setActiveTab }: { setActiveTab?: (tab: string) => voi
             <button onClick={goToSettings} className="underline font-semibold">Add it in Settings → API Keys</button>
           </>
         } />
-      )}
-
-      {/* OAuth not connected */}
-      {!googleConnected && (
-        <Banner type="info" title="Connect Google to sync reviews" body={
-          <>Connect your Google account to automatically import and reply to Google reviews.{' '}
-            <button onClick={() => setActiveTab('settings')} className="underline font-semibold">Go to Settings</button>
-          </>
-        } />
-      )}
-
-      {/* OAuth connected but no locations yet */}
-      {googleConnected && locations.length === 0 && (
-        <Banner type="success" title="Google account connected" body="Add your first location below to start syncing reviews." />
       )}
 
       {/* ── Location selector + Add button ─────────────────────────────── */}
@@ -557,7 +576,8 @@ export function Listings({ setActiveTab }: { setActiveTab?: (tab: string) => voi
           {/* Sync card */}
           <SyncCard
             googleConnected={googleConnected}
-            placeIdSet={!!placeIdDisplay}
+            embedSocialConnected={embedSocialConnected}
+            placeIdSet={!!selectedLocation?.embedSocialLocationId}
             locationsCount={locations.length}
             onConnectGoogle={() => setActiveTab('settings')}
           />
@@ -754,24 +774,25 @@ function Banner({ type, title, body }: { type: 'warning' | 'info' | 'success'; t
   );
 }
 
-function SyncCard({ googleConnected, placeIdSet, locationsCount, onConnectGoogle }: {
+function SyncCard({ googleConnected, embedSocialConnected, placeIdSet, locationsCount, onConnectGoogle }: {
   googleConnected: boolean;
+  embedSocialConnected: boolean;
   placeIdSet: boolean;
   locationsCount: number;
   onConnectGoogle: () => void;
 }) {
   const { t } = useLanguage();
 
-  const status: { label: string; color: string; desc: string } = !googleConnected
-    ? { label: 'Not Connected', color: 'bg-amber-500', desc: 'Connect Google account in Settings to sync reviews.' }
+  const status: { label: string; color: string; desc: string } = !embedSocialConnected
+    ? { label: 'EmbedSocial not connected', color: 'bg-amber-500', desc: 'Add your EmbedSocial API key in Settings to sync reviews.' }
     : !placeIdSet
-    ? { label: 'Place ID Missing', color: 'bg-amber-500', desc: 'Edit this location and add a Google Place ID.' }
-    : { label: 'Ready to Sync', color: 'bg-emerald-500', desc: 'Reviews will sync from your Google Business Profile.' };
+    ? { label: 'EmbedSocial Location Missing', color: 'bg-amber-500', desc: 'Link this location to an EmbedSocial source to sync reviews.' }
+    : { label: 'Ready to Sync', color: 'bg-emerald-500', desc: 'Reviews will sync from EmbedSocial.' };
 
   return (
     <div className="bg-surface-container rounded-2xl p-6 space-y-4">
       <h4 className="text-[10px] font-bold text-outline uppercase tracking-widest flex items-center gap-2">
-        <Star className="w-4 h-4" /> Google Review Status
+        <Star className="w-4 h-4" /> Review Sync Status
       </h4>
 
       <div className="flex items-center gap-2">
@@ -780,12 +801,12 @@ function SyncCard({ googleConnected, placeIdSet, locationsCount, onConnectGoogle
       </div>
       <p className="text-xs text-on-surface-variant leading-relaxed">{status.desc}</p>
 
-      {!googleConnected && (
+      {!embedSocialConnected && (
         <button
           onClick={onConnectGoogle}
           className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
         >
-          <Link2 className="w-4 h-4" /> Connect Google
+          <Link2 className="w-4 h-4" /> Connect EmbedSocial
         </button>
       )}
 
@@ -795,9 +816,9 @@ function SyncCard({ googleConnected, placeIdSet, locationsCount, onConnectGoogle
           <span className="font-bold">{locationsCount}</span>
         </div>
         <div className="flex justify-between text-xs">
-          <span className="text-outline">Google account</span>
-          <span className={`font-bold ${googleConnected ? 'text-emerald-500' : 'text-amber-500'}`}>
-            {googleConnected ? 'Connected' : 'Not connected'}
+          <span className="text-outline">EmbedSocial</span>
+          <span className={`font-bold ${embedSocialConnected ? 'text-emerald-500' : 'text-amber-500'}`}>
+            {embedSocialConnected ? 'Connected' : 'Not connected'}
           </span>
         </div>
       </div>
