@@ -883,8 +883,9 @@ async function startServer() {
             `/rest/v1/reviews?location_id=${loc.embedSocialLocationId}&source_names[]=Google&page=1`,
           );
 
-          const reviewList: any[] = reviewsData.data || [];
+          const reviewList: any[] = reviewsData.data || reviewsData.reviews || reviewsData.items || [];
           console.log(`[syncReviews] Got ${reviewList.length} reviews for location "${loc.name}"`);
+          console.log(`[syncReviews] Raw reviewsData keys: ${Object.keys(reviewsData).join(', ')}`);
 
           for (const r of reviewList) {
             const normalized = normalizeEmbedSocialReview(r, loc.id);
@@ -924,8 +925,9 @@ async function startServer() {
             `/rest/v1/reviews?source_names[]=Google&page=1`,
           );
 
-          const reviewList: any[] = allReviews.data || [];
+          const reviewList: any[] = allReviews.data || allReviews.reviews || allReviews.items || [];
           console.log(`[syncReviews] Got ${reviewList.length} total Google reviews from EmbedSocial`);
+          console.log(`[syncReviews] Raw allReviews keys: ${Object.keys(allReviews).join(', ')}`);
 
           for (const r of reviewList) {
             // Try to find a matching local location by name
