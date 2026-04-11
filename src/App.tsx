@@ -4,11 +4,12 @@ import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { Listings } from './components/Listings';
 import { Reviews } from './components/Reviews';
-import { CommentsGen } from './components/CommentsGen';
-import { Posts } from './components/Posts';
+import { BulkEdits } from './components/BulkEdits';
+import { EditsLog } from './components/EditsLog';
+import { Publishing } from './components/Publishing';
 import { Reports } from './components/Reports';
+import { SEO } from './components/SEO';
 import { Settings } from './components/Settings';
-import { Docs } from './components/Docs';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './contexts/LanguageContext';
@@ -46,15 +47,16 @@ export default function App() {
 
   const getTitle = () => {
     switch(activeTab) {
-      case 'dashboard': return t('app.title.dashboard');
-      case 'listings': return t('app.title.listings');
-      case 'reviews': return t('app.title.reviews');
-      case 'comments': return t('app.title.comments-gen');
-      case 'posts': return t('app.title.posts');
-      case 'reports': return t('app.title.reports');
-      case 'settings': return t('app.title.settings');
-      case 'docs': return t('app.title.docs');
-      default: return t('app.title.dashboard');
+      case 'dashboard': return t('nav.dashboard');
+      case 'listings': return t('nav.listings');
+      case 'reviews': return t('nav.reviews');
+      case 'bulk-edits': return t('nav.bulkEdits');
+      case 'edits-log': return t('nav.editsLog');
+      case 'publishing': return t('nav.publishing');
+      case 'reports': return t('nav.reports');
+      case 'seo': return t('nav.seo');
+      case 'settings': return t('nav.settings');
+      default: return t('nav.dashboard');
     }
   };
 
@@ -67,7 +69,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-surface text-on-surface font-sans overflow-hidden selection:bg-primary/30 selection:text-primary">
+    <div className="flex h-screen bg-surface text-on-surface overflow-hidden selection:bg-primary/30 selection:text-primary">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={(tab) => {
@@ -78,7 +80,7 @@ export default function App() {
         setIsOpen={setIsSidebarOpen}
       />
       
-      <div className="flex-1 flex flex-col min-w-0 relative w-full">
+      <div className="flex-1 flex flex-col min-w-0 relative w-full lg:ml-64">
         <Header 
           title={getTitle()} 
           activeTab={activeTab} 
@@ -86,20 +88,20 @@ export default function App() {
           onMenuClick={() => setIsSidebarOpen(true)}
         />
         
-        {!isConfigured && activeTab !== 'settings' && activeTab !== 'docs' && (
-          <div className="bg-error/10 border-b border-error/20 p-4 flex items-center justify-center gap-3 text-error">
+        {!isConfigured && activeTab !== 'settings' && (
+          <div className="bg-yellow-50 border-b border-yellow-200 p-4 flex items-center justify-center gap-3 text-yellow-700">
             <AlertTriangle className="w-5 h-5" />
             <span className="font-medium text-sm">{t('app.configWarning')}</span>
             <button 
               onClick={() => setActiveTab('settings')}
-              className="ml-4 px-4 py-1.5 bg-error text-white rounded-md text-xs font-bold hover:bg-error/90 transition-colors"
+              className="ml-4 px-4 py-1.5 bg-yellow-500 text-white rounded-md text-xs font-bold hover:bg-yellow-600 transition-colors"
             >
               {t('app.goToSettings')}
             </button>
           </div>
         )}
 
-        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto relative bg-surface">
+        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto relative bg-white">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -112,11 +114,12 @@ export default function App() {
               {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
               {activeTab === 'listings' && <Listings setActiveTab={setActiveTab} />}
               {activeTab === 'reviews' && <Reviews />}
-              {activeTab === 'comments' && <CommentsGen />}
-              {activeTab === 'posts' && <Posts />}
-              {activeTab === 'reports' && <Reports />}
+              {activeTab === 'bulk-edits' && <BulkEdits setActiveTab={setActiveTab} />}
+              {activeTab === 'edits-log' && <EditsLog setActiveTab={setActiveTab} />}
+              {activeTab === 'publishing' && <Publishing setActiveTab={setActiveTab} />}
+              {activeTab === 'reports' && <Reports setActiveTab={setActiveTab} />}
+              {activeTab === 'seo' && <SEO setActiveTab={setActiveTab} />}
               {activeTab === 'settings' && <Settings />}
-              {activeTab === 'docs' && <Docs />}
             </motion.div>
           </AnimatePresence>
         </main>

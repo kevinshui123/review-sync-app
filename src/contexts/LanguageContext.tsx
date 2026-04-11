@@ -14,14 +14,18 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.dashboard': 'Dashboard',
     'nav.listings': 'Listings',
     'nav.reviews': 'Reviews',
+    'nav.bulkEdits': 'Bulk Edits',
+    'nav.editsLog': 'Edits Log',
+    'nav.publishing': 'Publishing',
+    'nav.reports': 'Reports',
+    'nav.seo': 'SEO',
     'nav.comments': 'Comments',
     'nav.posts': 'Posts',
-    'nav.reports': 'Reports',
     'nav.docs': 'Documentation',
     'nav.settings': 'Settings',
 
     // Header
-    'header.search': 'Search locations...',
+    'header.search': 'Search...',
     'header.locations': 'Locations',
     'header.keywords': 'Keywords',
 
@@ -194,14 +198,18 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.dashboard': '仪表盘',
     'nav.listings': '门店管理',
     'nav.reviews': '评价管理',
+    'nav.bulkEdits': '批量编辑',
+    'nav.editsLog': '编辑日志',
+    'nav.publishing': '内容发布',
+    'nav.reports': '数据报告',
+    'nav.seo': 'SEO优化',
     'nav.comments': '评论',
     'nav.posts': '贴文管理',
-    'nav.reports': '数据报告',
     'nav.docs': '使用文档',
     'nav.settings': '系统设置',
 
     // Header
-    'header.search': '搜索门店...',
+    'header.search': '搜索...',
     'header.locations': '门店',
     'header.keywords': '关键词',
 

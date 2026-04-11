@@ -13,7 +13,11 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
     "@google/genai": "^1.29.0",
+    "@mui/icons-material": "^5.15.15",
+    "@mui/material": "^5.15.15",
     "@prisma/client": "^5.22.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",

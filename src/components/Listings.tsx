@@ -1,863 +1,260 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  RefreshCw, AlertTriangle, Edit, MapPin, Calendar, X, Plus,
-  ChevronDown, Search, Check, Loader2, Link2, Unlink, ExternalLink,
-  PlusCircle, Trash2, Globe, Star
-} from 'lucide-react';
+  Search,
+  Notifications,
+  History,
+  Add,
+  Inventory2,
+  Psychology,
+  Delete,
+  MoreHoriz,
+  TrendingUp,
+  AutoAwesome,
+  Store,
+  LocationOn,
+} from '@mui/icons-material';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface GooglePlace {
-  placeId: string;
-  name: string;
-  address: string;
-  phone?: string;
-  location?: { lat: number; lng: number };
-  rating?: number;
+interface ListingsProps {
+  setActiveTab: (tab: string) => void;
 }
 
 interface Location {
   id: string;
   name: string;
   address: string;
-  phone?: string;
-  googlePlaceId?: string;
-  embedSocialLocationId?: string;
-  isSynced: boolean;
-  businessHours?: any;
+  account: string;
+  group: string;
+  lastSync: string;
+  synced: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Listings component
-// ---------------------------------------------------------------------------
-
-export function Listings({ setActiveTab }: { setActiveTab?: (tab: string) => void }) {
+export function Listings({ setActiveTab }: ListingsProps) {
   const { t } = useLanguage();
-
-  // ── State ──────────────────────────────────────────────────────────────
   const [locations, setLocations] = useState<Location[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-
-  // Google OAuth + Places API status
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [googlePlacesKeyMissing, setGooglePlacesKeyMissing] = useState(false);
-
-  // EmbedSocial status
-  const [embedSocialConnected, setEmbedSocialConnected] = useState(false);
-  const [embedSocialSources, setEmbedSocialSources] = useState<any[]>([]);
-  const [isLoadingSources, setIsLoadingSources] = useState(false);
-
-  // Add / Edit location modal
-  const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Form fields
-  const [formName, setFormName] = useState('');
-  const [formAddress, setFormAddress] = useState('');
-  const [formPhone, setFormPhone] = useState('');
-  const [formPlaceId, setFormPlaceId] = useState('');
-
-  // Place search (inside modal)
-  const [showPlaceSearch, setShowPlaceSearch] = useState(false);
-  const [placeSearchQuery, setPlaceSearchQuery] = useState('');
-  const [placeSearchResults, setPlaceSearchResults] = useState<GooglePlace[]>([]);
-  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
-  const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
-
-  // Place ID manual validation
-  const [isValidatingPlaceId, setIsValidatingPlaceId] = useState(false);
-  const [placeIdError, setPlaceIdError] = useState<string | null>(null);
-  const [placeIdInfo, setPlaceIdInfo] = useState<GooglePlace | null>(null);
-
-  // Business hours
-  const [businessHours, setBusinessHours] = useState<Record<string, string>>({});
-  const defaultHours: Record<string, string> = {
-    Monday: '09:00 AM - 05:00 PM',
-    Tuesday: '09:00 AM - 05:00 PM',
-    Wednesday: '09:00 AM - 05:00 PM',
-    Thursday: '09:00 AM - 05:00 PM',
-    Friday: '09:00 AM - 05:00 PM',
-    Saturday: 'Closed',
-    Sunday: 'Closed',
-  };
-
-  // Save / delete
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Sync status
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMsg, setSyncMsg] = useState<string | null>(null);
-
-  // ---------------------------------------------------------------------------
-  // Data fetching
-  // ---------------------------------------------------------------------------
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [locRes, settingsRes] = await Promise.all([
-        fetch('/api/locations'),
-        fetch('/api/settings'),
-      ]);
-
-      if (locRes.ok) {
-        const locs: Location[] = await locRes.json();
-        setLocations(locs);
-        if (locs.length > 0 && !selectedLocation) {
-          setSelectedLocation(locs[0]);
-        }
-      }
-
-      if (settingsRes.ok) {
-        const s = await settingsRes.json();
-        setGoogleConnected(s.googleConnected ?? false);
-        setGooglePlacesKeyMissing(!s.googlePlacesApiKey);
-        setEmbedSocialConnected(s.embedSocialConnected ?? false);
-      }
-    } catch (e) {
-      console.error('Failed to fetch data', e);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Fetch EmbedSocial sources when connected
-  useEffect(() => {
-    if (!embedSocialConnected) return;
-    setIsLoadingSources(true);
-    fetch('/api/embedsocial/locations')
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.data) setEmbedSocialSources(data.data);
-      })
-      .catch(() => {})
-      .finally(() => setIsLoadingSources(false));
-  }, [embedSocialConnected]);
-
-  // ---------------------------------------------------------------------------
-  // Selected location → populate editor
-  // ---------------------------------------------------------------------------
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!selectedLocation) { setBusinessHours(defaultHours); return; }
-
-    let hours = defaultHours;
-    const raw = selectedLocation.businessHours;
-    if (raw) {
+    const fetchLocations = async () => {
       try {
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        if (parsed && typeof parsed === 'object') hours = { ...defaultHours, ...parsed };
-      } catch { /* use default */ }
-    }
-    setBusinessHours(hours);
-  }, [selectedLocation]);
-
-  // ---------------------------------------------------------------------------
-  // Modal helpers
-  // ---------------------------------------------------------------------------
-
-  function openAdd() {
-    setModalMode('add');
-    setEditingId(null);
-    setFormName(''); setFormAddress(''); setFormPhone('');
-    setFormPlaceId(''); setPlaceIdInfo(null); setPlaceIdError(null);
-    setShowPlaceSearch(false); setPlaceSearchResults([]);
-    setSaveMsg(null);
-    setShowModal(true);
-  }
-
-  function openEdit(loc: Location) {
-    setModalMode('edit');
-    setEditingId(loc.id);
-    setFormName(loc.name);
-    setFormAddress(loc.address);
-    setFormPhone(loc.phone || '');
-    setFormPlaceId(loc.googlePlaceId || '');
-    setPlaceIdInfo(null); setPlaceIdError(null);
-    setShowPlaceSearch(false); setPlaceSearchResults([]);
-    setSaveMsg(null);
-    setShowModal(true);
-  }
-
-  function closeModal() {
-    setShowModal(false);
-    setPlaceIdInfo(null); setPlaceIdError(null);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Google Places search
-  // ---------------------------------------------------------------------------
-
-  async function searchPlaces() {
-    if (!placeSearchQuery.trim()) return;
-    setIsSearchingPlaces(true);
-    setPlaceSearchError(null);
-    try {
-      const res = await fetch(`/api/google/places/search?query=${encodeURIComponent(placeSearchQuery)}`);
-      const data = await res.json();
-      if (data.setupRequired) {
-        setPlaceSearchError('Google Places API key is missing. Add it in Settings → API Keys.');
-      } else if (data.error) {
-        setPlaceSearchError(data.error);
-      } else {
-        setPlaceSearchResults(Array.isArray(data) ? data : []);
+        const res = await fetch('/api/locations');
+        if (res.ok) {
+          const data = await res.json();
+          setLocations(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch locations:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      setPlaceSearchError('Search failed. Check your connection.');
-    } finally {
-      setIsSearchingPlaces(false);
-    }
+    };
+    fetchLocations();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
-
-  function selectPlace(place: GooglePlace) {
-    setFormName(place.name);
-    setFormAddress(place.address);
-    setFormPhone(place.phone || '');
-    setFormPlaceId(place.placeId);
-    setPlaceIdInfo(place);
-    setPlaceIdError(null);
-    setShowPlaceSearch(false);
-    setPlaceSearchResults([]);
-    setPlaceSearchQuery('');
-  }
-
-  // ---------------------------------------------------------------------------
-  // Validate a manually typed Place ID
-  // ---------------------------------------------------------------------------
-
-  async function validatePlaceId() {
-    if (!formPlaceId.trim()) return;
-    setIsValidatingPlaceId(true);
-    setPlaceIdError(null);
-    setPlaceIdInfo(null);
-    try {
-      const res = await fetch('/api/google/validate-place-id', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ placeId: formPlaceId.trim() }),
-      });
-      const data = await res.json();
-      if (data.setupRequired) {
-        setPlaceIdError('Google Places API key missing. Add it in Settings → API Keys.');
-      } else if (!data.valid) {
-        setPlaceIdError(data.error || 'Invalid Place ID');
-      } else {
-        setPlaceIdInfo(data.place);
-        // Auto-fill name/address if form is empty
-        if (!formName) setFormName(data.place.name);
-        if (!formAddress) setFormAddress(data.place.address);
-        if (!formPhone && data.place.phone) setFormPhone(data.place.phone);
-      }
-    } catch {
-      setPlaceIdError('Validation failed. Try again.');
-    } finally {
-      setIsValidatingPlaceId(false);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Save (create or update)
-  // ---------------------------------------------------------------------------
-
-  async function handleSave() {
-    if (!formName.trim()) { setSaveMsg({ type: 'error', text: 'Location name is required.' }); return; }
-    setIsSaving(true);
-    setSaveMsg(null);
-    try {
-      const payload = {
-        name: formName.trim(),
-        address: formAddress.trim(),
-        phone: formPhone.trim(),
-        googlePlaceId: formPlaceId.trim() || null,
-      };
-
-      let res: Response;
-      if (modalMode === 'add') {
-        res = await fetch('/api/locations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      } else {
-        res = await fetch(`/api/locations/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      }
-
-      if (res.ok) {
-        setSaveMsg({ type: 'success', text: modalMode === 'add' ? 'Location added.' : 'Location updated.' });
-        await fetchData();
-        setTimeout(closeModal, 1000);
-      } else {
-        const err = await res.json();
-        setSaveMsg({ type: 'error', text: err.error || 'Save failed.' });
-      }
-    } catch {
-      setSaveMsg({ type: 'error', text: 'Network error. Try again.' });
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Delete
-  // ---------------------------------------------------------------------------
-
-  async function handleDelete() {
-    if (!editingId || !confirm(`Delete "${formName}"? This cannot be undone.`)) return;
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/locations/${editingId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setLocations(prev => prev.filter(l => l.id !== editingId));
-        if (selectedLocation?.id === editingId) setSelectedLocation(null);
-        closeModal();
-      }
-    } finally {
-      setIsDeleting(false);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Save business hours for selected location
-  // ---------------------------------------------------------------------------
-
-  async function saveHours() {
-    if (!selectedLocation) return;
-    setIsSaving(true);
-    try {
-      const res = await fetch(`/api/locations/${selectedLocation.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: selectedLocation.phone, businessHours: JSON.stringify(businessHours) }),
-      });
-      if (res.ok) {
-        setSaveMsg({ type: 'success', text: 'Hours saved!' });
-        await fetchData();
-      }
-    } catch { /* ignore */ }
-    finally { setIsSaving(false); setTimeout(() => setSaveMsg(null), 2500); }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Render helpers
-  // ---------------------------------------------------------------------------
-
-  const mapEmbedSrc = selectedLocation?.address
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(selectedLocation.address)}&output=embed&z=15`
-    : null;
-
-  const placeIdDisplay = selectedLocation?.googlePlaceId
-    ? selectedLocation.googlePlaceId
-    : null;
-
-  const hasGoogleSetup = googleConnected && !googlePlacesKeyMissing;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="p-4 md:p-8 space-y-8 max-w-[1400px] mx-auto w-full pb-20"
+      className="min-h-screen pb-10"
     >
-
-      {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 border-b border-outline-variant/10 pb-8">
-        <div className="space-y-1">
-          <div className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
-            Directory Management
+      {/* Page Header */}
+      <div className="px-10 pt-8 pb-4">
+        <div className="flex justify-between items-end mb-6">
+          <div>
+            <h1 className="text-3xl font-extrabold text-primary font-headline tracking-tight">Listings</h1>
+            <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-semibold w-fit">
+              <Inventory2 className="w-4 h-4" />
+              {locations.length}/1 listing limit
+            </div>
           </div>
-          <h2 className="text-4xl font-extrabold tracking-tight text-on-surface">{t('listings.title')}</h2>
-          <p className="text-secondary font-medium max-w-lg">{t('listings.subtitle')}</p>
+          <button className="flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-primary/20 transition-all">
+            <Add className="w-5 h-5" />
+            <span>New listing</span>
+          </button>
         </div>
-        <div className="flex gap-4">
-          <div className="bg-surface-container p-4 rounded-xl min-w-[140px] text-right">
-            <p className="text-[10px] font-bold uppercase tracking-tighter text-outline-variant mb-1">Locations</p>
-            <p className="text-2xl font-black text-primary">{locations.length}</p>
+
+        {/* Filter & Tabs Bar */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 bg-white p-2 rounded-2xl shadow-sm">
+          <div className="flex p-1 bg-slate-50 rounded-xl">
+            <button className="px-6 py-2 rounded-lg text-sm font-semibold bg-white text-primary shadow-sm">Active listings</button>
+            <button className="px-6 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-white/50 transition-colors">All listings</button>
           </div>
-        </div>
-      </div>
-
-      {/* ── Setup banners ─────────────────────────────────────────────── */}
-
-      {/* EmbedSocial not connected */}
-      {!embedSocialConnected && (
-        <Banner type="info" title="Connect EmbedSocial to sync reviews" body={
-          <>Add your EmbedSocial API key in Settings to sync Google reviews.{' '}
-            <button onClick={() => setActiveTab('settings')} className="underline font-semibold">Go to Settings</button>
-          </>
-        } />
-      )}
-
-      {/* EmbedSocial connected but no locations */}
-      {embedSocialConnected && locations.length === 0 && (
-        <Banner type="success" title="EmbedSocial connected" body="Add your first location below and link it to an EmbedSocial source to start syncing reviews." />
-      )}
-
-      {/* No Places API key */}
-      {googlePlacesKeyMissing && (
-        <Banner type="warning" title="Google Places API Key missing" body={
-          <>Search for a business requires a Google Places API key.{' '}
-            <button onClick={goToSettings} className="underline font-semibold">Add it in Settings → API Keys</button>
-          </>
-        } />
-      )}
-
-      {/* ── Location selector + Add button ─────────────────────────────── */}
-
-      <div className="flex items-center gap-4">
-        {locations.length > 1 && (
-          <div className="relative">
-            <select
-              className="appearance-none bg-surface-container border border-outline-variant/20 rounded-lg pl-4 pr-10 py-2.5 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
-              value={selectedLocation?.id || ''}
-              onChange={e => setSelectedLocation(locations.find(l => l.id === e.target.value) || null)}
-            >
-              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          <div className="flex items-center gap-3 px-2">
+            <select className="appearance-none bg-slate-50 border-none rounded-xl py-2 pl-4 pr-10 text-sm font-medium focus:ring-0 cursor-pointer">
+              <option>All accounts</option>
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline pointer-events-none" />
+            <select className="appearance-none bg-slate-50 border-none rounded-xl py-2 pl-4 pr-10 text-sm font-medium focus:ring-0 cursor-pointer">
+              <option>Groups</option>
+            </select>
+            <button className="p-2 bg-slate-50 text-slate-500 rounded-xl hover:text-primary transition-colors">
+              <TrendingUp className="w-5 h-5" />
+            </button>
           </div>
-        )}
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-primary text-on-primary hover:brightness-105 transition-all shadow-lg shadow-primary/20"
-        >
-          <Plus className="w-4 h-4" /> Add Location
-        </button>
-      </div>
-
-      {/* ── Two-column editor ─────────────────────────────────────────── */}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-        {/* Left: store info editor */}
-        <div className="lg:col-span-2 space-y-6">
-          <SectionHeader icon={Edit} label="Store Details" />
-
-          {!selectedLocation ? (
-            <EmptyState onAdd={openAdd} />
-          ) : (
-            <div className="bg-surface-container rounded-2xl p-8 space-y-8">
-
-              {/* Name + Place ID row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label="Location Name">
-                  <input value={selectedLocation.name} readOnly className="field-readonly" />
-                </Field>
-
-                <Field
-                  label={
-                    <span className="flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5" /> Google Place ID
-                      {placeIdDisplay
-                        ? <span className="ml-1 px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 text-[10px] rounded font-bold">Linked</span>
-                        : <span className="ml-1 px-1.5 py-0.5 bg-amber-500/10 text-amber-600 text-[10px] rounded font-bold">Not linked</span>
-                      }
-                    </span>
-                  }
-                  hint="Link to your Google Business Profile so reviews can sync."
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={placeIdDisplay || ''}
-                      readOnly
-                      placeholder="No Place ID — click Edit to add one"
-                      className="field-readonly flex-1 font-mono text-xs"
-                    />
-                    <button
-                      onClick={() => openEdit(selectedLocation)}
-                      className="shrink-0 px-3 py-2 rounded-lg bg-surface-container-highest text-primary text-xs font-bold hover:bg-primary/10 transition-colors"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </Field>
-
-                <Field label="Address">
-                  <input value={selectedLocation.address} readOnly className="field-readonly" />
-                </Field>
-
-                <Field label="Phone">
-                  <input
-                    value={selectedLocation.phone || ''}
-                    readOnly
-                    className="field-readonly"
-                  />
-                </Field>
-              </div>
-
-              {/* Business hours */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest flex items-center gap-2">
-                    <Calendar className="w-4 h-4" /> Business Hours
-                  </label>
-                  <button
-                    onClick={() => setBusinessHours(defaultHours)}
-                    className="text-xs text-outline hover:text-on-surface transition-colors"
-                  >
-                    Reset to default
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                    <div key={day} className="flex items-center gap-3 bg-surface-container-low p-3 rounded-lg">
-                      <span className="text-sm font-medium w-28 shrink-0">{day}</span>
-                      <input
-                        type="text"
-                        value={businessHours[day] || ''}
-                        onChange={e => setBusinessHours(prev => ({ ...prev, [day]: e.target.value }))}
-                        placeholder="e.g. 09:00 AM - 05:00 PM"
-                        className="flex-1 bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-2 text-sm text-on-surface focus:ring-1 focus:ring-primary/50 outline-none"
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-end mt-4">
-                  {saveMsg && (
-                    <span className={`text-sm font-bold mr-4 ${saveMsg.type === 'success' ? 'text-emerald-500' : 'text-error'}`}>
-                      {saveMsg.text}
-                    </span>
-                  )}
-                  <button
-                    onClick={saveHours}
-                    disabled={isSaving}
-                    className="px-6 py-2.5 rounded-lg font-bold text-sm bg-primary text-on-primary hover:brightness-105 transition-all disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {isSaving ? 'Saving...' : 'Save Hours'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Danger zone */}
-              <div className="pt-6 border-t border-outline-variant/10">
-                <p className="text-[10px] font-bold text-error uppercase tracking-widest mb-3">Danger Zone</p>
-                <button
-                  onClick={() => { if (confirm(`Delete "${selectedLocation.name}"?`)) { fetch(`/api/locations/${selectedLocation.id}`, { method: 'DELETE' }).then(() => { setLocations(prev => prev.filter(l => l.id !== selectedLocation.id)); setSelectedLocation(null); }); } }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-error/30 text-error text-sm font-medium hover:bg-error/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" /> Delete this location
-                </button>
-              </div>
-
-            </div>
-          )}
-        </div>
-
-        {/* Right: map + quick stats */}
-        <div className="space-y-6">
-
-          {/* Map */}
-          <SectionHeader icon={MapPin} label="Map Presence" />
-          <div className="bg-surface-container rounded-2xl overflow-hidden h-64 relative">
-            {mapEmbedSrc ? (
-              <iframe
-                title="Store location"
-                src={mapEmbedSrc}
-                className="w-full h-full border-0"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-outline">
-                <MapPin className="w-10 h-10 opacity-30" />
-                <p className="text-sm">Add a location to see it on the map</p>
-              </div>
-            )}
-            {selectedLocation && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-surface-container-highest/90 to-transparent p-4 backdrop-blur-sm">
-                <p className="text-xs font-bold text-on-surface truncate">{selectedLocation.name}</p>
-                <p className="text-[10px] text-outline truncate">{selectedLocation.address}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Sync card */}
-          <SyncCard
-            googleConnected={googleConnected}
-            embedSocialConnected={embedSocialConnected}
-            placeIdSet={!!selectedLocation?.embedSocialLocationId}
-            locationsCount={locations.length}
-            onConnectGoogle={() => setActiveTab('settings')}
-          />
         </div>
       </div>
 
-      {/* ── Add / Edit Location Modal ─────────────────────────────────── */}
-
-      {showModal && (
-        <Modal onClose={closeModal}>
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold">{modalMode === 'add' ? 'Add New Location' : 'Edit Location'}</h3>
-            <button onClick={closeModal} className="p-1 hover:bg-surface-container rounded"><X className="w-5 h-5" /></button>
-          </div>
-
-          {/* Google link section */}
-          <div className="mb-6 p-4 bg-surface-container-low rounded-xl border border-outline-variant/20">
-            <div className="flex items-center gap-2 mb-3">
-              <Link2 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-bold">Link to Google Business Profile</span>
-            </div>
-
-            {/* Search toggle */}
-            <div className="flex items-center gap-3 mb-3">
-              <button
-                onClick={() => { setShowPlaceSearch(true); setPlaceIdError(null); setPlaceIdInfo(null); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${showPlaceSearch ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`}
-              >
-                <Search className="w-3.5 h-3.5" /> Search business
-              </button>
-              <button
-                onClick={() => { setShowPlaceSearch(false); setPlaceSearchResults([]); setPlaceSearchQuery(''); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!showPlaceSearch ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`}
-              >
-                <Edit className="w-3.5 h-3.5" /> Enter Place ID manually
-              </button>
-            </div>
-
-            {/* Search results */}
-            {showPlaceSearch && (
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder='Try: "Mahjong mini bowl Baltimore"'
-                    className="flex-1 field-input"
-                    value={placeSearchQuery}
-                    onChange={e => setPlaceSearchQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && searchPlaces()}
-                  />
-                  <button onClick={searchPlaces} disabled={isSearchingPlaces} className="btn-primary-sm">
-                    {isSearchingPlaces ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  </button>
-                </div>
-                {placeSearchError && <p className="text-xs text-error">{placeSearchError}</p>}
-                {placeSearchResults.length > 0 && (
-                  <div className="max-h-48 overflow-y-auto space-y-1.5">
-                    {placeSearchResults.map(p => (
-                      <div
-                        key={p.placeId}
-                        onClick={() => selectPlace(p)}
-                        className="flex items-center justify-between p-3 bg-surface-container-lowest rounded-lg hover:bg-primary/5 cursor-pointer border border-transparent hover:border-primary/20 transition-colors"
-                      >
-                        <div>
-                          <p className="text-sm font-bold">{p.name}</p>
-                          <p className="text-xs text-on-surface-variant">{p.address}</p>
-                        </div>
-                        <Check className="w-4 h-4 text-primary shrink-0" />
+      {/* Content Area */}
+      <div className="px-10">
+        {/* Data Table */}
+        <div className="bg-white rounded-3xl overflow-hidden shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Name</th>
+                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Account</th>
+                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Group</th>
+                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Tags</th>
+                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Last sync</th>
+                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {locations.map((location) => (
+                <tr key={location.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="py-6 px-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center">
+                        <Store className="w-6 h-6 text-slate-400" />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Manual Place ID input */}
-            {!showPlaceSearch && (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="ChIJr... (Google Place ID)"
-                    className="flex-1 field-input font-mono text-xs"
-                    value={formPlaceId}
-                    onChange={e => { setFormPlaceId(e.target.value); setPlaceIdInfo(null); setPlaceIdError(null); }}
-                  />
-                  <button onClick={validatePlaceId} disabled={isValidatingPlaceId || !formPlaceId.trim()} className="btn-primary-sm whitespace-nowrap">
-                    {isValidatingPlaceId ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Validate'}
-                  </button>
-                </div>
-                {placeIdError && <p className="text-xs text-error">{placeIdError}</p>}
-                {placeIdInfo && (
-                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                    <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" /> Verified: {placeIdInfo.name}
-                    </p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">{placeIdInfo.address}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Basic info form */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <Field label="Location Name *" required>
-              <input className="field-input" value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Mahjong Mini Bowl" />
-            </Field>
-            <Field label="Phone">
-              <input className="field-input" value={formPhone} onChange={e => setFormPhone(e.target.value)} placeholder="+1 (555) 000-0000" />
-            </Field>
-            <Field label="Address" className="md:col-span-2">
-              <input className="field-input" value={formAddress} onChange={e => setFormAddress(e.target.value)} placeholder="3105 St Paul St, Baltimore, MD 21218" />
-            </Field>
-          </div>
-
-          {saveMsg && (
-            <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium ${saveMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-error/10 text-error'}`}>
-              {saveMsg.text}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between">
-            <div>
-              {modalMode === 'edit' && (
-                <button onClick={handleDelete} disabled={isDeleting} className="flex items-center gap-1.5 text-sm text-error hover:bg-error/10 px-3 py-2 rounded-lg transition-colors">
-                  <Trash2 className="w-4 h-4" /> {isDeleting ? 'Deleting...' : 'Delete'}
-                </button>
+                      <div>
+                        <div className="font-bold text-base text-slate-900">{location.name}</div>
+                        <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                          <LocationOn className="w-3 h-3" />
+                          {location.address}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-6 px-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 bg-orange-100 text-orange-600 rounded flex items-center justify-center">
+                        <Store className="w-3 h-3" style={{ fontVariationSettings: "'FILL' 1" }} />
+                      </div>
+                      <span className="text-sm font-medium text-slate-600">{location.account}</span>
+                    </div>
+                  </td>
+                  <td className="py-6 px-6">
+                    <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">{location.group}</span>
+                  </td>
+                  <td className="py-6 px-6">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    </div>
+                  </td>
+                  <td className="py-6 px-6">
+                    <div className="text-sm text-slate-600 font-medium">{location.lastSync}</div>
+                    <div className="text-[10px] text-slate-400">14:32 PM</div>
+                  </td>
+                  <td className="py-6 px-6 text-right">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/10 hover:bg-primary-container transition-all">
+                        <Psychology className="w-4 h-4" />
+                        AI Audit
+                      </button>
+                      <button className="w-9 h-9 flex items-center justify-center bg-slate-100 text-slate-500 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all">
+                        <Delete className="w-5 h-5" />
+                      </button>
+                      <button className="w-9 h-9 flex items-center justify-center bg-slate-100 text-slate-500 rounded-xl hover:bg-blue-50 hover:text-primary transition-all">
+                        <MoreHoriz className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {locations.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                        <Store className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900">No Locations Found</h3>
+                        <p className="text-sm text-slate-500 mt-1">Connect your Google Business Profile to get started.</p>
+                      </div>
+                      <button className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm">
+                        <Add className="w-5 h-5" />
+                        Connect Google Account
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               )}
+            </tbody>
+          </table>
+
+          {/* Pagination */}
+          <div className="p-6 border-t border-slate-100 flex items-center justify-between">
+            <div className="text-xs font-medium text-slate-400">
+              Showing <span className="text-slate-900 font-bold">1</span> of <span className="text-slate-900 font-bold">{locations.length || 1}</span> listing
             </div>
-            <div className="flex gap-3">
-              <button onClick={closeModal} className="px-5 py-2.5 rounded-lg font-bold text-sm bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-colors">
-                Cancel
+            <div className="flex items-center gap-1">
+              <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 cursor-not-allowed" disabled>
+                <span className="material-symbols-outlined text-base">chevron_left</span>
               </button>
-              <button onClick={handleSave} disabled={isSaving} className="btn-primary">
-                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : (modalMode === 'add' ? 'Add Location' : 'Save Changes')}
+              <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold">1</button>
+              <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 cursor-not-allowed" disabled>
+                <span className="material-symbols-outlined text-base">chevron_right</span>
               </button>
             </div>
           </div>
-        </Modal>
-      )}
+        </div>
+
+        {/* Bento Contextual Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+          {/* Visibility Score Card */}
+          <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 rounded-3xl border border-white relative overflow-hidden group">
+            <div className="flex items-center justify-between mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Performance</span>
+            </div>
+            <h3 className="text-lg font-bold text-blue-900 mb-1">Visibility Score</h3>
+            <div className="text-3xl font-extrabold text-primary">94/100</div>
+            <p className="text-sm text-slate-400 mt-2">Your listing is performing 12% above average this week.</p>
+          </div>
+
+          {/* AI Insights Card */}
+          <div className="md:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-transparent hover:border-blue-100 transition-all">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                <AutoAwesome className="w-6 h-6" style={{ fontVariationSettings: "'FILL' 1" }} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight">AI Insights Ready</h3>
+                <p className="text-xs text-slate-400">Smart optimizations for your listings</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[200px] p-4 bg-slate-50 rounded-2xl">
+                <div className="text-xs font-bold text-orange-600 mb-1">SEO Opportunity</div>
+                <p className="text-xs text-slate-600 font-medium">Include "Hand-painted" in title to boost reach.</p>
+              </div>
+              <div className="flex-1 min-w-[200px] p-4 bg-slate-50 rounded-2xl">
+                <div className="text-xs font-bold text-primary mb-1">Pricing Alert</div>
+                <p className="text-xs text-slate-600 font-medium">Competitors are listing similar items at $24.00.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating AI Button */}
+      <button className="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-50">
+        <AutoAwesome className="w-6 h-6" />
+      </button>
     </motion.div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Helper components
-// ---------------------------------------------------------------------------
-
-function SectionHeader({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <Icon className="text-outline w-5 h-5" />
-      <h3 className="text-xl font-bold">{label}</h3>
-    </div>
-  );
-}
-
-function Field({ label, hint, required, className = '', children }: {
-  label: React.ReactNode;
-  hint?: string;
-  required?: boolean;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={`space-y-1 ${className}`}>
-      <label className="text-[10px] font-bold text-outline uppercase tracking-widest flex items-center gap-1">
-        {label}
-        {required && <span className="text-error ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && <p className="text-[10px] text-outline leading-relaxed">{hint}</p>}
-    </div>
-  );
-}
-
-function Banner({ type, title, body }: { type: 'warning' | 'info' | 'success'; title: string; body?: React.ReactNode }) {
-  const colors = {
-    warning: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-600', icon: AlertTriangle },
-    info:    { bg: 'bg-primary/10',    border: 'border-primary/30',    text: 'text-primary',    icon: Link2    },
-    success: { bg: 'bg-emerald-500/10',border: 'border-emerald-500/30',text: 'text-emerald-600', icon: Check    },
-  };
-  const c = colors[type];
-  const Icon = c.icon;
-  return (
-    <div className={`flex items-start gap-3 p-4 rounded-xl ${c.bg} border ${c.border}`}>
-      <Icon className={`w-5 h-5 ${c.text} shrink-0 mt-0.5`} />
-      <div>
-        <p className={`text-sm font-bold ${c.text}`}>{title}</p>
-        {body && <p className="text-xs text-on-surface-variant mt-0.5">{body}</p>}
-      </div>
-    </div>
-  );
-}
-
-function SyncCard({ googleConnected, embedSocialConnected, placeIdSet, locationsCount, onConnectGoogle }: {
-  googleConnected: boolean;
-  embedSocialConnected: boolean;
-  placeIdSet: boolean;
-  locationsCount: number;
-  onConnectGoogle: () => void;
-}) {
-  const { t } = useLanguage();
-
-  const status: { label: string; color: string; desc: string } = !embedSocialConnected
-    ? { label: 'EmbedSocial not connected', color: 'bg-amber-500', desc: 'Add your EmbedSocial API key in Settings to sync reviews.' }
-    : !placeIdSet
-    ? { label: 'EmbedSocial Location Missing', color: 'bg-amber-500', desc: 'Link this location to an EmbedSocial source to sync reviews.' }
-    : { label: 'Ready to Sync', color: 'bg-emerald-500', desc: 'Reviews will sync from EmbedSocial.' };
-
-  return (
-    <div className="bg-surface-container rounded-2xl p-6 space-y-4">
-      <h4 className="text-[10px] font-bold text-outline uppercase tracking-widest flex items-center gap-2">
-        <Star className="w-4 h-4" /> Review Sync Status
-      </h4>
-
-      <div className="flex items-center gap-2">
-        <span className={`w-2 h-2 rounded-full ${status.color} animate-pulse`} />
-        <span className="text-sm font-bold">{status.label}</span>
-      </div>
-      <p className="text-xs text-on-surface-variant leading-relaxed">{status.desc}</p>
-
-      {!embedSocialConnected && (
-        <button
-          onClick={onConnectGoogle}
-          className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
-        >
-          <Link2 className="w-4 h-4" /> Connect EmbedSocial
-        </button>
-      )}
-
-      <div className="pt-4 border-t border-outline-variant/10 space-y-2">
-        <div className="flex justify-between text-xs">
-          <span className="text-outline">Locations linked</span>
-          <span className="font-bold">{locationsCount}</span>
-        </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-outline">EmbedSocial</span>
-          <span className={`font-bold ${embedSocialConnected ? 'text-emerald-500' : 'text-amber-500'}`}>
-            {embedSocialConnected ? 'Connected' : 'Not connected'}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="bg-surface-container rounded-2xl p-12 text-center">
-      <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center mx-auto mb-4">
-        <MapPin className="text-outline w-8 h-8" />
-      </div>
-      <h4 className="text-lg font-bold text-on-surface mb-2">No locations yet</h4>
-      <p className="text-on-surface-variant text-sm max-w-sm mx-auto mb-6">
-        Add your first store to link it to Google Business Profile and start syncing reviews.
-      </p>
-      <button onClick={onAdd} className="px-6 py-2.5 rounded-xl font-bold text-sm bg-primary text-on-primary hover:brightness-105 transition-all">
-        <Plus className="w-4 h-4 inline-block mr-2" /> Add First Location
-      </button>
-    </div>
-  );
-}
-
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/60 z-50" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-surface-container-high rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto pointer-events-auto"
-        >
-          {children}
-        </motion.div>
-      </div>
-    </>
-  );
-}
-
-function goToSettings() { setActiveTab?.('settings'); }

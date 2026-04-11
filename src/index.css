@@ -1,41 +1,96 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Manrope", ui-sans-serif, system-ui, sans-serif;
 
-  --color-surface: #0b1326;
-  --color-surface-container-lowest: #060e20;
-  --color-surface-container-low: #131b2e;
-  --color-surface-container: #171f33;
-  --color-surface-container-high: #222a3d;
-  --color-surface-container-highest: #2d3449;
-  
-  --color-primary: #c0c1ff;
-  --color-primary-container: #8083ff;
-  --color-on-primary: #1000a9;
-  
-  --color-secondary: #b9c8de;
-  --color-secondary-container: #39485a;
-  --color-on-secondary-container: #a7b6cc;
-  
-  --color-tertiary: #ffb783;
-  --color-tertiary-container: #d97721;
-  
-  --color-on-surface: #dae2fd;
-  --color-on-surface-variant: #c7c4d7;
-  
-  --color-outline: #908fa0;
-  --color-outline-variant: #464554;
-  
-  --color-error: #ffb4ab;
+  /* Editorial Intelligence Design System Colors */
+  --color-surface: #f8f9fa;
+  --color-surface-bright: #ffffff;
+  --color-surface-dim: #d9dadb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f4f5;
+  --color-surface-container: #edeeef;
+  --color-surface-container-high: #e7e8e9;
+  --color-surface-container-highest: #e1e3e4;
+
+  --color-primary: #003d9b;
+  --color-primary-container: #0052cc;
+  --color-primary-fixed: #dae2ff;
+  --color-primary-fixed-dim: #b2c5ff;
+  --color-on-primary: #ffffff;
+  --color-on-primary-fixed: #001848;
+  --color-on-primary-fixed-variant: #0040a2;
+  --color-on-primary-container: #c4d2ff;
+
+  --color-secondary: #4c5d8d;
+  --color-secondary-container: #b6c8fe;
+  --color-secondary-fixed: #dae2ff;
+  --color-secondary-fixed-dim: #b4c5fb;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #415382;
+  --color-on-secondary-fixed: #021945;
+  --color-on-secondary-fixed-variant: #344573;
+
+  --color-tertiary: #7b2600;
+  --color-tertiary-container: #a33500;
+  --color-tertiary-fixed: #ffdbcf;
+  --color-tertiary-fixed-dim: #ffb59b;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #ffc6b2;
+  --color-on-tertiary-fixed: #380d00;
+  --color-on-tertiary-fixed-variant: #812800;
+
+  --color-on-surface: #191c1d;
+  --color-on-surface-variant: #434654;
+
+  --color-outline: #737685;
+  --color-outline-variant: #c3c6d6;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  --color-background: #f8f9fa;
+  --color-on-background: #191c1d;
+
+  --color-inverse-surface: #2e3132;
+  --color-inverse-on-surface: #f0f1f2;
+  --color-inverse-primary: #b2c5ff;
+
+  --color-surface-tint: #0c56d0;
+}
+
+/* Material Symbols Outlined */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.fill-icon {
+  font-variation-settings: 'FILL' 1;
 }
 
 body {
   background-color: var(--color-surface);
   color: var(--color-on-surface);
   font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, .font-headline {
+  font-family: var(--font-headline);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.sunlight-shadow {
+  box-shadow: 0px 12px 32px rgba(25, 28, 29, 0.06);
 }
 
 /* Custom Scrollbar */
@@ -54,7 +109,7 @@ body {
   background: var(--color-outline);
 }
 
-/* Utility form classes used across components */
+/* Form utility classes */
 .field-input {
   @apply w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none transition-all;
 }
@@ -62,8 +117,64 @@ body {
   @apply w-full bg-surface-container-lowest border-none rounded-lg p-3 text-sm text-on-surface outline-none opacity-80 cursor-default;
 }
 .btn-primary {
-  @apply px-6 py-2.5 rounded-xl font-bold text-sm bg-primary text-on-primary hover:brightness-105 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center gap-2;
+  @apply px-6 py-2.5 rounded-xl font-bold text-sm bg-primary text-on-primary hover:bg-primary-container transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center gap-2;
 }
 .btn-primary-sm {
-  @apply px-4 py-2 rounded-lg font-bold text-sm bg-primary text-on-primary hover:brightness-105 transition-all disabled:opacity-50 flex items-center gap-1.5;
+  @apply px-4 py-2 rounded-lg font-bold text-sm bg-primary text-on-primary hover:bg-primary-container transition-all disabled:opacity-50 flex items-center gap-1.5;
+}
+
+/* Badge styles */
+.badge-primary {
+  @apply px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary;
+}
+.badge-success {
+  @apply px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700;
+}
+.badge-warning {
+  @apply px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700;
+}
+.badge-error {
+  @apply px-2 py-0.5 rounded-full text-[10px] font-bold bg-error/10 text-error;
+}
+
+/* Card styles */
+.card {
+  @apply bg-surface-container-lowest rounded-xl p-6;
+  box-shadow: 0px 12px 32px rgba(25, 28, 29, 0.06);
+}
+.card-bordered {
+  @apply bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/10;
+}
+
+/* Navigation active state */
+.nav-item-active {
+  @apply bg-blue-50 dark:bg-blue-900/30 text-primary dark:text-blue-300 rounded-xl font-semibold;
+}
+.nav-item-inactive {
+  @apply text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-xl;
+}
+
+/* Sidebar specific styles */
+.sidebar-item-active {
+  background-color: #EEF2FF;
+  color: #1D4ED8;
+  border-right: 3px solid #1D4ED8;
+}
+
+/* Status badge for citations */
+.status-badge-mismatch {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #FEF9C3;
+  color: #854D0E;
+}
+.status-badge-matched {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #DCFCE7;
+  color: #166534;
 }

@@ -1,73 +1,71 @@
 import React from 'react';
-import { Search, Bell, HelpCircle, Menu, Languages } from 'lucide-react';
+import { Menu, Search, Notifications, History, Person } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface HeaderProps {
   title: string;
-  activeTab?: string;
-  setActiveTab?: (tab: string) => void;
-  onMenuClick?: () => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  onMenuClick: () => void;
 }
 
 export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderProps) {
-  const { language, setLanguage, t } = useLanguage();
-
-  const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'zh' : 'en');
-  };
+  const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-30 flex justify-between items-center px-4 md:px-8 w-full h-16 bg-surface/60 backdrop-blur-xl shrink-0 border-b border-outline-variant/5">
-      <div className="flex items-center gap-4 md:gap-8">
-        <button 
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 h-16 flex items-center justify-between px-6">
+      <div className="flex items-center gap-4">
+        {/* Mobile menu button */}
+        <button
+          className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
           onClick={onMenuClick}
-          className="md:hidden p-2 -ml-2 text-secondary hover:bg-surface-container rounded-lg"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <span className="text-lg font-black text-primary whitespace-nowrap tracking-tight hidden sm:block">{title}</span>
-        <div className="hidden lg:flex items-center bg-surface-container-lowest px-3 py-1.5 rounded focus-within:ring-1 focus-within:ring-primary/40 transition-all border border-outline-variant/10">
-          <Search className="text-secondary w-4 h-4 mr-2" />
-          <input 
-            type="text" 
-            placeholder={t('header.search')} 
-            className="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-outline/50 text-on-surface outline-none"
-          />
-        </div>
+
+        {/* Title */}
+        <h1 className="text-lg font-bold text-blue-900 font-headline">{title}</h1>
+
+        {/* Breadcrumbs for certain tabs */}
+        {activeTab === 'seo' && (
+          <div className="hidden md:flex items-center gap-2 text-sm text-slate-400 ml-4">
+            <span>/</span>
+            <span className="text-primary font-semibold">SEO Management</span>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-2 md:gap-6">
-        <div className="hidden sm:flex items-center gap-4 text-sm font-medium">
-          <button
-            onClick={() => setActiveTab && setActiveTab('listings')}
-            className={`pb-1 transition-opacity ${activeTab === 'listings' ? 'text-primary border-b-2 border-primary' : 'text-secondary hover:text-on-surface'}`}
-          >
-            {t('header.locations')}
-          </button>
-        </div>
-        
-        <div className="hidden sm:block h-6 w-px bg-outline-variant/20 mx-2"></div>
-        
-        <div className="flex items-center gap-1 md:gap-3">
-          <button 
-            onClick={toggleLanguage}
-            className="flex items-center gap-1 px-2 py-1.5 text-xs font-bold uppercase tracking-wider text-secondary hover:text-primary hover:bg-surface-container rounded transition-colors"
-            title="Toggle Language"
-          >
-            <Languages className="w-4 h-4" />
-            <span className="hidden sm:inline">{language === 'en' ? '中文' : 'EN'}</span>
-          </button>
-          <button className="p-1.5 text-secondary hover:text-primary transition-colors hidden sm:block">
-            <Bell className="w-5 h-5" />
-          </button>
-          <button className="p-1.5 text-secondary hover:text-primary transition-colors hidden sm:block">
-            <HelpCircle className="w-5 h-5" />
-          </button>
-          <img 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlUeE_8VlR6QEk7Xkm9yILpBkyLDqOCnv5J27gQ7hc-xRGel-PLLKxps05SieTH66QMl7n-ZiBBUHuqZi1ZLwoJT0vkJmUQnCaVMcKWNkle57j4JHKP2DcPCEF4g8Qco9JTTFMsjhsdsKI8zvtm-4qGTYx2AO1AnwcXR14XvY9DX4epKlGJt8yKPDk5LMbzlVnV8-58tPi8ihh7ekF31ktVTZNKibnvgzEAWmf-pHVqYwf3e0lDBc2SoYDtXeYcDVG6GFxdnKxRcc" 
-            alt="User Profile" 
-            className="w-8 h-8 rounded-full border border-outline-variant/30 ml-2 object-cover"
+      <div className="flex items-center gap-4">
+        {/* Search */}
+        <div className="relative hidden md:block">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder={t('header.search')}
+            className="pl-10 pr-4 py-2 bg-surface-container-highest border-none rounded-full text-sm focus:ring-2 focus:ring-primary/20 transition-all w-64"
           />
+        </div>
+
+        {/* Notifications */}
+        <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+          <Notifications className="w-5 h-5" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+        </button>
+
+        {/* History */}
+        <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+          <History className="w-5 h-5" />
+        </button>
+
+        {/* User Avatar */}
+        <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+          <div className="hidden sm:block text-right">
+            <p className="text-sm font-bold text-on-surface">Editorial Intel</p>
+            <p className="text-[10px] text-slate-500">Admin Access</p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-slate-300">
+            <Person className="w-full h-full p-2 text-slate-500" />
+          </div>
         </div>
       </div>
     </header>
