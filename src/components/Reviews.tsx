@@ -65,11 +65,17 @@ export function Reviews() {
       if (!res.ok) {
         throw new Error(data.error || 'Failed to sync reviews');
       }
-      
-      if (data.message) {
-        alert(data.message);
+
+      const detail =
+        Array.isArray(data.errors) && data.errors.length > 0 ? data.errors.join(' · ') : null;
+      setSyncError(detail);
+
+      const alertText =
+        data.message + (detail ? `\n\n${detail}` : '');
+      if (alertText.trim()) {
+        alert(alertText);
       }
-      
+
       await fetchReviews();
     } catch (error) {
       console.error('Sync error:', error);

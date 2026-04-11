@@ -63,6 +63,25 @@ async function googleApiRequestPost(auth: Auth.OAuth2Client, url: string, body?:
   return googleApiRequest(auth, 'POST', url, body);
 }
 
+async function googleApiRequestPut(auth: Auth.OAuth2Client, url: string, body?: object): Promise<any> {
+  return googleApiRequest(auth, 'PUT', url, body);
+}
+
+/** List reviews uses legacy v4 host; Business Information v1 does not expose reviews list. */
+async function fetchV4LocationReviews(auth: Auth.OAuth2Client, locationParent: string): Promise<any[]> {
+  const out: any[] = [];
+  let pageToken: string | undefined;
+  do {
+    const qs = new URLSearchParams({ pageSize: '50' });
+    if (pageToken) qs.set('pageToken', pageToken);
+    const url = `https://mybusiness.googleapis.com/v4/${locationParent}/reviews?${qs.toString()}`;
+    const data = await googleApiRequestGet(auth, url);
+    out.push(...(data.reviews || []));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return out;
+}
+
 // Auto-refresh token callback
 function setupTokenRefresh(auth: Auth.OAuth2Client, tenantId: string) {
   auth.on('tokens', async (tokens) => {
@@ -598,19 +617,17 @@ async function startServer() {
         }
 
         try {
-          const reviewsData = await googleApiRequestGet(
-            auth,
-            `https://mybusinessbusinessinformation.googleapis.com/v1/${gbpResource}/reviews?pageSize=100`,
-          );
-          const reviews = reviewsData.reviews || [];
+          const reviews = await fetchV4LocationReviews(auth, gbpResource);
 
           for (const review of reviews) {
-            const googleReviewId = review.name?.split('/reviews/').pop()?.split('/')[0] || review.name;
+            const googleReviewId =
+              review.reviewId || review.name?.split('/reviews/').pop()?.split('/')[0] || review.name;
 
             if (!googleReviewId) continue;
 
             const ratingNum = parseReviewStarRating(review);
-            const reviewerName = review.reviewer?.displayName || review.reviewer?.profilePhotoName || 'Anonymous';
+            const reviewerName =
+              review.reviewer?.displayName || review.reviewer?.profilePhotoName || 'Anonymous';
             const comment = review.comment || '';
             const reviewCreateTime = review.createTime ? new Date(review.createTime) : new Date();
 
@@ -713,11 +730,12 @@ async function startServer() {
         });
       }
 
-      // Post reply to Google Business Profile REST API
+      const reviewResourceName = `${gbpResource}/reviews/${review.googleReviewId}`;
+
       try {
-        await googleApiRequestPost(
+        await googleApiRequestPut(
           auth,
-          `https://mybusinessbusinessinformation.googleapis.com/v1/${gbpResource}/reviews/${review.googleReviewId}/reply`,
+          `https://mybusiness.googleapis.com/v4/${reviewResourceName}/reply`,
           { comment: replyText.trim() },
         );
       } catch (apiErr: any) {
