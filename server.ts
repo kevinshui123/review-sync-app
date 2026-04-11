@@ -1067,6 +1067,7 @@ async function startServer() {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
       // EmbedSocial uses "items" for reviews
+      const { location_id, source_names, page } = req.query;
       const params = new URLSearchParams();
       if (location_id) params.set('source_id', String(location_id));
       if (source_names) params.set('source_names[]', String(source_names));
