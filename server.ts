@@ -1132,21 +1132,24 @@ async function startServer() {
           totalReviews += listing.totalReviews || 0;
           averageRating = listing.averageRating || averageRating;
 
-          // listing_metrics API 需要 source_id 参数
-          // 尝试使用 listing 的 googleId 或 id 作为 source_id
+          // listing_metrics API 需要 POST 请求，body 中包含 listings 数组
           const sourceId = listing.googleId || listing.id;
 
           if (sourceId) {
             try {
-              // 使用正确的 API 调用方式：GET /rest/v1/listing_metrics?source_id=xxx
-              const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?source_id=${sourceId}`);
-              console.log(`[metrics] Listing metrics for ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 500));
+              // POST /rest/v1/listing_metrics with body containing source IDs
+              const metricsRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_metrics', {
+                method: 'POST',
+                body: JSON.stringify({ listings: [sourceId] }),
+              });
+              console.log(`[metrics] Listing metrics response for ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 1000));
 
               if (metricsRes) {
                 // 解析 metrics 响应
-                const metricsData = Array.isArray(metricsRes) ? metricsRes : (metricsRes.data || metricsRes.listings || metricsRes);
+                const metricsData = Array.isArray(metricsRes) ? metricsRes : (metricsRes.data || metricsRes.metrics || []);
                 if (Array.isArray(metricsData)) {
                   for (const m of metricsData) {
+                    // 累加搜索和地图视图
                     totalSearchViews += m.searchViews || m.search_views || m.views || 0;
                     totalMapViews += m.mapViews || m.map_views || 0;
                     totalWebsiteClicks += m.websiteClicks || m.website_clicks || 0;
@@ -1159,10 +1162,13 @@ async function startServer() {
               console.log(`[metrics] Listing metrics fetch error for ${sourceId}:`, e.message);
             }
 
-            // 也尝试 listing_item_metrics
+            // 也尝试 listing_item_metrics POST
             try {
-              const itemMetricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_item_metrics?source_id=${sourceId}`);
-              console.log(`[metrics] Item metrics for ${sourceId}:`, JSON.stringify(itemMetricsRes)?.slice(0, 500));
+              const itemMetricsRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_item_metrics', {
+                method: 'POST',
+                body: JSON.stringify({ listings: [sourceId] }),
+              });
+              console.log(`[metrics] Item metrics response for ${sourceId}:`, JSON.stringify(itemMetricsRes)?.slice(0, 500));
             } catch (e: any) {
               console.log(`[metrics] Item metrics fetch error for ${sourceId}:`, e.message);
             }
@@ -1263,11 +1269,15 @@ async function startServer() {
       if (sourceIds.length > 0) {
         for (const sourceId of sourceIds) {
           try {
-            const dailyRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?source_id=${sourceId}`);
+            // POST /rest/v1/listing_metrics with body containing source IDs
+            const dailyRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_metrics', {
+              method: 'POST',
+              body: JSON.stringify({ listings: [sourceId] }),
+            });
             console.log(`[chart-data] Metrics for ${sourceId}:`, JSON.stringify(dailyRes)?.slice(0, 500));
 
             if (dailyRes) {
-              const metricsData = Array.isArray(dailyRes) ? dailyRes : (dailyRes.data || dailyRes.listings || []);
+              const metricsData = Array.isArray(dailyRes) ? dailyRes : (dailyRes.data || dailyRes.metrics || []);
               if (metricsData.length > 0) {
                 hasRealData = true;
                 // Process and add to charts
@@ -1275,14 +1285,14 @@ async function startServer() {
                   const dateStr = m.date || m.dateRange?.[0] || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                   impressions.push({
                     date: dateStr,
-                    searchViews: m.searchViews || m.views || 0,
-                    mapViews: m.mapViews || 0,
+                    searchViews: m.searchViews || m.search_views || m.views || 0,
+                    mapViews: m.mapViews || m.map_views || 0,
                   });
                   actions.push({
                     date: dateStr,
-                    websiteClicks: m.websiteClicks || 0,
-                    directionRequests: m.directionRequests || 0,
-                    phoneCalls: m.phoneCalls || 0,
+                    websiteClicks: m.websiteClicks || m.website_clicks || 0,
+                    directionRequests: m.directionRequests || m.direction_requests || 0,
+                    phoneCalls: m.phoneCalls || m.phone_calls || 0,
                   });
                 }
               }

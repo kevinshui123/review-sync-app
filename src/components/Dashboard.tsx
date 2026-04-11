@@ -334,19 +334,23 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           if (embedReviewsRes.ok) {
             const embedReviewsData = await embedReviewsRes.json();
             const embedReviews = Array.isArray(embedReviewsData) ? embedReviewsData : (embedReviewsData.data || embedReviewsData.items || []);
+            console.log('[Dashboard] EmbedSocial reviews raw data:', JSON.stringify(embedReviews)?.slice(0, 1000));
 
-            reviews = embedReviews.map((r: any) => ({
-              id: r.id,
-              author: r.authorName || 'Anonymous User',
-              authorPhoto: null, // EmbedSocial doesn't provide photos, will generate from name
-              rating: r.rating || 0,
-              location: r.sourceName || embedLocations[0]?.name || 'Google',
-              date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
-              text: r.captionText || r.text || '',
-              replied: r.replies && r.replies.length > 0,
-              replyText: undefined,
-              isPositive: (r.rating || 0) >= 4,
-            }));
+            reviews = embedReviews.map((r: any) => {
+              console.log('[Dashboard] Processing review:', r.authorName, 'rating:', r.rating);
+              return {
+                id: r.id,
+                author: r.authorName || 'Anonymous User',
+                authorPhoto: r.authorPhoto || r.profilePhotoUrl || null,
+                rating: r.rating || 0,
+                location: r.sourceName || embedLocations[0]?.name || 'Google',
+                date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+                text: r.captionText || r.text || '',
+                replied: r.replies && r.replies.length > 0,
+                replyText: undefined,
+                isPositive: (r.rating || 0) >= 4,
+              };
+            });
           }
         } catch (e) {
           console.log('EmbedSocial reviews fetch error:', e);
