@@ -105,6 +105,93 @@ async function getValidAuth(): Promise<{ auth: Auth.OAuth2Client; tenantId: stri
   return { auth: oauth2Client, tenantId: tenant.id };
 }
 
+/** Google Business Profile location resource name, e.g. accounts/123/locations/456 */
+function isGbpLocationResourceName(s: string): boolean {
+  return s.includes('accounts/') && s.includes('/locations/');
+}
+
+function parseReviewStarRating(review: any): number {
+  if (typeof review.starRating === 'number') return Math.min(5, Math.max(1, review.starRating));
+  const map: Record<string, number> = {
+    ONE: 1,
+    TWO: 2,
+    THREE: 3,
+    FOUR: 4,
+    FIVE: 5,
+    STAR_RATING_UNSPECIFIED: 5,
+  };
+  const k = review.starRating as string;
+  return map[k] ?? 5;
+}
+
+/**
+ * Places API Place ID (ChIJ…) cannot be used as the parent for GBP reviews.
+ * Resolve to accounts/…/locations/… via googleLocations:search using business title + address.
+ */
+async function resolveGbpLocationResourceName(
+  auth: Auth.OAuth2Client,
+  loc: { name: string; address: string | null; googlePlaceId: string | null },
+  storedMapping: string,
+): Promise<string | null> {
+  if (isGbpLocationResourceName(storedMapping)) {
+    return storedMapping;
+  }
+
+  const placeId = loc.googlePlaceId || storedMapping;
+  const searchBody = {
+    pageSize: 10,
+    location: {
+      title: loc.name,
+      storefrontAddress: {
+        regionCode: 'US',
+        addressLines: [loc.address?.trim() || loc.name],
+      },
+    },
+  };
+
+  const pickFromList = (list: any[], pid: string | null): string | null => {
+    for (const g of list) {
+      const metaPid = g.location?.metadata?.placeId;
+      if (metaPid && pid && metaPid === pid) return g.location?.name || null;
+    }
+    if (list.length === 1) return list[0].location?.name || null;
+    if (list.length > 1 && pid) {
+      for (const g of list) {
+        if (g.location?.metadata?.placeId === pid) return g.location?.name || null;
+      }
+    }
+    return list[0]?.location?.name || null;
+  };
+
+  try {
+    try {
+      const data = await googleApiRequestPost(
+        auth,
+        'https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search',
+        searchBody,
+      );
+      const list = data.googleLocations || [];
+      const picked = pickFromList(list, placeId);
+      if (picked) return picked;
+    } catch (e) {
+      console.warn('googleLocations:search by address failed, trying query:', e);
+    }
+
+    const q = `${loc.name} ${loc.address || ''}`.trim();
+    if (q.length < 2) return null;
+    const data2 = await googleApiRequestPost(
+      auth,
+      'https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search',
+      { pageSize: 10, query: q },
+    );
+    const list2 = data2.googleLocations || [];
+    return pickFromList(list2, placeId);
+  } catch (e) {
+    console.error('resolveGbpLocationResourceName error:', e);
+    return null;
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -466,51 +553,66 @@ async function startServer() {
       const tenant = await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
-      const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
-      const mappedLocationIds = Object.values(mappings);
+      const dbLocations = await prisma.location.findMany({ where: { tenantId } });
+      let mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
+      for (const loc of dbLocations) {
+        if (loc.googlePlaceId) mappings[loc.id] = loc.googlePlaceId;
+      }
 
-      if (mappedLocationIds.length === 0) {
+      const entries = Object.entries(mappings).filter(([localId]) => dbLocations.some((l) => l.id === localId));
+      if (entries.length === 0) {
         return res.json({
           success: true,
           imported: 0,
-          message: 'No locations mapped to Google yet. Please map a location in Settings first.',
+          message:
+            'No locations linked to Google yet. In Listings, add a store and attach a Google Place ID (search or paste), then connect Google in Settings and sync again.',
         });
       }
 
       let totalImported = 0;
       const errors: string[] = [];
+      let mappingsDirty = false;
 
-      for (const googleLocationId of mappedLocationIds) {
+      for (const [localLocationId, storedId] of entries) {
+        const localLocation = dbLocations.find((l) => l.id === localLocationId);
+        if (!localLocation) continue;
+
+        let gbpResource: string | null = null;
         try {
-          // Fetch reviews via REST API
+          gbpResource = await resolveGbpLocationResourceName(auth, localLocation, storedId);
+        } catch (e: any) {
+          errors.push(`${localLocation.name}: ${e.message}`);
+          continue;
+        }
+
+        if (!gbpResource) {
+          errors.push(
+            `${localLocation.name}: could not match this store to your Google Business Profile. Confirm the Google account has access to this business, and that the address matches.`,
+          );
+          continue;
+        }
+
+        if (gbpResource !== storedId) {
+          mappings[localLocationId] = gbpResource;
+          mappingsDirty = true;
+        }
+
+        try {
           const reviewsData = await googleApiRequestGet(
             auth,
-            `https://mybusinessbusinessinformation.googleapis.com/v1/${googleLocationId}/reviews?pageSize=100`,
+            `https://mybusinessbusinessinformation.googleapis.com/v1/${gbpResource}/reviews?pageSize=100`,
           );
-
           const reviews = reviewsData.reviews || [];
 
           for (const review of reviews) {
-            const googleReviewId = review.name?.split('/reviews/')[1] || review.name;
+            const googleReviewId = review.name?.split('/reviews/').pop()?.split('/')[0] || review.name;
 
             if (!googleReviewId) continue;
 
-            const ratingNum = typeof review.starRating === 'number' ? review.starRating : 5;
+            const ratingNum = parseReviewStarRating(review);
             const reviewerName = review.reviewer?.displayName || review.reviewer?.profilePhotoName || 'Anonymous';
             const comment = review.comment || '';
             const reviewCreateTime = review.createTime ? new Date(review.createTime) : new Date();
-
-            // Find the local location
-            const localEntry = Object.entries(mappings).find(([, gId]) => gId === googleLocationId);
-            const localLocationId = localEntry?.[0];
-
-            if (!localLocationId) continue;
-
-            const localLocation = await prisma.location.findFirst({
-              where: { id: localLocationId, tenantId },
-            });
-
-            if (!localLocation) continue;
 
             const existing = await prisma.review.findUnique({ where: { googleReviewId } });
 
@@ -536,9 +638,16 @@ async function startServer() {
             }
           }
         } catch (locErr: any) {
-          errors.push(`${googleLocationId}: ${locErr.message}`);
-          console.error(`Sync reviews for location ${googleLocationId} error:`, locErr);
+          errors.push(`${localLocation.name}: ${locErr.message}`);
+          console.error(`Sync reviews for ${gbpResource} error:`, locErr);
         }
+      }
+
+      if (mappingsDirty) {
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { locationMappings: JSON.stringify(mappings) },
+        });
       }
 
       res.json({
@@ -546,7 +655,9 @@ async function startServer() {
         imported: totalImported,
         message: totalImported > 0
           ? `Successfully imported ${totalImported} new review(s).`
-          : 'Reviews are up to date.',
+          : errors.length > 0
+            ? 'Sync finished with warnings. Check details if reviews are missing.'
+            : 'Reviews are up to date.',
         errors: errors.length > 0 ? errors : undefined,
       });
     } catch (error: any) {
@@ -583,21 +694,30 @@ async function startServer() {
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
       const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
-      const googleLocationId = mappings[review.locationId];
-
-      if (!googleLocationId) {
+      let stored =
+        mappings[review.locationId] ||
+        review.location.googlePlaceId ||
+        '';
+      if (!stored) {
         return res.status(400).json({
-          error: 'This location is not mapped to a Google Business Profile. Please map it in Settings first.',
+          error: 'This location has no Google Place ID. Add it in Listings, then sync reviews.',
         });
       }
 
       const { auth } = authResult;
 
+      const gbpResource = await resolveGbpLocationResourceName(auth, review.location, stored);
+      if (!gbpResource) {
+        return res.status(400).json({
+          error: 'Could not resolve Google Business location for this store. Check OAuth and listing details.',
+        });
+      }
+
       // Post reply to Google Business Profile REST API
       try {
         await googleApiRequestPost(
           auth,
-          `https://mybusinessbusinessinformation.googleapis.com/v1/${googleLocationId}/reviews/${review.googleReviewId}/reply`,
+          `https://mybusinessbusinessinformation.googleapis.com/v1/${gbpResource}/reviews/${review.googleReviewId}/reply`,
           { comment: replyText.trim() },
         );
       } catch (apiErr: any) {
