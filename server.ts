@@ -96,7 +96,7 @@ function setupTokenRefresh(auth: Auth.OAuth2Client, tenantId: string) {
             googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
           },
         });
-      } catch (e) {
+      } catch (e: any) {
         console.error('Failed to save refreshed token:', e);
       }
     }
@@ -404,7 +404,7 @@ async function resolveGbpLocationResourceName(
       const resultName = list2[0].name ?? list2[0].location?.name ?? 'unknown';
       console.warn(`[resolveGbp] Results found but no accounts/ path. First result: "${resultName}". This location may not be claimed by the connected Google account.`);
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error('resolveGbpLocationResourceName error:', e);
   }
 
@@ -914,7 +914,13 @@ async function startServer() {
           for (const r of reviewList) {
             const normalized = normalizeEmbedSocialReview(r, loc.id);
             const existing = await prisma.review.findFirst({
-              where: { embedSocialReviewId: normalized.embedSocialReviewId },
+              where: {
+                locationId: loc.id,
+                OR: [
+                  { embedSocialReviewId: normalized.embedSocialReviewId },
+                  { googleReviewId: normalized.googleReviewId },
+                ],
+              },
             });
 
             if (existing) {
@@ -969,7 +975,13 @@ async function startServer() {
             const normalized = normalizeEmbedSocialReview(r, matchedLoc?.id || '');
 
             const existing = await prisma.review.findFirst({
-              where: { embedSocialReviewId: normalized.embedSocialReviewId },
+              where: {
+                locationId: matchedLoc?.id || '',
+                OR: [
+                  { embedSocialReviewId: normalized.embedSocialReviewId },
+                  { googleReviewId: normalized.googleReviewId },
+                ],
+              },
             });
 
             if (!existing && matchedLoc) {
@@ -1143,7 +1155,7 @@ async function startServer() {
                   }
                 }
               }
-            } catch (e) {
+            } catch (e: any) {
               console.log(`[metrics] Listing metrics fetch error for ${sourceId}:`, e.message);
             }
 
@@ -1151,14 +1163,14 @@ async function startServer() {
             try {
               const itemMetricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_item_metrics?source_id=${sourceId}`);
               console.log(`[metrics] Item metrics for ${sourceId}:`, JSON.stringify(itemMetricsRes)?.slice(0, 500));
-            } catch (e) {
+            } catch (e: any) {
               console.log(`[metrics] Item metrics fetch error for ${sourceId}:`, e.message);
             }
           }
 
           if (listing.status === 'published' || listing.isPublished) publishedPosts++;
         }
-      } catch (e) {
+      } catch (e: any) {
         console.log('[metrics] Listings fetch error:', e.message);
       }
 
@@ -1239,7 +1251,7 @@ async function startServer() {
         const listings = Array.isArray(listingsData) ? listingsData : (listingsData.data || []);
         sourceIds = listings.map((l: any) => l.googleId || l.id).filter(Boolean);
         console.log('[chart-data] Found source IDs:', sourceIds);
-      } catch (e) {
+      } catch (e: any) {
         console.log('[chart-data] Could not fetch listings:', e.message);
       }
 
@@ -1275,7 +1287,7 @@ async function startServer() {
                 }
               }
             }
-          } catch (e) {
+          } catch (e: any) {
             console.log(`[chart-data] Metrics fetch error for ${sourceId}:`, e.message);
           }
         }
