@@ -521,7 +521,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
 
       // Fetch metrics from EmbedSocial
       try {
-        const metricsRes = await fetch('/api/embedsocial/metrics');
+        const metricsRes = await fetch(`/api/embedsocial/metrics?period=${selectedPeriod}`);
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json();
           setEmbedMetrics({

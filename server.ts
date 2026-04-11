@@ -1270,7 +1270,67 @@ async function startServer() {
       const actions: any[] = [];
       let hasRealData = false;
 
-      if (sourceIdsToTry.length > 0) {
+      // For 12months, use monthly aggregation instead of daily to reduce API calls
+      if (period === '12months') {
+        // Get monthly data for last 12 months
+        const monthlyPromises: Promise<any>[] = [];
+        for (let m = 11; m >= 0; m--) {
+          const monthDate = new Date(now.getFullYear(), now.getMonth() - m, 1);
+          const monthEnd = new Date(now.getFullYear(), now.getMonth() - m + 1, 0);
+          const startDateStr = `${String(monthDate.getDate()).padStart(2, '0')}-${String(monthDate.getMonth() + 1).padStart(2, '0')}-${monthDate.getFullYear()}`;
+          const endDateStr = `${String(monthEnd.getDate()).padStart(2, '0')}-${String(monthEnd.getMonth() + 1).padStart(2, '0')}-${monthEnd.getFullYear()}`;
+
+          for (const sourceId of sourceIdsToTry) {
+            monthlyPromises.push(
+              embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}`)
+                .then((monthRes: any) => {
+                  if (monthRes && monthRes.listings && monthRes.listings.length > 0) {
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    return {
+                      month: monthNames[monthDate.getMonth()],
+                      year: monthDate.getFullYear().toString().slice(-2),
+                      data: monthRes.listings[0],
+                    };
+                  }
+                  return null;
+                })
+                .catch(() => null)
+            );
+          }
+        }
+
+        const monthlyResults = await Promise.all(monthlyPromises);
+        // Group by month
+        const monthData: Record<string, any> = {};
+        for (const r of monthlyResults) {
+          if (r) {
+            const key = `${r.month} '${r.year}`;
+            if (!monthData[key]) {
+              monthData[key] = { date: key, searchViews: 0, mapViews: 0, websiteClicks: 0, directionRequests: 0, phoneCalls: 0 };
+            }
+            const m = r.data;
+            monthData[key].searchViews += (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0);
+            monthData[key].mapViews += (m.googleMapsDesktop || 0) + (m.googleMapsMobile || 0);
+            monthData[key].websiteClicks += m.websiteClicks || 0;
+            monthData[key].directionRequests += m.directions || 0;
+            monthData[key].phoneCalls += m.callClicks || 0;
+          }
+        }
+
+        const sortedMonths = Object.keys(monthData).sort((a, b) => {
+          const order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return order.indexOf(a.split(" '")[0]) - order.indexOf(b.split(" '")[0]);
+        });
+
+        if (sortedMonths.length > 0) {
+          hasRealData = true;
+          for (const month of sortedMonths) {
+            const d = monthData[month];
+            impressions.push({ date: d.date, searchViews: d.searchViews, mapViews: d.mapViews });
+            actions.push({ date: d.date, websiteClicks: d.websiteClicks, directionRequests: d.directionRequests, phoneCalls: d.phoneCalls });
+          }
+        }
+      } else if (sourceIdsToTry.length > 0) {
         for (const sourceId of sourceIdsToTry) {
           try {
             // GET /rest/v1/listing_metrics?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY&sourceId=xxx
