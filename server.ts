@@ -75,7 +75,9 @@ async function fetchV4LocationReviews(auth: Auth.OAuth2Client, locationParent: s
     const qs = new URLSearchParams({ pageSize: '50' });
     if (pageToken) qs.set('pageToken', pageToken);
     const url = `https://mybusiness.googleapis.com/v4/${locationParent}/reviews?${qs.toString()}`;
+    console.log(`[fetchV4Reviews] GET ${url}`);
     const data = await googleApiRequestGet(auth, url);
+    console.log(`[fetchV4Reviews] Got ${(data.reviews || []).length} reviews, nextPageToken=${!!data.nextPageToken}`);
     out.push(...(data.reviews || []));
     pageToken = data.nextPageToken;
   } while (pageToken);
@@ -184,26 +186,30 @@ async function resolveGbpLocationResourceName(
 
   try {
     try {
+      console.log(`[resolveGbp] Searching by location fields: name="${loc.name}", address="${loc.address}", placeId="${placeId}"`);
       const data = await googleApiRequestPost(
         auth,
         'https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search',
         searchBody,
       );
       const list = data.googleLocations || [];
+      console.log(`[resolveGbp] Location search returned ${list.length} results`);
       const picked = pickFromList(list, placeId);
       if (picked) return picked;
-    } catch (e) {
-      console.warn('googleLocations:search by address failed, trying query:', e);
+    } catch (e: any) {
+      console.warn(`[resolveGbp] Address search failed (${e.status || '?'}): ${e.message}. Falling back to text query.`);
     }
 
     const q = `${loc.name} ${loc.address || ''}`.trim();
     if (q.length < 2) return null;
+    console.log(`[resolveGbp] Searching by query: "${q}", placeId="${placeId}"`);
     const data2 = await googleApiRequestPost(
       auth,
       'https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search',
       { pageSize: 10, query: q },
     );
     const list2 = data2.googleLocations || [];
+    console.log(`[resolveGbp] Query search returned ${list2.length} results`);
     return pickFromList(list2, placeId);
   } catch (e) {
     console.error('resolveGbpLocationResourceName error:', e);
@@ -600,13 +606,15 @@ async function startServer() {
         try {
           gbpResource = await resolveGbpLocationResourceName(auth, localLocation, storedId);
         } catch (e: any) {
-          errors.push(`${localLocation.name}: ${e.message}`);
+          errors.push(`${localLocation.name}: resolve failed — ${e.message}${e.details ? ' | ' + e.details : ''}`);
+          console.error(`[resolveGbp] ${localLocation.name}:`, e.message, e.details);
           continue;
         }
 
         if (!gbpResource) {
           errors.push(
-            `${localLocation.name}: could not match this store to your Google Business Profile. Confirm the Google account has access to this business, and that the address matches.`,
+            `${localLocation.name}: could not match to Google Business Profile. ` +
+            `Confirm the Google account (OAuth) has access to this location, and the store name/address match exactly.`,
           );
           continue;
         }
@@ -655,8 +663,9 @@ async function startServer() {
             }
           }
         } catch (locErr: any) {
-          errors.push(`${localLocation.name}: ${locErr.message}`);
-          console.error(`Sync reviews for ${gbpResource} error:`, locErr);
+          const detail = locErr.details || locErr.message;
+          errors.push(`${localLocation.name}: ${detail}`);
+          console.error(`[syncReviews] ${localLocation.name} (${gbpResource}): ${locErr.status || ''} ${detail}`);
         }
       }
 
