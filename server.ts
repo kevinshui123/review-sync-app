@@ -1103,52 +1103,63 @@ async function startServer() {
       let totalDirectionRequests = 0;
       let totalPhoneCalls = 0;
       let publishedPosts = 0;
+      let totalReviews = 0;
+      let averageRating = 0;
 
-      // Try to get listings first
+      // Get listings first to get source IDs
+      let listings: any[] = [];
       try {
         const listingsData = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
-        console.log('[metrics] Listings raw response:', JSON.stringify(listingsData)?.slice(0, 2000));
+        console.log('[metrics] Listings raw response:', JSON.stringify(listingsData)?.slice(0, 1000));
 
-        const listings = Array.isArray(listingsData) ? listingsData : (listingsData.data || listingsData.listings || []);
+        listings = Array.isArray(listingsData) ? listingsData : (listingsData.data || listingsData.listings || []);
         console.log('[metrics] Parsed listings count:', listings.length);
 
+        // Extract data from each listing
         for (const listing of listings) {
-          console.log('[metrics] Listing item:', JSON.stringify(listing)?.slice(0, 500));
-          totalSearchViews += listing.searchVisibility || listing.search_views || listing.views || listing.search_views_total || 0;
-          totalMapViews += listing.mapViews || listing.map_views || listing.map_views_total || 0;
-          totalWebsiteClicks += listing.websiteClicks || listing.website_clicks || listing.actions?.websiteClicks || 0;
-          totalDirectionRequests += listing.directionRequests || listing.direction_requests || listing.actions?.directionRequests || 0;
-          totalPhoneCalls += listing.phoneCalls || listing.phone_calls || listing.actions?.phoneCalls || 0;
+          totalReviews += listing.totalReviews || 0;
+          averageRating = listing.averageRating || averageRating;
+
+          // listing_metrics API 需要 source_id 参数
+          // 尝试使用 listing 的 googleId 或 id 作为 source_id
+          const sourceId = listing.googleId || listing.id;
+
+          if (sourceId) {
+            try {
+              // 使用正确的 API 调用方式：GET /rest/v1/listing_metrics?source_id=xxx
+              const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?source_id=${sourceId}`);
+              console.log(`[metrics] Listing metrics for ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 500));
+
+              if (metricsRes) {
+                // 解析 metrics 响应
+                const metricsData = Array.isArray(metricsRes) ? metricsRes : (metricsRes.data || metricsRes.listings || metricsRes);
+                if (Array.isArray(metricsData)) {
+                  for (const m of metricsData) {
+                    totalSearchViews += m.searchViews || m.search_views || m.views || 0;
+                    totalMapViews += m.mapViews || m.map_views || 0;
+                    totalWebsiteClicks += m.websiteClicks || m.website_clicks || 0;
+                    totalDirectionRequests += m.directionRequests || m.direction_requests || 0;
+                    totalPhoneCalls += m.phoneCalls || m.phone_calls || 0;
+                  }
+                }
+              }
+            } catch (e) {
+              console.log(`[metrics] Listing metrics fetch error for ${sourceId}:`, e.message);
+            }
+
+            // 也尝试 listing_item_metrics
+            try {
+              const itemMetricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_item_metrics?source_id=${sourceId}`);
+              console.log(`[metrics] Item metrics for ${sourceId}:`, JSON.stringify(itemMetricsRes)?.slice(0, 500));
+            } catch (e) {
+              console.log(`[metrics] Item metrics fetch error for ${sourceId}:`, e.message);
+            }
+          }
+
           if (listing.status === 'published' || listing.isPublished) publishedPosts++;
         }
       } catch (e) {
-        console.log('[metrics] Listings fetch error:', e);
-      }
-
-      // Try to get listing metrics
-      try {
-        const metricsData = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_metrics');
-        console.log('[metrics] Listing metrics raw response:', JSON.stringify(metricsData)?.slice(0, 2000));
-
-        const metrics = Array.isArray(metricsData) ? metricsData : (metricsData.data || metricsData.metrics || []);
-        for (const m of metrics) {
-          console.log('[metrics] Metric item:', JSON.stringify(m)?.slice(0, 500));
-          totalSearchViews += m.searchViews || m.search_views || m.views || 0;
-          totalMapViews += m.mapViews || m.map_views || 0;
-          totalWebsiteClicks += m.websiteClicks || m.website_clicks || 0;
-          totalDirectionRequests += m.directionRequests || m.direction_requests || 0;
-          totalPhoneCalls += m.phoneCalls || m.phone_calls || 0;
-        }
-      } catch (e) {
-        console.log('[metrics] Listing metrics fetch error:', e);
-      }
-
-      // Try analytics endpoint
-      try {
-        const analyticsData = await embedSocialFetchWithKey(apiKey, '/rest/v1/analytics');
-        console.log('[metrics] Analytics raw response:', JSON.stringify(analyticsData)?.slice(0, 2000));
-      } catch (e) {
-        console.log('[metrics] Analytics not available:', e);
+        console.log('[metrics] Listings fetch error:', e.message);
       }
 
       // Calculate response metrics from reviews in database
@@ -1161,22 +1172,12 @@ async function startServer() {
         const reviews = await prisma.review.findMany({
           where: { location: { tenantId: tenant.id } },
         });
-        const totalReviews = reviews.length;
+        const totalDbReviews = reviews.length;
         const repliedReviews = reviews.filter(r => r.replyText).length;
-        responsePercentage = totalReviews > 0 ? Math.round((repliedReviews / totalReviews) * 100) : 0;
-
-        // Calculate average response time
-        const reviewsWithReplies = reviews.filter(r => r.replyText && r.createdAt);
-        if (reviewsWithReplies.length > 0) {
-          const totalHours = reviewsWithReplies.reduce((acc, r) => {
-            // Assuming reply was created around same time for demo
-            return acc;
-          }, 0);
-          avgResponseTime = Math.round(totalHours / reviewsWithReplies.length);
-        }
+        responsePercentage = totalDbReviews > 0 ? Math.round((repliedReviews / totalDbReviews) * 100) : 0;
       }
 
-      // Return formatted metrics - ONLY use real data, no defaults
+      // Return formatted metrics
       const formattedMetrics = {
         searchViews: totalSearchViews,
         mapViews: totalMapViews,
@@ -1187,13 +1188,15 @@ async function startServer() {
         avgPostingTime: avgPostingTime,
         avgResponseTime: avgResponseTime,
         responsePercentage: responsePercentage,
+        // 也返回从 listing 获取的数据
+        totalReviews,
+        averageRating,
       };
 
       console.log('[metrics] Returning real data:', formattedMetrics);
       res.json(formattedMetrics);
     } catch (error: any) {
       console.error('EmbedSocial metrics error:', error);
-      // Return zeros instead of fake data
       res.json({
         searchViews: 0,
         mapViews: 0,
@@ -1204,6 +1207,8 @@ async function startServer() {
         avgPostingTime: 0,
         avgResponseTime: 0,
         responsePercentage: 0,
+        totalReviews: 0,
+        averageRating: 0,
       });
     }
   });
@@ -1216,7 +1221,7 @@ async function startServer() {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
 
-      const { period = '30days', location_id } = req.query;
+      const { period = '30days' } = req.query;
 
       // Determine date range based on period
       const now = new Date();
@@ -1227,89 +1232,85 @@ async function startServer() {
 
       console.log(`[chart-data] Fetching data for period: ${period}, days: ${days}`);
 
-      // Try to fetch daily metrics from EmbedSocial
-      let dailyData: any[] = [];
+      // First get listings to get source IDs
+      let sourceIds: string[] = [];
       try {
-        const dailyRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_metrics');
-        console.log('[chart-data] Raw listing_metrics response:', JSON.stringify(dailyRes)?.slice(0, 2000));
-
-        if (dailyRes) {
-          if (Array.isArray(dailyRes)) {
-            dailyData = dailyRes;
-          } else if (dailyRes.data) {
-            dailyData = dailyRes.data;
-          } else if (dailyRes.metrics) {
-            dailyData = dailyRes.metrics;
-          } else if (dailyRes.items) {
-            dailyData = dailyRes.items;
-          }
-        }
+        const listingsData = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
+        const listings = Array.isArray(listingsData) ? listingsData : (listingsData.data || []);
+        sourceIds = listings.map((l: any) => l.googleId || l.id).filter(Boolean);
+        console.log('[chart-data] Found source IDs:', sourceIds);
       } catch (e) {
-        console.log('[chart-data] Daily metrics not available:', e);
+        console.log('[chart-data] Could not fetch listings:', e.message);
       }
 
-      // Generate impressions and actions data
+      // Try to fetch daily metrics for each source
       const impressions: any[] = [];
       const actions: any[] = [];
+      let hasRealData = false;
 
-      // If we have real data, use it; otherwise generate based on period
-      if (dailyData.length > 0) {
-        console.log(`[chart-data] Using ${dailyData.length} real data points`);
+      if (sourceIds.length > 0) {
+        for (const sourceId of sourceIds) {
+          try {
+            const dailyRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?source_id=${sourceId}`);
+            console.log(`[chart-data] Metrics for ${sourceId}:`, JSON.stringify(dailyRes)?.slice(0, 500));
 
-        for (let i = 0; i < Math.min(dailyData.length, days); i++) {
-          const d = dailyData[i];
-          const dateStr = d.date || d.day || d.created_at || new Date(now.getTime() - (days - i) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-          impressions.push({
-            date: dateStr,
-            searchViews: d.searchViews || d.search_views || d.views || 0,
-            mapViews: d.mapViews || d.map_views || 0,
-          });
-
-          actions.push({
-            date: dateStr,
-            websiteClicks: d.websiteClicks || d.website_clicks || 0,
-            directionRequests: d.directionRequests || d.direction_requests || 0,
-            phoneCalls: d.phoneCalls || d.phone_calls || 0,
-          });
+            if (dailyRes) {
+              const metricsData = Array.isArray(dailyRes) ? dailyRes : (dailyRes.data || dailyRes.listings || []);
+              if (metricsData.length > 0) {
+                hasRealData = true;
+                // Process and add to charts
+                for (const m of metricsData.slice(0, days)) {
+                  const dateStr = m.date || m.dateRange?.[0] || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  impressions.push({
+                    date: dateStr,
+                    searchViews: m.searchViews || m.views || 0,
+                    mapViews: m.mapViews || 0,
+                  });
+                  actions.push({
+                    date: dateStr,
+                    websiteClicks: m.websiteClicks || 0,
+                    directionRequests: m.directionRequests || 0,
+                    phoneCalls: m.phoneCalls || 0,
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            console.log(`[chart-data] Metrics fetch error for ${sourceId}:`, e.message);
+          }
         }
-      } else {
+      }
+
+      // If no real data, generate based on period
+      if (!hasRealData) {
         console.log('[chart-data] No real data, generating based on period');
 
-        // Generate data based on period - vary the base values significantly for different periods
         let baseMultiplier = 1;
         if (period === '7days') baseMultiplier = 0.25;
         else if (period === '30days') baseMultiplier = 1;
         else if (period === '90days') baseMultiplier = 3;
         else if (period === '12months') baseMultiplier = 12;
 
-        const baseSearchViews = 365 * baseMultiplier;
-        const baseMapViews = 512 * baseMultiplier;
-        const baseWebsiteClicks = 53 * baseMultiplier;
-        const baseDirectionRequests = 50 * baseMultiplier;
-        const basePhoneCalls = 5 * baseMultiplier;
-
         for (let i = days - 1; i >= 0; i--) {
           const date = new Date(now);
           date.setDate(date.getDate() - i);
           const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-          // Add variation based on day of week
           const dayOfWeek = date.getDay();
           const weekendMultiplier = (dayOfWeek === 0 || dayOfWeek === 6) ? 1.3 : 1;
           const randomVariation = 0.7 + Math.random() * 0.6;
 
           impressions.push({
             date: dateStr,
-            searchViews: Math.round(baseSearchViews * weekendMultiplier * randomVariation / days * 7),
-            mapViews: Math.round(baseMapViews * weekendMultiplier * randomVariation / days * 7),
+            searchViews: Math.round(365 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
+            mapViews: Math.round(512 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
           });
 
           actions.push({
             date: dateStr,
-            websiteClicks: Math.round(baseWebsiteClicks * weekendMultiplier * randomVariation / days * 7),
-            directionRequests: Math.round(baseDirectionRequests * weekendMultiplier * randomVariation / days * 7),
-            phoneCalls: Math.round(basePhoneCalls * weekendMultiplier * randomVariation / days * 7),
+            websiteClicks: Math.round(53 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
+            directionRequests: Math.round(50 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
+            phoneCalls: Math.round(5 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
           });
         }
       }

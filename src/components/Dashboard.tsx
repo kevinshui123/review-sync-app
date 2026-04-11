@@ -296,15 +296,16 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch EmbedSocial locations
+      // Fetch EmbedSocial locations - this has the real data!
       const embedRes = await fetch('/api/embedsocial/locations');
       let embedLocations: any[] = [];
       if (embedRes.ok) {
         const data = await embedRes.json();
         embedLocations = Array.isArray(data) ? data : (data.data || []);
+        console.log('[Dashboard] Embed locations:', embedLocations.length);
       }
 
-      // Fetch reviews
+      // Fetch reviews from database
       const reviewsRes = await fetch('/api/reviews');
       let reviews: Review[] = [];
       if (reviewsRes.ok) {
@@ -314,7 +315,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         // Transform and add review type classification
         reviews = rawReviews.map((r: any) => ({
           id: r.id,
-          author: r.author || 'Anonymous',
+          author: r.author || 'Anonymous User',
           authorPhoto: r.authorPhoto || null,
           rating: r.rating || 0,
           location: r.location || 'Unknown',
@@ -322,11 +323,38 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           text: r.text || '',
           replied: r.replied || false,
           replyText: r.replyText,
-          isPositive: (r.rating || 0) >= 4, // 4-5 stars = positive, 1-3 = negative
+          isPositive: (r.rating || 0) >= 4,
         }));
-
-        setRecentReviews(reviews);
       }
+
+      // If no reviews in database, fetch from EmbedSocial directly
+      if (reviews.length === 0 && embedLocations.length > 0) {
+        try {
+          const embedReviewsRes = await fetch('/api/embedsocial/reviews');
+          if (embedReviewsRes.ok) {
+            const embedReviewsData = await embedReviewsRes.json();
+            const embedReviews = Array.isArray(embedReviewsData) ? embedReviewsData : (embedReviewsData.data || embedReviewsData.items || []);
+
+            reviews = embedReviews.map((r: any) => ({
+              id: r.id,
+              author: r.authorName || 'Anonymous User',
+              authorPhoto: null, // EmbedSocial doesn't provide photos, will generate from name
+              rating: r.rating || 0,
+              location: r.sourceName || embedLocations[0]?.name || 'Google',
+              date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+              text: r.captionText || r.text || '',
+              replied: r.replies && r.replies.length > 0,
+              replyText: undefined,
+              isPositive: (r.rating || 0) >= 4,
+            }));
+          }
+        } catch (e) {
+          console.log('EmbedSocial reviews fetch error:', e);
+        }
+      }
+
+      console.log('[Dashboard] Total reviews to display:', reviews.length);
+      setRecentReviews(reviews);
 
       // Fetch local locations
       const locationsRes = await fetch('/api/locations');
@@ -336,20 +364,32 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
       }
 
       // Enrich locations with EmbedSocial data and calculate health scores
-      const enrichedLocations = localLocations.map((loc: any) => {
-        const embedLoc = embedLocations.find((e: any) => e.id === loc.embedSocialLocationId || e.id === loc.googlePlaceId);
-        const totalReviews = embedLoc?.totalReviews || loc.totalReviews || 0;
-        const averageRating = embedLoc?.averageRating || loc.averageRating || 0;
+      // Use EmbedSocial data if available, otherwise use local data
+      const enrichedLocations: LocationData[] = [];
+
+      // First, add locations from EmbedSocial (these have real reviews and rating data)
+      for (const embedLoc of embedLocations) {
+        const localLoc = localLocations.find((l: any) =>
+          l.embedSocialLocationId === embedLoc.id ||
+          l.googlePlaceId === embedLoc.googleId
+        );
+
+        const name = localLoc?.name || embedLoc.name || 'Unnamed Location';
+        const address = localLoc?.address || embedLoc.address || '';
+        const phone = localLoc?.phone || embedLoc.phoneNumber || '';
+        const website = localLoc?.website || embedLoc.websiteUrl || '';
+        const totalReviews = embedLoc.totalReviews || 0;
+        const averageRating = embedLoc.averageRating || 0;
 
         // Calculate health score based on profile completeness
         let healthScore = 100;
-        const hasBusinessName = !!(loc.name && loc.name.trim().length >= 2);
-        const hasDescription = !!(loc.description && loc.description.trim().length >= 20);
-        const hasAddress = !!(loc.address && loc.address.trim().length >= 5);
-        const hasOpeningHours = !!(loc.openingHours || loc.businessHours);
-        const hasWebsite = !!(loc.website || loc.websiteUrl);
-        const hasCategory = !!(loc.category);
-        const hasPhone = !!(loc.phone);
+        const hasBusinessName = name.trim().length >= 2;
+        const hasDescription = !!(localLoc?.description && localLoc.description.trim().length >= 20);
+        const hasAddress = address.trim().length >= 5;
+        const hasOpeningHours = !!(localLoc?.openingHours || localLoc?.businessHours);
+        const hasWebsite = website.length > 0;
+        const hasCategory = !!(localLoc?.category);
+        const hasPhone = phone.length > 0;
 
         if (!hasBusinessName) healthScore -= 15;
         if (!hasDescription) healthScore -= 10;
@@ -361,15 +401,15 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         if (totalReviews === 0) healthScore -= 15;
         if (averageRating > 0 && averageRating < 3.5) healthScore -= 5;
 
-        return {
-          id: loc.id,
-          name: loc.name || 'Unnamed Location',
-          address: loc.address || '',
-          description: loc.description || '',
-          phone: loc.phone || '',
-          website: loc.website || loc.websiteUrl || '',
-          openingHours: loc.openingHours || loc.businessHours || '',
-          category: loc.category || '',
+        enrichedLocations.push({
+          id: localLoc?.id || embedLoc.id,
+          name,
+          address,
+          description: localLoc?.description || '',
+          phone,
+          website,
+          openingHours: localLoc?.openingHours || localLoc?.businessHours || '',
+          category: localLoc?.category || '',
           totalReviews,
           averageRating,
           hasBusinessName,
@@ -380,34 +420,94 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           hasCategory,
           hasPhone,
           healthScore: Math.max(0, healthScore),
-        };
-      });
+        });
+      }
 
-      // If no locations, create a default one with sample data
-      if (enrichedLocations.length === 0) {
+      // Then add any local locations that don't have EmbedSocial data
+      for (const localLoc of localLocations) {
+        const hasEmbedData = embedLocations.some((e: any) =>
+          e.id === localLoc.embedSocialLocationId ||
+          e.googleId === localLoc.googlePlaceId
+        );
+
+        if (!hasEmbedData) {
+          const totalReviews = localLoc.totalReviews || 0;
+          const averageRating = localLoc.averageRating || 0;
+
+          let healthScore = 100;
+          const hasBusinessName = !!(localLoc.name && localLoc.name.trim().length >= 2);
+          const hasDescription = !!(localLoc.description && localLoc.description.trim().length >= 20);
+          const hasAddress = !!(localLoc.address && localLoc.address.trim().length >= 5);
+          const hasOpeningHours = !!(localLoc.openingHours || localLoc.businessHours);
+          const hasWebsite = !!(localLoc.website || localLoc.websiteUrl);
+          const hasCategory = !!(localLoc.category);
+          const hasPhone = !!(localLoc.phone);
+
+          if (!hasBusinessName) healthScore -= 15;
+          if (!hasDescription) healthScore -= 10;
+          if (!hasAddress) healthScore -= 20;
+          if (!hasOpeningHours) healthScore -= 10;
+          if (!hasWebsite) healthScore -= 10;
+          if (!hasCategory) healthScore -= 5;
+          if (!hasPhone) healthScore -= 10;
+          if (totalReviews === 0) healthScore -= 15;
+          if (averageRating > 0 && averageRating < 3.5) healthScore -= 5;
+
+          enrichedLocations.push({
+            id: localLoc.id,
+            name: localLoc.name || 'Unnamed Location',
+            address: localLoc.address || '',
+            description: localLoc.description || '',
+            phone: localLoc.phone || '',
+            website: localLoc.website || localLoc.websiteUrl || '',
+            openingHours: localLoc.openingHours || localLoc.businessHours || '',
+            category: localLoc.category || '',
+            totalReviews,
+            averageRating,
+            hasBusinessName,
+            hasDescription,
+            hasAddress,
+            hasOpeningHours,
+            hasWebsite,
+            hasCategory,
+            hasPhone,
+            healthScore: Math.max(0, healthScore),
+          });
+        }
+      }
+
+      // If no locations at all, create a default one with EmbedSocial data
+      if (enrichedLocations.length === 0 && embedLocations.length > 0) {
+        const embedLoc = embedLocations[0];
         enrichedLocations.push({
-          id: 'default',
-          name: 'Sample Location',
-          address: '123 Main St',
-          description: 'A great local business serving the community.',
-          phone: '(555) 123-4567',
-          website: 'https://example.com',
-          openingHours: 'Mon-Fri: 9AM-6PM',
-          category: 'Retail',
-          totalReviews: 19,
-          averageRating: 4.5,
+          id: embedLoc.id,
+          name: embedLoc.name || 'Location',
+          address: embedLoc.address || '',
+          description: '',
+          phone: embedLoc.phoneNumber || '',
+          website: embedLoc.websiteUrl || '',
+          openingHours: '',
+          category: '',
+          totalReviews: embedLoc.totalReviews || 0,
+          averageRating: embedLoc.averageRating || 0,
           hasBusinessName: true,
-          hasDescription: true,
-          hasAddress: true,
-          hasOpeningHours: true,
-          hasWebsite: true,
-          hasCategory: true,
-          hasPhone: true,
-          healthScore: 90,
+          hasDescription: false,
+          hasAddress: !!(embedLoc.address),
+          hasOpeningHours: false,
+          hasWebsite: !!(embedLoc.websiteUrl),
+          hasCategory: false,
+          hasPhone: !!(embedLoc.phoneNumber),
+          healthScore: 75,
         });
       }
 
       setLocations(enrichedLocations);
+
+      // Calculate total reviews and average from EmbedSocial data
+      const totalReviewsFromEmbed = embedLocations.reduce((acc: number, loc: any) => acc + (loc.totalReviews || 0), 0);
+      const avgRatingFromEmbed = embedLocations.length > 0
+        ? embedLocations.reduce((acc: number, loc: any) => acc + (loc.averageRating || 0), 0) / embedLocations.length
+        : 0;
 
       // Fetch metrics from EmbedSocial
       try {
@@ -415,12 +515,13 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json();
           setEmbedMetrics({
+            // Use real data from EmbedSocial if available
             searchViews: metricsData.searchViews || 0,
             mapViews: metricsData.mapViews || 0,
             websiteClicks: metricsData.websiteClicks || 0,
             directionRequests: metricsData.directionRequests || 0,
             phoneCalls: metricsData.phoneCalls || 0,
-            publishedPosts: metricsData.publishedPosts || 0,
+            publishedPosts: metricsData.publishedPosts || embedLocations.length,
             avgPostingTime: metricsData.avgPostingTime || 0,
             avgResponseTime: metricsData.avgResponseTime || 0,
             responsePercentage: metricsData.responsePercentage || 0,
