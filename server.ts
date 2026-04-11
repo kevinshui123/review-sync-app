@@ -468,10 +468,10 @@ async function getEmbedSocialApiKey(tenantId?: string): Promise<string> {
 }
 
 async function embedSocialFetchWithKey(apiKey: string, path: string, options: RequestInit = {}): Promise<any> {
-  const bases = [
-    'https://app.embedsocial.com/api/v1',
-    'https://app.your-white-label.com/api/v1',
-  ];
+  const configured = process.env.EMBEDSOCIAL_BASE_URL?.replace(/\/$/, '');
+  const bases: string[] = configured
+    ? [`${configured}/api/v1`]
+    : ['https://app.embedsocial.com/api/v1'];
   let lastError: any;
   for (const base of bases) {
     try {
