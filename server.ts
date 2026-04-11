@@ -426,37 +426,23 @@ function embedSocialHeaders() {
 }
 
 async function embedSocialFetch(path: string, options: RequestInit = {}): Promise<any> {
-  // Allow override via EMBEDSOCIAL_BASE_URL env var; fallback to embedsocial.com
-  const configured = process.env.EMBEDSOCIAL_BASE_URL?.replace(/\/$/, '');
-  const bases: string[] = configured
-    ? [`${configured}/api/v1`]
-    : ['https://app.embedsocial.com/api/v1'];
+  // Set EMBEDSOCIAL_BASE_URL to the full base, e.g. https://app.embedsocial.com
+  // Caller passes the full path (e.g. /rest/v1/sources)
+  const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://app.embedsocial.com').replace(/\/$/, '');
 
-  let lastError: any;
-  for (const base of bases) {
-    try {
-      const res = await fetch(`${base}${path}`, {
-        ...options,
-        headers: { ...embedSocialHeaders(), ...(options.headers || {}) },
-      });
-      if (res.status === 404) {
-        lastError = { status: 404 };
-        continue; // try next base
-      }
-      const text = await res.text();
-      let json: any;
-      try { json = JSON.parse(text); } catch { json = { message: text }; }
-      if (!res.ok) {
-        throw Object.assign(new Error(json.message || `EmbedSocial error ${res.status}`), {
-          status: res.status, details: json,
-        });
-      }
-      return json;
-    } catch (e: any) {
-      if (e.status !== 404) { lastError = e; }
-    }
+  const res = await fetch(`${base}${path}`, {
+    ...options,
+    headers: { ...embedSocialHeaders(), ...(options.headers || {}) },
+  });
+  const text = await res.text();
+  let json: any;
+  try { json = JSON.parse(text); } catch { json = { message: text }; }
+  if (!res.ok) {
+    throw Object.assign(new Error(json.message || `EmbedSocial error ${res.status}`), {
+      status: res.status, details: json,
+    });
   }
-  throw lastError || new Error('EmbedSocial: could not reach API');
+  return json;
 }
 
 async function getEmbedSocialApiKey(tenantId?: string): Promise<string> {
@@ -468,32 +454,21 @@ async function getEmbedSocialApiKey(tenantId?: string): Promise<string> {
 }
 
 async function embedSocialFetchWithKey(apiKey: string, path: string, options: RequestInit = {}): Promise<any> {
-  const configured = process.env.EMBEDSOCIAL_BASE_URL?.replace(/\/$/, '');
-  const bases: string[] = configured
-    ? [`${configured}/api/v1`]
-    : ['https://app.embedsocial.com/api/v1'];
-  let lastError: any;
-  for (const base of bases) {
-    try {
-      const res = await fetch(`${base}${path}`, {
-        ...options,
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json', ...(options.headers || {}) },
-      });
-      if (res.status === 404) { lastError = { status: 404 }; continue; }
-      const text = await res.text();
-      let json: any;
-      try { json = JSON.parse(text); } catch { json = { message: text }; }
-      if (!res.ok) {
-        throw Object.assign(new Error(json.message || `EmbedSocial error ${res.status}`), {
-          status: res.status, details: json,
-        });
-      }
-      return json;
-    } catch (e: any) {
-      if (e.status !== 404) lastError = e;
-    }
+  const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://app.embedsocial.com').replace(/\/$/, '');
+
+  const res = await fetch(`${base}${path}`, {
+    ...options,
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json', ...(options.headers || {}) },
+  });
+  const text = await res.text();
+  let json: any;
+  try { json = JSON.parse(text); } catch { json = { message: text }; }
+  if (!res.ok) {
+    throw Object.assign(new Error(json.message || `EmbedSocial error ${res.status}`), {
+      status: res.status, details: json,
+    });
   }
-  throw lastError || new Error('EmbedSocial: could not reach API');
+  return json;
 }
 
 // ==========================================
@@ -905,7 +880,7 @@ async function startServer() {
 
           const reviewsData = await embedSocialFetchWithKey(
             apiKey,
-            `/reviews?location_id=${loc.embedSocialLocationId}&source_names[]=Google&page=1`,
+            `/rest/v1/reviews?location_id=${loc.embedSocialLocationId}&source_names[]=Google&page=1`,
           );
 
           const reviewList: any[] = reviewsData.data || [];
@@ -946,7 +921,7 @@ async function startServer() {
         try {
           const allReviews = await embedSocialFetchWithKey(
             apiKey,
-            `/reviews?source_names[]=Google&page=1`,
+            `/rest/v1/reviews?source_names[]=Google&page=1`,
           );
 
           const reviewList: any[] = allReviews.data || [];
@@ -1018,10 +993,10 @@ async function startServer() {
       try {
         await embedSocialFetchWithKey(
           apiKey,
-          `/reviews/${esReviewId}/reply`,
+          `/rest/v1/items/${esReviewId}/replies`,
           {
             method: 'POST',
-            body: JSON.stringify({ text: replyText.trim() }),
+            body: JSON.stringify({ comment: replyText.trim() }),
           },
         );
       } catch (e: any) {
@@ -1054,7 +1029,7 @@ async function startServer() {
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
-      const data = await embedSocialFetchWithKey(apiKey, '/organizations');
+      const data = await embedSocialFetchWithKey(apiKey, '/rest/v1/organizations');
       res.json(data);
     } catch (error: any) {
       console.error('EmbedSocial organizations error:', error);
@@ -1070,7 +1045,7 @@ async function startServer() {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
       // EmbedSocial uses "sources" for the connected Google Business locations
-      const data = await embedSocialFetchWithKey(apiKey, '/sources');
+      const data = await embedSocialFetchWithKey(apiKey, '/rest/v1/sources');
       res.json(data);
     } catch (error: any) {
       console.error('EmbedSocial sources error:', error);
@@ -1090,7 +1065,7 @@ async function startServer() {
       if (location_id) params.set('location_id', String(location_id));
       if (source_names) params.set('source_names[]', String(source_names));
       if (page) params.set('page', String(page));
-      const data = await embedSocialFetchWithKey(apiKey, `/reviews?${params}`);
+      const data = await embedSocialFetchWithKey(apiKey, `/rest/v1/reviews?${params}`);
       res.json(data);
     } catch (error: any) {
       console.error('EmbedSocial reviews error:', error);
