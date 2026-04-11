@@ -1630,28 +1630,42 @@ async function startServer() {
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
-      // EmbedSocial uses "items" for reviews, fetch ALL with large pageSize and pagination
+      // EmbedSocial uses "items" for reviews
       const { location_id, source_names } = req.query;
-      const params = new URLSearchParams({ pageSize: '200' });
-      if (source_names) params.set('source_names[]', String(source_names));
-      const queryString = params.toString();
-      const url = `/rest/v1/items?${queryString}`;
-      console.log('[reviews] Fetching from:', url);
 
       // Fetch all pages of reviews
       const allReviews: any[] = [];
       let page = 1;
       let hasMore = true;
+      const maxPages = 10; // Safety limit
 
-      while (hasMore) {
-        const pageUrl = `/rest/v1/items?pageSize=200&page=${page}${source_names ? '&source_names[]=Google' : ''}`;
+      while (hasMore && page <= maxPages) {
+        // Build URL with pagination
+        let pageUrl = `/rest/v1/items?page=${page}&pageSize=50`;
+        if (source_names) {
+          pageUrl += `&source_names[]=${encodeURIComponent(String(source_names))}`;
+        }
         console.log(`[reviews] Fetching page ${page}:`, pageUrl);
+        
         const data = await embedSocialFetchWithKey(apiKey, pageUrl);
-
-        if (Array.isArray(data) && data.length > 0) {
-          allReviews.push(...data);
+        
+        // Handle different response formats
+        let items: any[] = [];
+        if (Array.isArray(data)) {
+          items = data;
+        } else if (data.data) {
+          items = Array.isArray(data.data) ? data.data : [];
+        } else if (data.items) {
+          items = Array.isArray(data.items) ? data.items : [];
+        }
+        
+        console.log(`[reviews] Page ${page} returned ${items.length} items`);
+        
+        if (items.length > 0) {
+          allReviews.push(...items);
           page++;
-          if (data.length < 200) {
+          // If fewer items than requested, we've reached the end
+          if (items.length < 50) {
             hasMore = false;
           }
         } else {
@@ -1687,6 +1701,9 @@ async function startServer() {
   app.put('/api/embedsocial/locations/:id', async (req, res) => {
     try {
       const { id } = req.params;
+      console.log(`[update-location] PUT /api/embedsocial/locations/${id}`);
+      console.log(`[update-location] Body:`, JSON.stringify(req.body, null, 2));
+      
       const apiKey = await getEmbedSocialApiKey();
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
@@ -1703,9 +1720,10 @@ async function startServer() {
         },
       );
 
+      console.log(`[update-location] Success:`, JSON.stringify(data, null, 2));
       res.json(data);
     } catch (error: any) {
-      console.error('EmbedSocial update location error:', error);
+      console.error('[update-location] Error:', error);
       res.status(500).json({ error: 'Failed to update location', details: error.message });
     }
   });
