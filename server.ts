@@ -103,6 +103,39 @@ function setupTokenRefresh(auth: Auth.OAuth2Client, tenantId: string) {
   });
 }
 
+// Re-create OAuth2Client with a fresh token using stored refresh_token,
+// then save the new access_token back to the DB.
+async function refreshAndSaveToken(tenantId: string, currentRefreshToken: string): Promise<Auth.OAuth2Client | null> {
+  const { OAuth2Client } = Auth;
+  const refreshed = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, `${APP_URL}/api/auth/google/callback`);
+  refreshed.setCredentials({ refresh_token: currentRefreshToken });
+
+  try {
+    const { credentials } = await refreshed.refreshAccessToken();
+    const newAccessToken = (credentials as any).access_token;
+    const newExpiry = credentials.expiry_date;
+
+    if (!newAccessToken) {
+      console.error('[tokenRefresh] No access_token in refreshed response');
+      return null;
+    }
+
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        googleAccessToken: newAccessToken,
+        googleTokenExpiry: newExpiry ? new Date(newExpiry) : null,
+      },
+    });
+
+    console.log('[tokenRefresh] Token refreshed and saved successfully');
+    return refreshed;
+  } catch (e: any) {
+    console.error('[tokenRefresh] refreshAccessToken failed:', e.message, e.details);
+    return null;
+  }
+}
+
 // ==========================================
 // Token Management
 // ==========================================
@@ -121,8 +154,45 @@ async function getValidAuth(): Promise<{ auth: Auth.OAuth2Client; tenantId: stri
     expiry_date: tenant.googleTokenExpiry ? new Date(tenant.googleTokenExpiry).getTime() : undefined,
   });
 
-  setupTokenRefresh(oauth2Client, tenant.id);
+  // Check if access_token is still valid by seeing if it's about to expire (within 2 min)
+  const isAboutToExpire =
+    tenant.googleTokenExpiry &&
+    new Date(tenant.googleTokenExpiry).getTime() - Date.now() < 2 * 60 * 1000;
 
+  if (isAboutToExpire) {
+    const refreshed = await refreshAndSaveToken(tenant.id, tenant.googleRefreshToken);
+    if (refreshed) {
+      return { auth: refreshed, tenantId: tenant.id };
+    }
+  }
+
+  // Test the stored token once; if 401, force refresh
+  try {
+    // Quick probe request to confirm token is alive
+    const probe = await fetch(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search?pageSize=1`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tenant.googleAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: 'probe' }),
+      },
+    );
+    if (probe.status === 401) {
+      console.warn('[getValidAuth] Stored access token expired (401); refreshing…');
+      const refreshed = await refreshAndSaveToken(tenant.id, tenant.googleRefreshToken);
+      if (refreshed) {
+        return { auth: refreshed, tenantId: tenant.id };
+      }
+      return null;
+    }
+  } catch {
+    // network error — proceed with stored token; let it fail naturally if really invalid
+  }
+
+  setupTokenRefresh(oauth2Client, tenant.id);
   return { auth: oauth2Client, tenantId: tenant.id };
 }
 
