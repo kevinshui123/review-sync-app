@@ -1243,13 +1243,18 @@ async function startServer() {
 
       console.log(`[chart-data] Fetching data for period: ${period}, days: ${days}`);
 
-      // First get listings to get source IDs
-      let sourceIds: string[] = [];
+      // First get listings to get source IDs - need BOTH googleId and listing id
+      let sourceIdsToTry: string[] = [];
       try {
         const listingsData = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
         const listings = Array.isArray(listingsData) ? listingsData : (listingsData.data || []);
-        sourceIds = listings.map((l: any) => l.googleId || l.id).filter(Boolean);
-        console.log('[chart-data] Found source IDs:', sourceIds);
+        // Extract both googleId and id for each listing
+        for (const l of listings) {
+          if (l.id) sourceIdsToTry.push(l.id);
+          if (l.googleId) sourceIdsToTry.push(l.googleId);
+        }
+        sourceIdsToTry = [...new Set(sourceIdsToTry)]; // Remove duplicates
+        console.log('[chart-data] Found source IDs to try:', sourceIdsToTry);
       } catch (e: any) {
         console.log('[chart-data] Could not fetch listings:', e.message);
       }
@@ -1259,8 +1264,8 @@ async function startServer() {
       const actions: any[] = [];
       let hasRealData = false;
 
-      if (sourceIds.length > 0) {
-        for (const sourceId of sourceIds) {
+      if (sourceIdsToTry.length > 0) {
+        for (const sourceId of sourceIdsToTry) {
           try {
             // GET /rest/v1/listing_metrics?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY&sourceId=xxx
             const today = new Date();
