@@ -310,10 +310,12 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
       let embedReviews: any[] = [];
       try {
         const embedReviewsRes = await fetch('/api/embedsocial/reviews');
+        console.log('[Dashboard] EmbedSocial reviews response status:', embedReviewsRes.status);
         if (embedReviewsRes.ok) {
           const embedReviewsData = await embedReviewsRes.json();
+          console.log('[Dashboard] EmbedSocial reviews raw JSON:', JSON.stringify(embedReviewsData)?.slice(0, 500));
           embedReviews = Array.isArray(embedReviewsData) ? embedReviewsData : (embedReviewsData.data || embedReviewsData.items || []);
-          console.log('[Dashboard] EmbedSocial reviews raw data:', JSON.stringify(embedReviews)?.slice(0, 1000));
+          console.log('[Dashboard] EmbedSocial reviews count:', embedReviews.length);
 
           reviews = embedReviews.map((r: any) => {
             console.log('[Dashboard] Processing review:', r.authorName, 'rating:', r.rating);
@@ -330,10 +332,14 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
               isPositive: (r.rating || 0) >= 4,
             };
           });
+        } else {
+          console.log('[Dashboard] EmbedSocial reviews fetch failed, status:', embedReviewsRes.status);
         }
       } catch (e) {
-        console.log('EmbedSocial reviews fetch error:', e);
+        console.log('[Dashboard] EmbedSocial reviews fetch error:', e);
       }
+
+      console.log('[Dashboard] Total reviews after EmbedSocial fetch:', reviews.length);
 
       // If no EmbedSocial reviews, try database
       if (reviews.length === 0) {

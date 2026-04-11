@@ -1133,9 +1133,10 @@ async function startServer() {
           averageRating = listing.averageRating || averageRating;
 
           // listing_metrics API - requires startDate and endDate
-          const sourceId = listing.googleId || listing.id;
+          // Try both googleId and embedSocial listing id as sourceId
+          const sourceIds = [listing.googleId, listing.id].filter(Boolean);
 
-          if (sourceId) {
+          for (const sourceId of sourceIds) {
             try {
               // GET /rest/v1/listing_metrics?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY&sourceId=xxx
               const today = new Date();
@@ -1143,10 +1144,10 @@ async function startServer() {
               const startDateStr = `${String(thirtyDaysAgo.getDate()).padStart(2, '0')}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${thirtyDaysAgo.getFullYear()}`;
               const endDateStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
 
-              const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}`);
-              console.log(`[metrics] Listing metrics response for ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 1000));
+              const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=100`);
+              console.log(`[metrics] Listing metrics response for sourceId ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 1000));
 
-              if (metricsRes && metricsRes.listings) {
+              if (metricsRes && metricsRes.listings && metricsRes.listings.length > 0) {
                 for (const m of metricsRes.listings) {
                   // searchViews = googleSearchDesktop + googleSearchMobile
                   const searchViews = (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0);
@@ -1159,9 +1160,10 @@ async function startServer() {
                   totalDirectionRequests += m.directions || 0;
                   totalPhoneCalls += m.callClicks || 0;
                 }
+                break; // Got data, no need to try other IDs
               }
             } catch (e: any) {
-              console.log(`[metrics] Listing metrics fetch error for ${sourceId}:`, e.message);
+              console.log(`[metrics] Listing metrics fetch error for sourceId ${sourceId}:`, e.message);
             }
           }
 
@@ -1267,10 +1269,10 @@ async function startServer() {
             const startDateStr = `${String(startDate.getDate()).padStart(2, '0')}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${startDate.getFullYear()}`;
             const endDateStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
 
-            const dailyRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=100`);
-            console.log(`[chart-data] Metrics for ${sourceId}:`, JSON.stringify(dailyRes)?.slice(0, 500));
+            const dailyRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=200`);
+            console.log(`[chart-data] Metrics for sourceId ${sourceId}:`, JSON.stringify(dailyRes)?.slice(0, 500));
 
-            if (dailyRes && dailyRes.listings) {
+            if (dailyRes && dailyRes.listings && dailyRes.listings.length > 0) {
               hasRealData = true;
               // Process and add to charts
               for (const m of dailyRes.listings) {
@@ -1289,9 +1291,10 @@ async function startServer() {
                   phoneCalls: m.callClicks || 0,
                 });
               }
+              break; // Got data, no need to try other IDs
             }
           } catch (e: any) {
-            console.log(`[chart-data] Metrics fetch error for ${sourceId}:`, e.message);
+            console.log(`[chart-data] Metrics fetch error for sourceId ${sourceId}:`, e.message);
           }
         }
       }
