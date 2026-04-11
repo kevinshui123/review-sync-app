@@ -215,11 +215,39 @@ function parseReviewStarRating(review: any): number {
   return map[k] ?? 5;
 }
 
+/**
+ * Exponential-backoff fetch helper for Google API calls that may hit rate limits.
+ */
+async function googleApiRequestWithRetry(
+  fn: () => Promise<any>,
+  maxRetries = 3,
+): Promise<any> {
+  let lastError: any;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      lastError = e;
+      const status = e.status || e.code;
+      // Retry on 429 (rate limit) and 5xx server errors
+      if (status === 429 || (typeof status === 'number' && status >= 500)) {
+        const delay = Math.min(500 * Math.pow(2, attempt), 8000);
+        console.warn(`[resolveGbp] Attempt ${attempt + 1} hit ${status}, retrying in ${delay}ms…`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw e; // Non-retryable error
+    }
+  }
+  throw lastError;
+}
+
 async function resolveGbpLocationResourceName(
   auth: Auth.OAuth2Client,
   loc: { name: string; address: string | null; googlePlaceId: string | null },
   storedMapping: string,
 ): Promise<string | null> {
+  // If we already have the full accounts/... path, use it directly
   if (isGbpLocationResourceName(storedMapping)) {
     return storedMapping;
   }
@@ -227,22 +255,28 @@ async function resolveGbpLocationResourceName(
   const placeId = loc.googlePlaceId || storedMapping;
 
   /**
-   * googleLocations:search returns results in two formats:
+   * STEP 1 — Enumerate accounts + locations via Account Management API.
    *
-   *  1. Unclaimed locations:
-   *     { name: "googleLocations/ChIJ...", location: { name: "googleLocations/ChIJ...", ... } }
+   * The reviews API (mybusiness.googleapis.com/v4/accounts/{accountId}/locations/{locationId}/reviews)
+   * requires the full resource path: accounts/{accountId}/locations/{locationId}.
    *
-   *  2. Claimed locations the authenticated user owns:
-   *     { name: "accounts/123/locations/456", locationKey: { placeId: "ChIJ..." } }
+   * The only way to get this from a Place ID is:
+   *   accounts → locations (filter by locationKey.placeId) → found resource name
    *
-   * We need format-2 to build the accounts/{accountId}/locations/{locationId} path for the v4 reviews API.
-   * Strategy: list all accounts, then list all locations inside each account, find one with matching placeId.
+   * This API sometimes returns 429 with quota_limit_value:"0" — in that case
+   * we log the raw response and fall through to the search API.
    */
   try {
-    const accountsData = await googleApiRequestGet(
-      auth,
-      'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
-    );
+    const accountsData = await googleApiRequestWithRetry(async () => {
+      const res = await googleApiRequestGet(
+        auth,
+        'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
+      );
+      // Log raw response for diagnostics
+      console.log('[resolveGbp] accounts response:', JSON.stringify(res).slice(0, 500));
+      return res;
+    });
+
     const accounts: any[] = accountsData.accounts || [];
     console.log(`[resolveGbp] Found ${accounts.length} account(s)`);
 
@@ -258,107 +292,123 @@ async function resolveGbpLocationResourceName(
 
         for (const l of locations) {
           const locPlaceId = l.locationKey?.placeId || null;
-          console.log(`[resolveGbp] Account location: name="${l.name}", placeId="${locPlaceId}", storeCode="${l.storeCode}"`);
           if (locPlaceId && placeId && locPlaceId === placeId) {
-            console.log(`[resolveGbp] Matched! resourceName="${l.name}"`);
+            console.log(`[resolveGbp] Matched by placeId: resourceName="${l.name}"`);
             return l.name; // e.g. "accounts/123456/locations/789012"
           }
         }
         pageToken = locsData.nextPageToken;
       } while (pageToken);
     }
-  } catch (e) {
-    console.error('[resolveGbp] Account enumeration failed:', e);
+  } catch (e: any) {
+    // Log the raw error so we can see exactly what Google returned
+    console.error('[resolveGbp] Account enumeration failed. Raw error:', JSON.stringify(e).slice(0, 300));
+    console.warn('[resolveGbp] Falling back to googleLocations:search…');
   }
 
   /**
-   * Fallback: use googleLocations:search (works for both claimed and unclaimed locations).
-   * Returns "googleLocations/ChIJ..." for unclaimed locations — not usable for v4 reviews API,
-   * but better than nothing; the reviews call will produce a clear error if the OAuth account
-   * doesn't have access to that location.
+   * STEP 2 — Fallback: googleLocations:search.
+   *
+   * This API returns claimed locations with resource names like:
+   *   { name: "accounts/123/locations/456", locationKey: { placeId: "ChIJ..." } }
+   *
+   * When the authenticated user OWNS the location, the name IS the correct path.
+   * When the user does NOT own the location, it returns "googleLocations/ChIJ..." — not usable.
+   *
+   * We look for results where name starts with "accounts/" and match by placeId.
    */
-  const searchBody = {
-    pageSize: 10,
-    location: {
-      title: loc.name,
-      storefrontAddress: {
-        regionCode: 'US',
-        addressLines: [loc.address?.trim() || loc.name],
-      },
-    },
+  const search = async (body: object): Promise<any> => {
+    const res = await googleApiRequestWithRetry(async () => {
+      const data = await googleApiRequestPost(
+        auth,
+        'https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search',
+        body,
+      );
+      // Log full response for diagnostics
+      console.log('[resolveGbp] search response:', JSON.stringify(data).slice(0, 800));
+      return data;
+    });
+    return res;
   };
 
   const pickFromList = (list: any[], pid: string | null): string | null => {
     if (list.length === 0) return null;
 
     for (const g of list) {
-      const locName = g.location?.name ?? g.name ?? undefined;
+      const locName = g.name ?? g.location?.name ?? undefined;
       const metaPid = g.location?.metadata?.placeId ?? g.metadata?.placeId ?? undefined;
-      const storeCd = g.location?.storeCode ?? g.storeCode ?? undefined;
-      console.log(`[resolveGbp] SearchResult: locationName="${locName}", metadata.placeId="${metaPid}", storeCode="${storeCd}"`);
+      console.log(`[resolveGbp] SearchResult: name="${locName}", placeId="${metaPid}"`);
     }
 
-    if (list.length === 1) {
-      const name = list[0].location?.name ?? list[0].name ?? null;
-      console.log(`[resolveGbp] Single result — trusting: "${name}"`);
-      return name;
-    }
-
-    if (pid) {
-      for (const g of list) {
+    // Prefer results whose name starts with "accounts/" (user owns the location)
+    const claimed = list.filter((g: any) =>
+      (g.name ?? '').startsWith('accounts/') ||
+      (g.location?.name ?? '').startsWith('accounts/'),
+    );
+    if (claimed.length > 0) {
+      for (const g of claimed) {
+        const name = g.name ?? g.location?.name ?? null;
         const metaPid = g.location?.metadata?.placeId ?? g.metadata?.placeId ?? null;
-        if (metaPid && metaPid === pid) {
-          const name = g.location?.name ?? g.name ?? null;
-          console.log(`[resolveGbp] Matched by metadata.placeId: "${name}"`);
+        if (pid && metaPid && metaPid === pid) {
+          console.log(`[resolveGbp] Matched claimed location by placeId: "${name}"`);
           return name;
         }
       }
-      for (const g of list) {
-        const storeCd = g.location?.storeCode ?? g.storeCode ?? null;
-        if (storeCd === pid) {
-          const name = g.location?.name ?? g.name ?? null;
-          console.log(`[resolveGbp] Matched by storeCode: "${name}"`);
-          return name;
-        }
-      }
+      // No exact match — return first claimed result
+      const firstName = claimed[0].name ?? claimed[0].location?.name ?? null;
+      console.log(`[resolveGbp] Using first claimed result (no placeId match): "${firstName}"`);
+      return firstName;
     }
 
-    const fallback = list[0].location?.name ?? list[0].name ?? null;
-    console.log(`[resolveGbp] No placeId match — defaulting to first: "${fallback}"`);
-    return fallback;
+    // No "accounts/" results — user doesn't own any of these locations
+    const firstName = list[0].name ?? list[0].location?.name ?? null;
+    console.log(`[resolveGbp] No claimed results; first result is not usable: "${firstName}"`);
+    return firstName;
   };
 
   try {
+    // Try address-based search first
+    const searchBody = {
+      pageSize: 10,
+      location: {
+        title: loc.name,
+        storefrontAddress: {
+          regionCode: 'US',
+          addressLines: [loc.address?.trim() || loc.name],
+        },
+      },
+    };
     try {
-      console.log(`[resolveGbp] Searching by location fields: name="${loc.name}", address="${loc.address}", placeId="${placeId}"`);
-      const data = await googleApiRequestPost(
-        auth,
-        'https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search',
-        searchBody,
-      );
+      console.log(`[resolveGbp] Searching by location fields: name="${loc.name}", placeId="${placeId}"`);
+      const data = await search(searchBody);
       const list = data.googleLocations || [];
       console.log(`[resolveGbp] Location search returned ${list.length} results`);
       const picked = pickFromList(list, placeId);
-      if (picked) return picked;
+      if (picked && isGbpLocationResourceName(picked)) return picked;
     } catch (e: any) {
-      console.warn(`[resolveGbp] Address search failed (${e.status || '?'}): ${e.message}. Falling back to text query.`);
+      console.warn(`[resolveGbp] Address search failed (${e.status}): ${e.message}`);
     }
 
+    // Fall back to text query
     const q = `${loc.name} ${loc.address || ''}`.trim();
     if (q.length < 2) return null;
     console.log(`[resolveGbp] Searching by query: "${q}", placeId="${placeId}"`);
-    const data2 = await googleApiRequestPost(
-      auth,
-      'https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search',
-      { pageSize: 10, query: q },
-    );
+    const data2 = await search({ pageSize: 10, query: q });
     const list2 = data2.googleLocations || [];
     console.log(`[resolveGbp] Query search returned ${list2.length} results`);
-    return pickFromList(list2, placeId);
+    const picked = pickFromList(list2, placeId);
+    if (picked && isGbpLocationResourceName(picked)) return picked;
+
+    // We got results but none are in "accounts/" format — the user likely doesn't own this location
+    if (list2.length > 0) {
+      const resultName = list2[0].name ?? list2[0].location?.name ?? 'unknown';
+      console.warn(`[resolveGbp] Results found but no accounts/ path. First result: "${resultName}". This location may not be claimed by the connected Google account.`);
+    }
   } catch (e) {
     console.error('resolveGbpLocationResourceName error:', e);
-    return null;
   }
+
+  return null;
 }
 
 async function startServer() {
