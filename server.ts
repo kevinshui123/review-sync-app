@@ -1101,6 +1101,7 @@ async function startServer() {
           try {
             // Try to get full listing details
             const detailRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listings/${listing.id}`);
+            console.log(`[locations] Detail for ${listing.id}:`, JSON.stringify(detailRes)?.slice(0, 1000));
             if (detailRes && !detailRes.status) {
               return { ...listing, ...detailRes };
             }
@@ -1112,6 +1113,10 @@ async function startServer() {
       );
 
       console.log('[locations] Returning enriched listings with details');
+      console.log('[locations] First listing keys:', Object.keys(enrichedListings[0] || {}));
+      console.log('[locations] Has description?', enrichedListings[0]?.description);
+      console.log('[locations] Has openingHours?', enrichedListings[0]?.openingHours);
+      console.log('[locations] Has category?', enrichedListings[0]?.category);
       res.json(enrichedListings);
     } catch (error: any) {
       console.error('EmbedSocial sources error:', error);

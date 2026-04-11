@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, ExternalLink, MapPin } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, ExternalLink } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -15,7 +15,6 @@ export function Settings() {
     yelpApiKey: '',
     openaiApiKey: '',
     geminiApiKey: '',
-    googlePlacesApiKey: '',
     embedSocialApiKey: '',
   });
 
@@ -35,7 +34,6 @@ export function Settings() {
             yelpApiKey: data.yelpApiKey || '',
             openaiApiKey: data.openaiApiKey || '',
             geminiApiKey: data.geminiApiKey || '',
-            googlePlacesApiKey: data.googlePlacesApiKey || '',
             embedSocialApiKey: data.embedSocialApiKey || '',
           });
           setEmbedSocialConnected(data.embedSocialConnected || false);
@@ -158,40 +156,6 @@ export function Settings() {
       )}
 
       <div className="space-y-8">
-
-        {/* Google Places API — own card so it is visible (not only inside OAuth block) */}
-        <section
-          id="google-places-api-key"
-          className="bg-surface-container rounded-2xl p-8 border border-outline-variant/20 relative overflow-hidden"
-        >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-tertiary/5 rounded-full blur-3xl -mr-10 -mt-10" />
-          <div className="flex items-start gap-4 relative z-10">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <MapPin className="w-6 h-6 text-primary" />
-            </div>
-            <div className="space-y-4 flex-1 min-w-0">
-              <div>
-                <h3 className="text-xl font-bold text-on-surface">{t('settings.googlePlacesSectionTitle')}</h3>
-                <p className="text-sm text-on-surface-variant mt-1">{t('settings.googlePlacesApiKeyDesc')}</p>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-outline uppercase tracking-widest block">
-                  {t('settings.googlePlacesApiKey')}
-                </label>
-                <input
-                  type="password"
-                  name="googlePlacesApiKey"
-                  value={formData.googlePlacesApiKey}
-                  onChange={handleChange}
-                  placeholder="AIza..."
-                  autoComplete="off"
-                  className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-                />
-                <p className="text-xs text-outline leading-relaxed">{t('settings.googlePlacesApiKeyHint')}</p>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* EmbedSocial Section */}
         <section className="bg-surface-container rounded-2xl p-8 border border-outline-variant/20 relative overflow-hidden">
