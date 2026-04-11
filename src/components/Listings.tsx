@@ -34,10 +34,10 @@ import { EditBusinessPage } from './EditBusinessPage';
 
 interface ListingsProps {
   setActiveTab: (tab: string) => void;
-  setListingsSubTab?: (tab: string | null) => void;
+  setListingsSubTab?: (tab: string | null, locationData?: any) => void;
   listingsSubTab?: string | null;
-  setSelectedLocation?: (loc: Location | null) => void;
-  selectedLocation?: Location | null;
+  setSelectedLocation?: (loc: any) => void;
+  selectedLocation?: any;
 }
 
 interface Location {
@@ -694,8 +694,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                 <button
                   onClick={() => {
                     setShowDetailDrawer(false);
-                    setSelectedLocation?.(selectedLocation);
-                    setListingsSubTab?.('edit');
+                    setListingsSubTab?.('edit', selectedLocation);
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-white text-primary rounded-xl font-semibold text-sm hover:bg-white/90 transition-all"
                 >

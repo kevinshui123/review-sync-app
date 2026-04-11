@@ -135,9 +135,10 @@ export default function App() {
                 ) : (
                   <Listings
                     setActiveTab={setActiveTab}
-                    setListingsSubTab={(tab) => {
-                      if (tab) {
-                        setEditLocationData(selectedLocation);
+                    setListingsSubTab={(tab, locationData) => {
+                      if (tab && locationData) {
+                        setEditLocationData(locationData);
+                        setSelectedLocation(locationData);
                       }
                       setListingsSubTab(tab);
                     }}
