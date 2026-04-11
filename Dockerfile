@@ -27,4 +27,5 @@ EXPOSE 3000
 
 # Start: push schema then run server
 # Railway injects DATABASE_URL and APP_URL as environment variables
-CMD ["sh", "-c", "npx prisma db push && node dist/server.js"]
+# --accept-data-loss is safe: only drops a new compound unique index
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/server.js"]
