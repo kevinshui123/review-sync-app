@@ -52,20 +52,14 @@ interface LocationData {
   id: string;
   name: string;
   address: string;
-  description?: string;
   phone?: string;
   website?: string;
-  openingHours?: string;
-  category?: string;
   totalReviews: number;
   averageRating: number;
   // Health fields
   hasBusinessName: boolean;
-  hasDescription: boolean;
   hasAddress: boolean;
-  hasOpeningHours: boolean;
   hasWebsite: boolean;
-  hasCategory: boolean;
   hasPhone: boolean;
   healthScore: number;
 }
@@ -180,11 +174,8 @@ function LocationHealthCard({ locations }: { locations: LocationData[] }) {
 
   const checklistItems = mainLocation ? [
     { label: 'Business name', done: mainLocation.hasBusinessName },
-    { label: 'Description', done: mainLocation.hasDescription },
     { label: 'Address (Location)', done: mainLocation.hasAddress },
-    { label: 'Opening hours', done: mainLocation.hasOpeningHours },
     { label: 'Website URL', done: mainLocation.hasWebsite },
-    { label: 'Category', done: mainLocation.hasCategory },
     { label: 'Phone number', done: mainLocation.hasPhone },
     { label: 'Number of reviews', done: mainLocation.totalReviews > 0 },
   ] : [];
@@ -388,49 +379,35 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         const address = localLoc?.address || embedLoc.address || '';
         const phone = localLoc?.phone || embedLoc.phoneNumber || '';
         const website = localLoc?.website || embedLoc.websiteUrl || '';
-        const description = localLoc?.description || embedLoc.description || '';
-        const openingHours = localLoc?.openingHours || localLoc?.businessHours || embedLoc.openingHours || '';
-        const category = localLoc?.category || embedLoc.category || '';
         const totalReviews = embedLoc.totalReviews || 0;
         const averageRating = embedLoc.averageRating || 0;
 
         // Calculate health score based on profile completeness
+        // Note: description, openingHours, category not available from EmbedSocial API
         let healthScore = 100;
         const hasBusinessName = name.trim().length >= 2;
-        const hasDescription = description.trim().length >= 20;
         const hasAddress = address.trim().length >= 5;
-        const hasOpeningHours = openingHours.length > 0;
         const hasWebsite = website.length > 0;
-        const hasCategory = category.length > 0;
         const hasPhone = phone.length > 0;
 
-        if (!hasBusinessName) healthScore -= 15;
-        if (!hasDescription) healthScore -= 10;
-        if (!hasAddress) healthScore -= 20;
-        if (!hasOpeningHours) healthScore -= 10;
-        if (!hasWebsite) healthScore -= 10;
-        if (!hasCategory) healthScore -= 5;
-        if (!hasPhone) healthScore -= 10;
+        if (!hasBusinessName) healthScore -= 20;
+        if (!hasAddress) healthScore -= 25;
+        if (!hasWebsite) healthScore -= 15;
+        if (!hasPhone) healthScore -= 15;
         if (totalReviews === 0) healthScore -= 15;
-        if (averageRating > 0 && averageRating < 3.5) healthScore -= 5;
+        if (averageRating > 0 && averageRating < 3.5) healthScore -= 10;
 
         enrichedLocations.push({
           id: localLoc?.id || embedLoc.id,
           name,
           address,
-          description,
           phone,
           website,
-          openingHours,
-          category,
           totalReviews,
           averageRating,
           hasBusinessName,
-          hasDescription,
           hasAddress,
-          hasOpeningHours,
           hasWebsite,
-          hasCategory,
           hasPhone,
           healthScore: Math.max(0, healthScore),
         });
@@ -449,40 +426,28 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
 
           let healthScore = 100;
           const hasBusinessName = !!(localLoc.name && localLoc.name.trim().length >= 2);
-          const hasDescription = !!(localLoc.description && localLoc.description.trim().length >= 20);
           const hasAddress = !!(localLoc.address && localLoc.address.trim().length >= 5);
-          const hasOpeningHours = !!(localLoc.openingHours || localLoc.businessHours);
           const hasWebsite = !!(localLoc.website || localLoc.websiteUrl);
-          const hasCategory = !!(localLoc.category);
           const hasPhone = !!(localLoc.phone);
 
-          if (!hasBusinessName) healthScore -= 15;
-          if (!hasDescription) healthScore -= 10;
-          if (!hasAddress) healthScore -= 20;
-          if (!hasOpeningHours) healthScore -= 10;
-          if (!hasWebsite) healthScore -= 10;
-          if (!hasCategory) healthScore -= 5;
-          if (!hasPhone) healthScore -= 10;
+          if (!hasBusinessName) healthScore -= 20;
+          if (!hasAddress) healthScore -= 25;
+          if (!hasWebsite) healthScore -= 15;
+          if (!hasPhone) healthScore -= 15;
           if (totalReviews === 0) healthScore -= 15;
-          if (averageRating > 0 && averageRating < 3.5) healthScore -= 5;
+          if (averageRating > 0 && averageRating < 3.5) healthScore -= 10;
 
           enrichedLocations.push({
             id: localLoc.id,
             name: localLoc.name || 'Unnamed Location',
             address: localLoc.address || '',
-            description: localLoc.description || '',
             phone: localLoc.phone || '',
             website: localLoc.website || localLoc.websiteUrl || '',
-            openingHours: localLoc.openingHours || localLoc.businessHours || '',
-            category: localLoc.category || '',
             totalReviews,
             averageRating,
             hasBusinessName,
-            hasDescription,
             hasAddress,
-            hasOpeningHours,
             hasWebsite,
-            hasCategory,
             hasPhone,
             healthScore: Math.max(0, healthScore),
           });
@@ -496,21 +461,15 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           id: embedLoc.id,
           name: embedLoc.name || 'Location',
           address: embedLoc.address || '',
-          description: '',
           phone: embedLoc.phoneNumber || '',
           website: embedLoc.websiteUrl || '',
-          openingHours: '',
-          category: '',
           totalReviews: embedLoc.totalReviews || 0,
           averageRating: embedLoc.averageRating || 0,
           hasBusinessName: true,
-          hasDescription: false,
           hasAddress: !!(embedLoc.address),
-          hasOpeningHours: false,
           hasWebsite: !!(embedLoc.websiteUrl),
-          hasCategory: false,
           hasPhone: !!(embedLoc.phoneNumber),
-          healthScore: 75,
+          healthScore: 80,
         });
       }
 

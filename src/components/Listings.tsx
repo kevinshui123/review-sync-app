@@ -26,6 +26,7 @@ interface ListingsProps {
 
 interface Location {
   id: string;
+  embedId?: string;
   name: string;
   address: string;
   account: string;
@@ -33,6 +34,12 @@ interface Location {
   lastSync: string;
   synced: boolean;
   embedSocialLocationId?: string;
+  googleId?: string;
+  websiteUrl?: string;
+  phoneNumber?: string;
+  totalReviews?: number;
+  averageRating?: number;
+  isLinked: boolean;
 }
 
 interface EmbedSocialSource {
@@ -51,6 +58,7 @@ export function Listings({ setActiveTab }: ListingsProps) {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [embedSources, setEmbedSources] = useState<EmbedSocialSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -67,21 +75,56 @@ export function Listings({ setActiveTab }: ListingsProps) {
   }, []);
 
   const fetchLocations = async () => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/locations');
-      if (res.ok) {
-        const data = await res.json();
-        setLocations(data.map((loc: any) => ({
-          id: loc.id,
-          name: loc.name,
-          address: loc.address || '',
+      // Fetch from both local DB and EmbedSocial
+      const [localRes, embedRes] = await Promise.all([
+        fetch('/api/locations'),
+        fetch('/api/embedsocial/locations'),
+      ]);
+
+      let localLocations: any[] = [];
+      let embedLocations: any[] = [];
+
+      if (localRes.ok) {
+        localLocations = await localRes.json();
+      }
+
+      if (embedRes.ok) {
+        embedLocations = await embedRes.json();
+      }
+
+      // Create a map of local locations by embedSocialLocationId
+      const localByEmbedId = new Map<string, any>();
+      for (const loc of localLocations) {
+        if (loc.embedSocialLocationId) {
+          localByEmbedId.set(loc.embedSocialLocationId, loc);
+        }
+      }
+
+      // Combine EmbedSocial data with local settings
+      const combinedLocations: Location[] = embedLocations.map((embedLoc: any) => {
+        const localLoc = localByEmbedId.get(embedLoc.id);
+        return {
+          id: localLoc?.id || embedLoc.id,
+          embedId: embedLoc.id,
+          name: embedLoc.name || 'Unnamed Location',
+          address: embedLoc.address || '',
           account: 'Google',
           group: 'Default',
-          lastSync: loc.isSynced ? new Date().toLocaleString() : 'Never',
-          synced: loc.isSynced || false,
-          embedSocialLocationId: loc.embedSocialLocationId,
-        })));
-      }
+          lastSync: localLoc?.isSynced ? new Date().toLocaleString() : 'Never',
+          synced: !!localLoc?.isSynced,
+          embedSocialLocationId: embedLoc.id,
+          googleId: embedLoc.googleId,
+          websiteUrl: embedLoc.websiteUrl,
+          phoneNumber: embedLoc.phoneNumber,
+          totalReviews: embedLoc.totalReviews,
+          averageRating: embedLoc.averageRating,
+          isLinked: !!localLoc,
+        };
+      });
+
+      setLocations(combinedLocations);
     } catch (error) {
       console.error('Failed to fetch locations:', error);
     } finally {
@@ -320,18 +363,20 @@ export function Listings({ setActiveTab }: ListingsProps) {
                   </td>
                   <td className="py-6 px-6 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/10 hover:bg-primary-container transition-all">
-                        <Psychology className="w-4 h-4" />
-                        AI Audit
+                      <button
+                        onClick={() => {
+                          setSelectedLocation(location);
+                          setShowDetailModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/10 hover:bg-primary-container transition-all"
+                      >
+                        View Details
                       </button>
                       <button
                         onClick={() => handleDeleteLocation(location.id)}
                         className="w-9 h-9 flex items-center justify-center bg-slate-100 text-slate-500 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all"
                       >
                         <Delete className="w-5 h-5" />
-                      </button>
-                      <button className="w-9 h-9 flex items-center justify-center bg-slate-100 text-slate-500 rounded-xl hover:bg-blue-50 hover:text-primary transition-all">
-                        <MoreHoriz className="w-5 h-5" />
                       </button>
                     </div>
                   </td>
@@ -576,6 +621,109 @@ export function Listings({ setActiveTab }: ListingsProps) {
                   ))}
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* View Details Modal */}
+      <AnimatePresence>
+        {showDetailModal && selectedLocation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowDetailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-slate-900">Location Details</h2>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
+                >
+                  <Close className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Store className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-lg text-slate-900">{selectedLocation.name}</div>
+                    <div className="text-sm text-slate-500 flex items-center gap-1">
+                      <LocationOn className="w-4 h-4" />
+                      {selectedLocation.address || 'No address'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <div className="text-xs font-bold text-slate-400 uppercase mb-1">Reviews</div>
+                    <div className="text-2xl font-bold text-slate-900">{selectedLocation.totalReviews ?? 0}</div>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <div className="text-xs font-bold text-slate-400 uppercase mb-1">Rating</div>
+                    <div className="text-2xl font-bold text-slate-900">{selectedLocation.averageRating?.toFixed(1) ?? '0.0'} ★</div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                    <span className="text-sm text-slate-600">Phone</span>
+                    <span className="text-sm font-medium text-slate-900">{selectedLocation.phoneNumber || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                    <span className="text-sm text-slate-600">Website</span>
+                    <span className="text-sm font-medium text-primary truncate max-w-[200px]">{selectedLocation.websiteUrl || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                    <span className="text-sm text-slate-600">Google ID</span>
+                    <span className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{selectedLocation.googleId || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                    <span className="text-sm text-slate-600">EmbedSocial ID</span>
+                    <span className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{selectedLocation.embedSocialLocationId || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                    <span className="text-sm text-slate-600">Last Sync</span>
+                    <span className="text-sm font-medium text-slate-900">{selectedLocation.lastSync}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                    <span className="text-sm text-slate-600">Status</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedLocation.isLinked ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {selectedLocation.isLinked ? 'Linked' : 'Not Linked'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
+                >
+                  Close
+                </button>
+                <a
+                  href={selectedLocation.websiteUrl || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors text-center"
+                >
+                  View on Google
+                </a>
+              </div>
             </motion.div>
           </motion.div>
         )}
