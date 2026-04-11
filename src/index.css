@@ -53,3 +53,17 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-outline);
 }
+
+/* Utility form classes used across components */
+.field-input {
+  @apply w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/50 outline-none transition-all;
+}
+.field-readonly {
+  @apply w-full bg-surface-container-lowest border-none rounded-lg p-3 text-sm text-on-surface outline-none opacity-80 cursor-default;
+}
+.btn-primary {
+  @apply px-6 py-2.5 rounded-xl font-bold text-sm bg-primary text-on-primary hover:brightness-105 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center gap-2;
+}
+.btn-primary-sm {
+  @apply px-4 py-2 rounded-lg font-bold text-sm bg-primary text-on-primary hover:brightness-105 transition-all disabled:opacity-50 flex items-center gap-1.5;
+}

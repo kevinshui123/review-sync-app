@@ -976,6 +976,17 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/locations/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.location.delete({ where: { id } });
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete location error:', error);
+      res.status(500).json({ error: 'Failed to delete location' });
+    }
+  });
+
   // ==========================================
   // Posts API Routes
   // ==========================================

@@ -10,7 +10,6 @@ interface HeaderProps {
 }
 
 export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderProps) {
-  const isKeywords = activeTab === 'keywords';
   const { language, setLanguage, t } = useLanguage();
 
   const toggleLanguage = () => {
@@ -39,17 +38,11 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderPr
 
       <div className="flex items-center gap-2 md:gap-6">
         <div className="hidden sm:flex items-center gap-4 text-sm font-medium">
-          <button 
-            onClick={() => setActiveTab && setActiveTab('dashboard')}
-            className={!isKeywords ? "text-primary border-b-2 border-primary pb-1" : "text-secondary hover:text-on-surface transition-opacity"}
+          <button
+            onClick={() => setActiveTab && setActiveTab('listings')}
+            className={`pb-1 transition-opacity ${activeTab === 'listings' ? 'text-primary border-b-2 border-primary' : 'text-secondary hover:text-on-surface'}`}
           >
             {t('header.locations')}
-          </button>
-          <button 
-            onClick={() => setActiveTab && setActiveTab('keywords')}
-            className={isKeywords ? "text-primary border-b-2 border-primary pb-1" : "text-secondary hover:text-on-surface transition-opacity"}
-          >
-            {t('header.keywords')}
           </button>
         </div>
         

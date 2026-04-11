@@ -5,10 +5,8 @@ import { Dashboard } from './components/Dashboard';
 import { Listings } from './components/Listings';
 import { Reviews } from './components/Reviews';
 import { CommentsGen } from './components/CommentsGen';
-import { RankTracker } from './components/RankTracker';
 import { Posts } from './components/Posts';
 import { Reports } from './components/Reports';
-import { Keywords } from './components/Keywords';
 import { Settings } from './components/Settings';
 import { Docs } from './components/Docs';
 import { AlertTriangle, Loader2 } from 'lucide-react';
@@ -51,11 +49,9 @@ export default function App() {
       case 'dashboard': return t('app.title.dashboard');
       case 'listings': return t('app.title.listings');
       case 'reviews': return t('app.title.reviews');
-      case 'comments-gen': return t('app.title.comments-gen');
-      case 'rank-tracker': return t('app.title.rank-tracker');
+      case 'comments': return t('app.title.comments-gen');
       case 'posts': return t('app.title.posts');
       case 'reports': return t('app.title.reports');
-      case 'keywords': return t('app.title.keywords');
       case 'settings': return t('app.title.settings');
       case 'docs': return t('app.title.docs');
       default: return t('app.title.dashboard');
@@ -114,13 +110,11 @@ export default function App() {
               className="flex-1 flex flex-col min-h-0"
             >
               {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
-              {activeTab === 'listings' && <Listings />}
+              {activeTab === 'listings' && <Listings setActiveTab={setActiveTab} />}
               {activeTab === 'reviews' && <Reviews />}
-              {activeTab === 'comments-gen' && <CommentsGen />}
-              {activeTab === 'rank-tracker' && <RankTracker />}
+              {activeTab === 'comments' && <CommentsGen />}
               {activeTab === 'posts' && <Posts />}
               {activeTab === 'reports' && <Reports />}
-              {activeTab === 'keywords' && <Keywords />}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'docs' && <Docs />}
             </motion.div>
