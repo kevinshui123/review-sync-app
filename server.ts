@@ -1108,6 +1108,12 @@ async function startServer() {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
 
+      const period = (req.query.period as string) || '30days';
+      let days = 30;
+      if (period === '7days') days = 7;
+      else if (period === '90days') days = 90;
+      else if (period === '12months') days = 365;
+
       // Initialize totals
       let totalSearchViews = 0;
       let totalMapViews = 0;
@@ -1140,12 +1146,12 @@ async function startServer() {
             try {
               // GET /rest/v1/listing_metrics?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY&sourceId=xxx
               const today = new Date();
-              const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-              const startDateStr = `${String(thirtyDaysAgo.getDate()).padStart(2, '0')}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${thirtyDaysAgo.getFullYear()}`;
+              const startDate = new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
+              const startDateStr = `${String(startDate.getDate()).padStart(2, '0')}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${startDate.getFullYear()}`;
               const endDateStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
 
               const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=100`);
-              console.log(`[metrics] Listing metrics response for sourceId ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 1000));
+              console.log(`[metrics] Listing metrics response for sourceId ${sourceId} (period=${period}):`, JSON.stringify(metricsRes)?.slice(0, 1000));
 
               if (metricsRes && metricsRes.listings && metricsRes.listings.length > 0) {
                 for (const m of metricsRes.listings) {
@@ -1279,22 +1285,41 @@ async function startServer() {
 
             if (dailyRes && dailyRes.listings && dailyRes.listings.length > 0) {
               hasRealData = true;
-              // Process and add to charts
-              for (const m of dailyRes.listings) {
-                const dateStr = m.date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                const searchViews = (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0);
-                const mapViews = (m.googleMapsDesktop || 0) + (m.googleMapsMobile || 0);
-                impressions.push({
-                  date: dateStr,
-                  searchViews,
-                  mapViews,
-                });
-                actions.push({
-                  date: dateStr,
-                  websiteClicks: m.websiteClicks || 0,
-                  directionRequests: m.directions || 0,
-                  phoneCalls: m.callClicks || 0,
-                });
+              // The API returns aggregated data for the entire period
+              // We need to make separate API calls for each day to get daily data
+              const dailyDataPromises: Promise<any>[] = [];
+              for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                const dayStart = `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+                const dayEnd = dayStart; // Same day for daily data
+
+                dailyDataPromises.push(
+                  embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${dayStart}&endDate=${dayEnd}&sourceId=${sourceId}`)
+                    .then((dayRes: any) => {
+                      if (dayRes && dayRes.listings && dayRes.listings.length > 0) {
+                        const m = dayRes.listings[0];
+                        return {
+                          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                          searchViews: (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0),
+                          mapViews: (m.googleMapsDesktop || 0) + (m.googleMapsMobile || 0),
+                          websiteClicks: m.websiteClicks || 0,
+                          directionRequests: m.directions || 0,
+                          phoneCalls: m.callClicks || 0,
+                        };
+                      }
+                      return null;
+                    })
+                    .catch(() => null)
+                );
+              }
+
+              const dailyDataResults = await Promise.all(dailyDataPromises);
+              for (const d of dailyDataResults) {
+                if (d) {
+                  impressions.push({ date: d.date, searchViews: d.searchViews, mapViews: d.mapViews });
+                  actions.push({ date: d.date, websiteClicks: d.websiteClicks, directionRequests: d.directionRequests, phoneCalls: d.phoneCalls });
+                }
               }
               break; // Got data, no need to try other IDs
             }
