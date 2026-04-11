@@ -243,38 +243,41 @@ async function resolveGbpLocationResourceName(
   const pickFromList = (list: any[], pid: string | null): string | null => {
     if (list.length === 0) return null;
 
-    // Log each result's fields so we can see what's available to match
+    // Log each result — the actual field names from the API response
     for (const g of list) {
-      const loc = g.location;
-      console.log(`[resolveGbp] Result: locationName="${loc?.name}", metadata.placeId="${loc?.metadata?.placeId}", storeCode="${loc?.storeCode}"`);
+      // The API can return locations nested under a "location" key OR flat on the item itself
+      const locName  = g.location?.name  ?? g.name  ?? undefined;
+      const metaPid = g.location?.metadata?.placeId ?? g.metadata?.placeId ?? undefined;
+      const storeCd = g.location?.storeCode   ?? g.storeCode   ?? undefined;
+      console.log(`[resolveGbp] Result: locationName="${locName}", metadata.placeId="${metaPid}", storeCode="${storeCd}"`);
     }
 
-    // If only one result, trust it — use it even without explicit placeId match
     if (list.length === 1) {
-      const name = list[0].location?.name || null;
+      const name = list[0].location?.name ?? list[0].name ?? null;
       console.log(`[resolveGbp] Single result — trusting: "${name}"`);
       return name;
     }
 
-    // Multiple results: try to match by metadata.placeId
     if (pid) {
       for (const g of list) {
-        if (g.location?.metadata?.placeId === pid) {
-          console.log(`[resolveGbp] Matched by metadata.placeId: "${g.location?.name}"`);
-          return g.location?.name || null;
+        const metaPid = g.location?.metadata?.placeId ?? g.metadata?.placeId ?? null;
+        if (metaPid && metaPid === pid) {
+          const name = g.location?.name ?? g.name ?? null;
+          console.log(`[resolveGbp] Matched by metadata.placeId: "${name}"`);
+          return name;
         }
       }
-      // Fallback: match by storeCode
       for (const g of list) {
-        if (g.location?.storeCode === pid) {
-          console.log(`[resolveGbp] Matched by storeCode: "${g.location?.name}"`);
-          return g.location?.name || null;
+        const storeCd = g.location?.storeCode ?? g.storeCode ?? null;
+        if (storeCd === pid) {
+          const name = g.location?.name ?? g.name ?? null;
+          console.log(`[resolveGbp] Matched by storeCode: "${name}"`);
+          return name;
         }
       }
     }
 
-    // No match found — default to first result
-    const fallback = list[0].location?.name || null;
+    const fallback = list[0].location?.name ?? list[0].name ?? null;
     console.log(`[resolveGbp] No placeId match — defaulting to first: "${fallback}"`);
     return fallback;
   };
