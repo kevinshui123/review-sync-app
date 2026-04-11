@@ -21,14 +21,20 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 interface Review {
   id: string;
-  author: string;
-  rating: number;
-  location: string;
-  date: string;
-  text: string;
-  replied: boolean;
-  hasReply: boolean;
+  authorName?: string;
+  author?: string;
+  rating?: number;
+  location?: string;
+  captionText?: string;
+  text?: string;
+  sourceName?: string;
+  sourceId?: string;
+  originalCreatedOn?: string;
+  replies?: string[];
+  replied?: boolean;
+  hasReply?: boolean;
   replyText?: string;
+  date?: string;
 }
 
 interface ReviewFilters {
@@ -52,13 +58,20 @@ export function Reviews() {
 
   const fetchReviews = async () => {
     try {
-      const res = await fetch('/api/reviews');
+      const res = await fetch('/api/embedsocial/reviews');
       if (res.ok) {
         const data = await res.json();
-        setReviews(data.reviews || []);
-        setFilters(data.filters || { all: 0, waiting: 0, replied: 0, ai: 0 });
-        if (data.reviews?.length > 0 && !selectedReview) {
-          setSelectedReview(data.reviews[0]);
+        // Reviews from EmbedSocial API
+        const embedReviews = Array.isArray(data) ? data : [];
+        setReviews(embedReviews);
+        setFilters({
+          all: embedReviews.length,
+          waiting: embedReviews.filter((r: any) => !r.replies?.length).length,
+          replied: embedReviews.filter((r: any) => r.replies?.length > 0).length,
+          ai: 0,
+        });
+        if (embedReviews.length > 0 && !selectedReview) {
+          setSelectedReview(embedReviews[0]);
         }
       }
     } catch (error) {
@@ -76,11 +89,19 @@ export function Reviews() {
     setSyncing(true);
     setSyncMessage(null);
     try {
-      const res = await fetch('/api/reviews/sync', { method: 'POST' });
+      // Trigger sync via EmbedSocial API (already handled by the fetch above)
+      const res = await fetch('/api/embedsocial/reviews');
       const data = await res.json();
       if (res.ok) {
-        setSyncMessage({ type: 'success', text: data.message || 'Reviews synced successfully!' });
-        await fetchReviews();
+        const embedReviews = Array.isArray(data) ? data : [];
+        setReviews(embedReviews);
+        setFilters({
+          all: embedReviews.length,
+          waiting: embedReviews.filter((r: any) => !r.replies?.length).length,
+          replied: embedReviews.filter((r: any) => r.replies?.length > 0).length,
+          ai: 0,
+        });
+        setSyncMessage({ type: 'success', text: `Synced ${embedReviews.length} reviews successfully!` });
       } else {
         setSyncMessage({ type: 'error', text: data.error || 'Failed to sync reviews' });
       }
@@ -275,15 +296,15 @@ export function Reviews() {
                     <div className={`w-10 h-10 rounded-full border-2 ${
                       selectedReview?.id === review.id ? 'border-white/20' : 'border-slate-200'
                     } bg-slate-200 flex items-center justify-center font-bold text-sm`}>
-                      {review.author.charAt(0)}
+                      {(review.authorName || review.author || 'A').charAt(0)}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold leading-tight">{review.author}</h4>
+                      <h4 className="text-sm font-bold leading-tight">{review.authorName || review.author}</h4>
                       <div className="flex text-amber-400">
                         {Array.from({ length: 5 }).map((_, i) => (
                           <Star
                             key={i}
-                            className={`w-3 h-3 ${i < review.rating ? 'text-amber-400' : 'text-slate-300'} ${
+                            className={`w-3 h-3 ${i < (review.rating || 0) ? 'text-amber-400' : 'text-slate-300'} ${
                               selectedReview?.id === review.id ? 'text-white' : ''
                             }`}
                             style={{ fontVariationSettings: "'FILL' 1" }}
@@ -293,11 +314,11 @@ export function Reviews() {
                     </div>
                   </div>
                   <span className={`text-[10px] ${selectedReview?.id === review.id ? 'text-white/70' : 'text-slate-400'}`}>
-                    {review.date}
+                    {review.originalCreatedOn || review.date}
                   </span>
                 </div>
                 <p className={`text-xs line-clamp-2 ${selectedReview?.id === review.id ? 'text-white/90' : 'text-slate-500'}`}>
-                  {review.text}
+                  {review.captionText || review.text}
                 </p>
               </div>
             ))}
@@ -320,25 +341,25 @@ export function Reviews() {
               <header className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-5">
                   <div className="w-16 h-16 rounded-full border-4 border-slate-100 bg-slate-200 flex items-center justify-center text-2xl font-bold">
-                    {selectedReview.author.charAt(0)}
+                    {(selectedReview.authorName || selectedReview.author || 'A').charAt(0)}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-extrabold font-headline">{selectedReview.author}</h2>
+                    <h2 className="text-2xl font-extrabold font-headline">{selectedReview.authorName || selectedReview.author}</h2>
                     <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
                       <div className="flex text-amber-400">
                         {Array.from({ length: 5 }).map((_, i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 ${i < selectedReview.rating ? 'text-amber-400' : 'text-slate-300'}`}
+                            className={`w-4 h-4 ${i < (selectedReview.rating || 0) ? 'text-amber-400' : 'text-slate-300'}`}
                             style={{ fontVariationSettings: "'FILL' 1" }}
                           />
                         ))}
                       </div>
                       <span>•</span>
-                      <span>{selectedReview.date}</span>
+                      <span>{selectedReview.originalCreatedOn || selectedReview.date}</span>
                       <span>•</span>
                       <span className="flex items-center gap-1">
-                        <LocationOn className="w-3 h-3" /> {selectedReview.location}
+                        <LocationOn className="w-3 h-3" /> {selectedReview.sourceName || selectedReview.location}
                       </span>
                     </div>
                   </div>
@@ -355,15 +376,15 @@ export function Reviews() {
 
               <article className="mb-8">
                 <p className="text-base leading-relaxed text-slate-700">
-                  {selectedReview.text}
+                  {selectedReview.captionText || selectedReview.text}
                 </p>
               </article>
 
               {/* Existing Reply */}
-              {selectedReview.replyText && (
+              {(selectedReview.replyText || selectedReview.replies?.length) && (
                 <div className="bg-slate-50 rounded-2xl p-6 mb-8 border-l-4 border-primary">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-primary mb-4">Your Reply</h4>
-                  <p className="text-sm text-slate-700">{selectedReview.replyText}</p>
+                  <p className="text-sm text-slate-700">{selectedReview.replyText || selectedReview.replies?.[0]}</p>
                 </div>
               )}
 
@@ -373,15 +394,15 @@ export function Reviews() {
                 <div className="grid grid-cols-3 gap-6">
                   <div>
                     <p className="text-[10px] text-slate-400 uppercase font-semibold">Rating</p>
-                    <p className="text-sm font-bold text-slate-900">{selectedReview.rating}/5 stars</p>
+                    <p className="text-sm font-bold text-slate-900">{(selectedReview.rating || 0)}/5 stars</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-400 uppercase font-semibold">Total Reviews</p>
-                    <p className="text-sm font-bold text-slate-900">{reviews.filter(r => r.author === selectedReview.author).length} published</p>
+                    <p className="text-sm font-bold text-slate-900">{reviews.filter(r => (r.authorName || r.author) === (selectedReview.authorName || selectedReview.author)).length} published</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-400 uppercase font-semibold">Status</p>
-                    <p className="text-sm font-bold text-slate-900">{selectedReview.replied ? 'Replied' : 'Pending'}</p>
+                    <p className="text-sm font-bold text-slate-900">{(selectedReview.replied || selectedReview.hasReply || selectedReview.replies?.length) ? 'Replied' : 'Pending'}</p>
                   </div>
                 </div>
               </div>
@@ -403,7 +424,7 @@ export function Reviews() {
               <div className="relative">
                 <textarea
                   className="w-full min-h-[120px] bg-slate-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary focus:bg-white transition-all resize-none"
-                  placeholder={`Type your response to ${selectedReview.author}...`}
+                  placeholder={`Type your response to ${selectedReview.authorName || selectedReview.author}...`}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                 />

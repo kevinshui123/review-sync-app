@@ -1683,6 +1683,33 @@ async function startServer() {
     }
   });
 
+  // Update a listing in EmbedSocial (for Edit Business Info)
+  app.put('/api/embedsocial/locations/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const apiKey = await getEmbedSocialApiKey();
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+
+      // PATCH the listing with the provided data
+      const data = await embedSocialFetchWithKey(
+        apiKey,
+        `/rest/v1/listings/${id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(req.body),
+        },
+      );
+
+      res.json(data);
+    } catch (error: any) {
+      console.error('EmbedSocial update location error:', error);
+      res.status(500).json({ error: 'Failed to update location', details: error.message });
+    }
+  });
+
   // Update a listing in EmbedSocial (bulk edit)
   app.patch('/api/embedsocial/listings/:id', async (req, res) => {
     try {
