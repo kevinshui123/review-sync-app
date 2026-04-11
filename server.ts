@@ -215,10 +215,6 @@ function parseReviewStarRating(review: any): number {
   return map[k] ?? 5;
 }
 
-/**
- * Places API Place ID (ChIJ…) cannot be used as the parent for GBP reviews.
- * Resolve to accounts/…/locations/… via googleLocations:search using business title + address.
- */
 async function resolveGbpLocationResourceName(
   auth: Auth.OAuth2Client,
   loc: { name: string; address: string | null; googlePlaceId: string | null },
@@ -229,6 +225,58 @@ async function resolveGbpLocationResourceName(
   }
 
   const placeId = loc.googlePlaceId || storedMapping;
+
+  /**
+   * googleLocations:search returns results in two formats:
+   *
+   *  1. Unclaimed locations:
+   *     { name: "googleLocations/ChIJ...", location: { name: "googleLocations/ChIJ...", ... } }
+   *
+   *  2. Claimed locations the authenticated user owns:
+   *     { name: "accounts/123/locations/456", locationKey: { placeId: "ChIJ..." } }
+   *
+   * We need format-2 to build the accounts/{accountId}/locations/{locationId} path for the v4 reviews API.
+   * Strategy: list all accounts, then list all locations inside each account, find one with matching placeId.
+   */
+  try {
+    const accountsData = await googleApiRequestGet(
+      auth,
+      'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
+    );
+    const accounts: any[] = accountsData.accounts || [];
+    console.log(`[resolveGbp] Found ${accounts.length} account(s)`);
+
+    for (const account of accounts) {
+      const accountName = account.name; // e.g. "accounts/123456"
+      let pageToken: string | undefined;
+      do {
+        const params = new URLSearchParams({ pageSize: '100' });
+        if (pageToken) params.set('pageToken', pageToken);
+        const locsUrl = `https://mybusiness.googleapis.com/v4/${accountName}/locations?${params}`;
+        const locsData = await googleApiRequestGet(auth, locsUrl);
+        const locations: any[] = locsData.locations || [];
+
+        for (const l of locations) {
+          const locPlaceId = l.locationKey?.placeId || null;
+          console.log(`[resolveGbp] Account location: name="${l.name}", placeId="${locPlaceId}", storeCode="${l.storeCode}"`);
+          if (locPlaceId && placeId && locPlaceId === placeId) {
+            console.log(`[resolveGbp] Matched! resourceName="${l.name}"`);
+            return l.name; // e.g. "accounts/123456/locations/789012"
+          }
+        }
+        pageToken = locsData.nextPageToken;
+      } while (pageToken);
+    }
+  } catch (e) {
+    console.error('[resolveGbp] Account enumeration failed:', e);
+  }
+
+  /**
+   * Fallback: use googleLocations:search (works for both claimed and unclaimed locations).
+   * Returns "googleLocations/ChIJ..." for unclaimed locations — not usable for v4 reviews API,
+   * but better than nothing; the reviews call will produce a clear error if the OAuth account
+   * doesn't have access to that location.
+   */
   const searchBody = {
     pageSize: 10,
     location: {
@@ -243,13 +291,11 @@ async function resolveGbpLocationResourceName(
   const pickFromList = (list: any[], pid: string | null): string | null => {
     if (list.length === 0) return null;
 
-    // Log each result — the actual field names from the API response
     for (const g of list) {
-      // The API can return locations nested under a "location" key OR flat on the item itself
-      const locName  = g.location?.name  ?? g.name  ?? undefined;
+      const locName = g.location?.name ?? g.name ?? undefined;
       const metaPid = g.location?.metadata?.placeId ?? g.metadata?.placeId ?? undefined;
-      const storeCd = g.location?.storeCode   ?? g.storeCode   ?? undefined;
-      console.log(`[resolveGbp] Result: locationName="${locName}", metadata.placeId="${metaPid}", storeCode="${storeCd}"`);
+      const storeCd = g.location?.storeCode ?? g.storeCode ?? undefined;
+      console.log(`[resolveGbp] SearchResult: locationName="${locName}", metadata.placeId="${metaPid}", storeCode="${storeCd}"`);
     }
 
     if (list.length === 1) {
