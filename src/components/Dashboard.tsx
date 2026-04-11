@@ -305,55 +305,55 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         console.log('[Dashboard] Embed locations:', embedLocations.length);
       }
 
-      // Fetch reviews from database
-      const reviewsRes = await fetch('/api/reviews');
+      // First try to fetch reviews from EmbedSocial (has real data)
       let reviews: Review[] = [];
-      if (reviewsRes.ok) {
-        const reviewsData = await reviewsRes.json();
-        const rawReviews = reviewsData.reviews || [];
+      let embedReviews: any[] = [];
+      try {
+        const embedReviewsRes = await fetch('/api/embedsocial/reviews');
+        if (embedReviewsRes.ok) {
+          const embedReviewsData = await embedReviewsRes.json();
+          embedReviews = Array.isArray(embedReviewsData) ? embedReviewsData : (embedReviewsData.data || embedReviewsData.items || []);
+          console.log('[Dashboard] EmbedSocial reviews raw data:', JSON.stringify(embedReviews)?.slice(0, 1000));
 
-        // Transform and add review type classification
-        reviews = rawReviews.map((r: any) => ({
-          id: r.id,
-          author: r.author || 'Anonymous User',
-          authorPhoto: r.authorPhoto || null,
-          rating: r.rating || 0,
-          location: r.location || 'Unknown',
-          date: r.date || '',
-          text: r.text || '',
-          replied: r.replied || false,
-          replyText: r.replyText,
-          isPositive: (r.rating || 0) >= 4,
-        }));
+          reviews = embedReviews.map((r: any) => {
+            console.log('[Dashboard] Processing review:', r.authorName, 'rating:', r.rating);
+            return {
+              id: r.id,
+              author: r.authorName || 'Anonymous User',
+              authorPhoto: r.authorPhoto || r.profilePhotoUrl || null,
+              rating: r.rating || 0,
+              location: r.sourceName || embedLocations[0]?.name || 'Google',
+              date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+              text: r.captionText || r.text || '',
+              replied: r.replies && r.replies.length > 0,
+              replyText: undefined,
+              isPositive: (r.rating || 0) >= 4,
+            };
+          });
+        }
+      } catch (e) {
+        console.log('EmbedSocial reviews fetch error:', e);
       }
 
-      // If no reviews in database, fetch from EmbedSocial directly
-      if (reviews.length === 0 && embedLocations.length > 0) {
-        try {
-          const embedReviewsRes = await fetch('/api/embedsocial/reviews');
-          if (embedReviewsRes.ok) {
-            const embedReviewsData = await embedReviewsRes.json();
-            const embedReviews = Array.isArray(embedReviewsData) ? embedReviewsData : (embedReviewsData.data || embedReviewsData.items || []);
-            console.log('[Dashboard] EmbedSocial reviews raw data:', JSON.stringify(embedReviews)?.slice(0, 1000));
+      // If no EmbedSocial reviews, try database
+      if (reviews.length === 0) {
+        const reviewsRes = await fetch('/api/reviews');
+        if (reviewsRes.ok) {
+          const reviewsData = await reviewsRes.json();
+          const rawReviews = reviewsData.reviews || [];
 
-            reviews = embedReviews.map((r: any) => {
-              console.log('[Dashboard] Processing review:', r.authorName, 'rating:', r.rating);
-              return {
-                id: r.id,
-                author: r.authorName || 'Anonymous User',
-                authorPhoto: r.authorPhoto || r.profilePhotoUrl || null,
-                rating: r.rating || 0,
-                location: r.sourceName || embedLocations[0]?.name || 'Google',
-                date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
-                text: r.captionText || r.text || '',
-                replied: r.replies && r.replies.length > 0,
-                replyText: undefined,
-                isPositive: (r.rating || 0) >= 4,
-              };
-            });
-          }
-        } catch (e) {
-          console.log('EmbedSocial reviews fetch error:', e);
+          reviews = rawReviews.map((r: any) => ({
+            id: r.id,
+            author: r.reviewerName || r.author || 'Anonymous User',
+            authorPhoto: null,
+            rating: r.rating || 0,
+            location: r.locationName || r.location || 'Unknown',
+            date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+            text: r.comment || r.text || '',
+            replied: !!r.replyText,
+            replyText: r.replyText,
+            isPositive: (r.rating || 0) >= 4,
+          }));
         }
       }
 

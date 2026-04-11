@@ -1132,29 +1132,26 @@ async function startServer() {
           totalReviews += listing.totalReviews || 0;
           averageRating = listing.averageRating || averageRating;
 
-          // listing_metrics API 需要 POST 请求，body 中包含 listings 数组
+          // listing_metrics API - try GET with source_ids[] parameter
           const sourceId = listing.googleId || listing.id;
 
           if (sourceId) {
             try {
-              // POST /rest/v1/listing_metrics with body containing source IDs
-              const metricsRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_metrics', {
-                method: 'POST',
-                body: JSON.stringify({ listings: [sourceId] }),
-              });
+              // GET /rest/v1/listing_metrics?source_ids[]=xxx
+              const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?source_ids[]=${sourceId}`);
               console.log(`[metrics] Listing metrics response for ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 1000));
 
               if (metricsRes) {
-                // 解析 metrics 响应
-                const metricsData = Array.isArray(metricsRes) ? metricsRes : (metricsRes.data || metricsRes.metrics || []);
+                // 解析 metrics 响应 - try both direct array and nested data
+                const metricsData = Array.isArray(metricsRes) ? metricsRes
+                  : (metricsRes.data || metricsRes.metrics || metricsRes.listings || []);
                 if (Array.isArray(metricsData)) {
                   for (const m of metricsData) {
-                    // 累加搜索和地图视图
-                    totalSearchViews += m.searchViews || m.search_views || m.views || 0;
-                    totalMapViews += m.mapViews || m.map_views || 0;
-                    totalWebsiteClicks += m.websiteClicks || m.website_clicks || 0;
-                    totalDirectionRequests += m.directionRequests || m.direction_requests || 0;
-                    totalPhoneCalls += m.phoneCalls || m.phone_calls || 0;
+                    totalSearchViews += m.searchViews || m.search_views || m.views || m.search_views_total || 0;
+                    totalMapViews += m.mapViews || m.map_views || m.map_views_total || 0;
+                    totalWebsiteClicks += m.websiteClicks || m.website_clicks || m.website_clicks_total || 0;
+                    totalDirectionRequests += m.directionRequests || m.direction_requests || m.direction_requests_total || 0;
+                    totalPhoneCalls += m.phoneCalls || m.phone_calls || m.phone_calls_total || 0;
                   }
                 }
               }
@@ -1162,12 +1159,9 @@ async function startServer() {
               console.log(`[metrics] Listing metrics fetch error for ${sourceId}:`, e.message);
             }
 
-            // 也尝试 listing_item_metrics POST
+            // 也尝试 listing_item_metrics
             try {
-              const itemMetricsRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_item_metrics', {
-                method: 'POST',
-                body: JSON.stringify({ listings: [sourceId] }),
-              });
+              const itemMetricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_item_metrics?source_ids[]=${sourceId}`);
               console.log(`[metrics] Item metrics response for ${sourceId}:`, JSON.stringify(itemMetricsRes)?.slice(0, 500));
             } catch (e: any) {
               console.log(`[metrics] Item metrics fetch error for ${sourceId}:`, e.message);
@@ -1269,11 +1263,8 @@ async function startServer() {
       if (sourceIds.length > 0) {
         for (const sourceId of sourceIds) {
           try {
-            // POST /rest/v1/listing_metrics with body containing source IDs
-            const dailyRes = await embedSocialFetchWithKey(apiKey, '/rest/v1/listing_metrics', {
-              method: 'POST',
-              body: JSON.stringify({ listings: [sourceId] }),
-            });
+            // GET /rest/v1/listing_metrics?source_ids[]=xxx
+            const dailyRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?source_ids[]=${sourceId}`);
             console.log(`[chart-data] Metrics for ${sourceId}:`, JSON.stringify(dailyRes)?.slice(0, 500));
 
             if (dailyRes) {
@@ -1352,13 +1343,15 @@ async function startServer() {
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
-      // EmbedSocial uses "items" for reviews
-      const { location_id, source_names, page } = req.query;
+      // EmbedSocial uses "items" for reviews, source_ids[] is the correct param
+      const { location_id, source_names } = req.query;
       const params = new URLSearchParams();
-      if (location_id) params.set('source_id', String(location_id));
       if (source_names) params.set('source_names[]', String(source_names));
-      if (page) params.set('page', String(page));
-      const data = await embedSocialFetchWithKey(apiKey, `/rest/v1/items?${params}`);
+      const queryString = params.toString();
+      const url = `/rest/v1/items${queryString ? '?' + queryString : ''}`;
+      console.log('[reviews] Fetching from:', url);
+      const data = await embedSocialFetchWithKey(apiKey, url);
+      console.log('[reviews] Raw response:', JSON.stringify(data)?.slice(0, 1000));
       res.json(data);
     } catch (error: any) {
       console.error('EmbedSocial reviews error:', error);
