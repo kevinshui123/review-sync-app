@@ -241,17 +241,42 @@ async function resolveGbpLocationResourceName(
   };
 
   const pickFromList = (list: any[], pid: string | null): string | null => {
+    if (list.length === 0) return null;
+
+    // Log each result's fields so we can see what's available to match
     for (const g of list) {
-      const metaPid = g.location?.metadata?.placeId;
-      if (metaPid && pid && metaPid === pid) return g.location?.name || null;
+      const loc = g.location;
+      console.log(`[resolveGbp] Result: locationName="${loc?.name}", metadata.placeId="${loc?.metadata?.placeId}", storeCode="${loc?.storeCode}"`);
     }
-    if (list.length === 1) return list[0].location?.name || null;
-    if (list.length > 1 && pid) {
+
+    // If only one result, trust it — use it even without explicit placeId match
+    if (list.length === 1) {
+      const name = list[0].location?.name || null;
+      console.log(`[resolveGbp] Single result — trusting: "${name}"`);
+      return name;
+    }
+
+    // Multiple results: try to match by metadata.placeId
+    if (pid) {
       for (const g of list) {
-        if (g.location?.metadata?.placeId === pid) return g.location?.name || null;
+        if (g.location?.metadata?.placeId === pid) {
+          console.log(`[resolveGbp] Matched by metadata.placeId: "${g.location?.name}"`);
+          return g.location?.name || null;
+        }
+      }
+      // Fallback: match by storeCode
+      for (const g of list) {
+        if (g.location?.storeCode === pid) {
+          console.log(`[resolveGbp] Matched by storeCode: "${g.location?.name}"`);
+          return g.location?.name || null;
+        }
       }
     }
-    return list[0]?.location?.name || null;
+
+    // No match found — default to first result
+    const fallback = list[0].location?.name || null;
+    console.log(`[resolveGbp] No placeId match — defaulting to first: "${fallback}"`);
+    return fallback;
   };
 
   try {
