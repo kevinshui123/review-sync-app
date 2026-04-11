@@ -202,32 +202,22 @@ export function Listings({ setActiveTab }: ListingsProps) {
     >
       {/* Page Header */}
       <div className="px-10 pt-8 pb-4">
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold text-primary font-headline tracking-tight">Listings</h1>
-            <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-semibold w-fit">
-              <Inventory2 className="w-4 h-4" />
-              {locations.length}/1 listing limit
+          <div className="flex items-end mb-6">
+            <div>
+              <h1 className="text-3xl font-extrabold text-primary font-headline tracking-tight">Listings</h1>
+              <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-semibold w-fit">
+                <Inventory2 className="w-4 h-4" />
+                {locations.length}/1 listing limit
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSyncReviews}
-              disabled={syncing}
-              className="flex items-center gap-2 bg-slate-100 text-slate-700 px-5 py-3 rounded-full font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
-            >
-              <Sync className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
-              <span>{syncing ? 'Syncing...' : 'Sync Reviews'}</span>
-            </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-primary/20 transition-all"
+              className="ml-auto flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-primary/20 transition-all"
             >
               <Add className="w-5 h-5" />
               <span>New listing</span>
             </button>
           </div>
-        </div>
 
         {/* Sync Message */}
         <AnimatePresence>

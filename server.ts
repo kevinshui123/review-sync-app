@@ -428,7 +428,7 @@ function embedSocialHeaders() {
 async function embedSocialFetch(path: string, options: RequestInit = {}): Promise<any> {
   // Set EMBEDSOCIAL_BASE_URL to the full base, e.g. https://app.embedsocial.com
   // Caller passes the full path (e.g. /rest/v1/sources)
-  const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://app.embedsocial.com').replace(/\/$/, '');
+  const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://embedsocial.com/app/api').replace(/\/$/, '');
 
   const res = await fetch(`${base}${path}`, {
     ...options,
@@ -454,7 +454,7 @@ async function getEmbedSocialApiKey(tenantId?: string): Promise<string> {
 }
 
 async function embedSocialFetchWithKey(apiKey: string, path: string, options: RequestInit = {}): Promise<any> {
-  const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://app.embedsocial.com').replace(/\/$/, '');
+  const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://embedsocial.com/app/api').replace(/\/$/, '');
   console.log(`[embedSocialFetch] Using base: ${base}`);
   console.log(`[embedSocialFetch] Full URL: ${base}${path}`);
 
@@ -838,7 +838,30 @@ async function startServer() {
         include: { location: true },
         orderBy: { createdAt: 'desc' },
       });
-      res.json(reviews);
+
+      // Transform to component format
+      const transformedReviews = reviews.map(r => ({
+        id: r.id,
+        author: r.reviewerName,
+        rating: r.rating,
+        location: r.location?.name || 'Unknown',
+        date: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        text: r.comment || '',
+        replied: !!r.replyText,
+        hasReply: r.isRepliedByAI,
+        replyText: r.replyText || undefined,
+      }));
+
+      // Calculate filters
+      const total = reviews.length;
+      const waiting = reviews.filter(r => !r.replyText).length;
+      const replied = reviews.filter(r => r.replyText).length;
+      const ai = reviews.filter(r => r.isRepliedByAI).length;
+
+      res.json({
+        reviews: transformedReviews,
+        filters: { all: total, waiting, replied, ai }
+      });
     } catch (error) {
       console.error('Fetch reviews error:', error);
       res.status(500).json({ error: 'Failed to fetch reviews' });
@@ -885,10 +908,8 @@ async function startServer() {
             `/rest/v1/items?source_id=${loc.embedSocialLocationId}&source_names[]=Google`,
           );
 
-          const reviewList: any[] = Array.isArray(reviewsData) ? reviewsData : (reviewsData.data || []);
+          const reviewList: any[] = Array.isArray(reviewsData) ? reviewsData : (reviewsData.data || reviewsData.items || []);
           console.log(`[syncReviews] Got ${reviewList.length} reviews for location "${loc.name}"`);
-          console.log(`[syncReviews] Raw reviewsData keys: ${Object.keys(reviewsData).join(', ')}`);
-          console.log(`[syncReviews] Raw reviewsData response:`, JSON.stringify(reviewsData));
 
           for (const r of reviewList) {
             const normalized = normalizeEmbedSocialReview(r, loc.id);
@@ -923,20 +944,26 @@ async function startServer() {
       // --- Sync ALL reviews (when no location_id set) and match by location name ---
       if (locationsWithoutId.length > 0) {
         try {
-          const allReviews = await embedSocialFetchWithKey(
-            apiKey,
-            `/rest/v1/items?source_names[]=Google`,
-          );
+          // Try to fetch all Google reviews
+          let allReviews: any = { items: [] };
+          try {
+            allReviews = await embedSocialFetchWithKey(apiKey, `/rest/v1/items?source_names[]=Google`);
+          } catch {
+            // Fallback: try without source_names filter
+            allReviews = await embedSocialFetchWithKey(apiKey, `/rest/v1/items`);
+          }
 
-          const reviewList: any[] = Array.isArray(allReviews) ? allReviews : (allReviews.data || []);
-          console.log(`[syncReviews] Got ${reviewList.length} total Google reviews from EmbedSocial`);
-          console.log(`[syncReviews] Raw allReviews keys: ${Object.keys(allReviews).join(', ')}`);
-          console.log(`[syncReviews] Raw allReviews response:`, JSON.stringify(allReviews));
+          const reviewList: any[] = Array.isArray(allReviews) ? allReviews : (allReviews.data || allReviews.items || []);
+          console.log(`[syncReviews] Got ${reviewList.length} total reviews from EmbedSocial`);
 
           for (const r of reviewList) {
+            // Extract source name from review
+            const reviewSourceName = r.sourceName || '';
             // Try to find a matching local location by name
             const matchedLoc = locationsWithoutId.find(
-              (l) => l.name.toLowerCase() === (r.location_name || '').toLowerCase(),
+              (l) => l.name.toLowerCase() === reviewSourceName.toLowerCase() ||
+                     reviewSourceName.toLowerCase().includes(l.name.toLowerCase()) ||
+                     l.name.toLowerCase().includes(reviewSourceName.toLowerCase())
             ) || locationsWithoutId[0]; // fallback to first
 
             const normalized = normalizeEmbedSocialReview(r, matchedLoc?.id || '');
@@ -1093,6 +1120,31 @@ async function startServer() {
     } catch (error: any) {
       console.error('Update location embedSocialId error:', error);
       res.status(500).json({ error: 'Failed to update location', details: error.message });
+    }
+  });
+
+  // Update a listing in EmbedSocial (bulk edit)
+  app.patch('/api/embedsocial/listings/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const apiKey = await getEmbedSocialApiKey();
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+
+      const data = await embedSocialFetchWithKey(
+        apiKey,
+        `/rest/v1/listings/${id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(req.body),
+        },
+      );
+
+      res.json(data);
+    } catch (error: any) {
+      console.error('EmbedSocial update listing error:', error);
+      res.status(500).json({ error: 'Failed to update listing', details: error.message });
     }
   });
 

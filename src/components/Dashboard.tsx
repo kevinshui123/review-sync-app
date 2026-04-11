@@ -11,12 +11,22 @@ import {
   TrendingUp,
   AutoAwesome,
   Bolt,
+  Refresh,
 } from '@mui/icons-material';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardProps {
   setActiveTab: (tab: string) => void;
+}
+
+interface DashboardStats {
+  locationsCount: number;
+  totalReviews: number;
+  averageRating: string;
+  replyRate: number;
+  repliedReviews: number;
+  unrepliedReviews: number;
 }
 
 interface MetricCardProps {
@@ -35,7 +45,7 @@ function MetricCard({ icon, label, value, change, changeType = 'neutral' }: Metr
   }[changeType];
 
   return (
-    <div className="bg-white rounded-xl p-5 flex flex-col gap-1 style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}">
+    <div className="bg-white rounded-xl p-5 flex flex-col gap-1" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
       <div className="flex items-center justify-between mb-2">
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
           {icon}
@@ -76,42 +86,67 @@ function HealthGauge({ score }: { score: number }) {
 export function Dashboard({ setActiveTab }: DashboardProps) {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    locationsCount: 0,
+    totalReviews: 0,
+    averageRating: '0.0',
+    replyRate: 0,
+    repliedReviews: 0,
+    unrepliedReviews: 0,
+  });
+  const [recentReviews, setRecentReviews] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch stats
+        const statsRes = await fetch('/api/dashboard/stats');
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+
+        // Fetch recent reviews
+        const reviewsRes = await fetch('/api/reviews');
+        if (reviewsRes.ok) {
+          const reviewsData = await reviewsRes.json();
+          setRecentReviews((reviewsData.reviews || []).slice(0, 5));
+        }
+
+        // Fetch locations
+        const locationsRes = await fetch('/api/locations');
+        if (locationsRes.ok) {
+          const locationsData = await locationsRes.json();
+          setLocations(locationsData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, []);
 
   const metrics = [
-    { icon: <Search className="w-5 h-5" />, label: 'Search views', value: '1.2k', change: '+12%', changeType: 'positive' as const },
-    { icon: <Map className="w-5 h-5" />, label: 'Map views', value: '842', change: '+5%', changeType: 'positive' as const },
-    { icon: <AdsClick className="w-5 h-5" />, label: 'Website clicks', value: '312', change: '-2%', changeType: 'negative' as const },
-    { icon: <Directions className="w-5 h-5" />, label: 'Direction requests', value: '156', change: '+18%', changeType: 'positive' as const },
-    { icon: <Call className="w-5 h-5" />, label: 'Phone calls', value: '48', change: '0%', changeType: 'neutral' as const },
+    { icon: <Map className="w-5 h-5" />, label: 'Locations', value: stats.locationsCount.toString(), changeType: 'neutral' as const },
+    { icon: <Star className="w-5 h-5" />, label: 'Average Rating', value: stats.averageRating, changeType: 'positive' as const },
+    { icon: <TrendingUp className="w-5 h-5" />, label: 'Reply Rate', value: `${stats.replyRate}%`, changeType: stats.replyRate >= 50 ? 'positive' as const : 'negative' as const },
+    { icon: <CheckCircle className="w-5 h-5" />, label: 'Replied', value: stats.repliedReviews.toString(), changeType: 'positive' as const },
+    { icon: <RadioButtonUnchecked className="w-5 h-5" />, label: 'Pending Reply', value: stats.unrepliedReviews.toString(), changeType: stats.unrepliedReviews > 0 ? 'negative' as const : 'positive' as const },
   ];
+
+  // Calculate health score based on reply rate
+  const healthScore = stats.totalReviews > 0
+    ? Math.round(50 + (stats.replyRate * 0.5))
+    : 100;
 
   const healthItems = [
-    { text: 'Verified Address', done: true },
-    { text: 'Operating Hours Set', done: true },
-    { text: 'Add Missing Photos (4)', done: false },
-  ];
-
-  const impressions = [452, 320, 160, 560, 280, 200, 120];
-  const maxImpression = Math.max(...impressions);
-
-  const reviews = [
-    {
-      name: 'Sarah Jenkins',
-      time: '2 hours ago',
-      stars: 5,
-      text: 'The curation process was incredibly smooth. I loved the attention to detail and how professional the team handled my requests.',
-    },
-    {
-      name: 'Marcus Chen',
-      time: 'Yesterday',
-      stars: 4,
-      text: 'Solid experience overall. The platform is powerful, though it took a little time to master all the bulk editing tools.',
-    },
+    { text: 'Locations Connected', done: stats.locationsCount > 0 },
+    { text: 'Reviews Synced', done: stats.totalReviews > 0 },
+    { text: 'Reply Rate > 80%', done: stats.replyRate >= 80 },
   ];
 
   if (loading) {
@@ -132,10 +167,10 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
       {/* Page Header */}
       <div className="mb-8">
         <h2 className="text-2xl font-extrabold font-headline text-on-surface mb-1">
-          Hi, Editorial Intel
+          Dashboard
         </h2>
         <p className="text-slate-500 text-sm">
-          Here is what's happening with your curated listings today.
+          Overview of your business listings and reviews.
         </p>
       </div>
 
@@ -149,11 +184,15 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         </div>
 
         {/* Location Health (Right side) */}
-        <div className="col-span-12 lg:col-span-4 bg-white rounded-xl p-6 style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}">
-          <h3 className="text-lg font-bold font-headline mb-4 text-center">Location Health</h3>
-          <HealthGauge score={90} />
+        <div className="col-span-12 lg:col-span-4 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+          <h3 className="text-lg font-bold font-headline mb-4 text-center">Reply Health</h3>
+          <HealthGauge score={healthScore} />
           <p className="text-xs text-slate-500 text-center px-6 mb-6">
-            Your listings are nearly perfect. Complete the checklist to reach 100%.
+            {stats.totalReviews === 0
+              ? 'Sync reviews to see your reply health score.'
+              : stats.replyRate >= 80
+                ? 'Excellent! You are replying to most reviews.'
+                : 'Reply to more reviews to improve your health score.'}
           </p>
           <div className="space-y-3">
             {healthItems.map((item, i) => (
@@ -167,136 +206,149 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
               </div>
             ))}
           </div>
-          <button className="w-full py-3 bg-primary/5 text-primary text-xs font-bold rounded-lg hover:bg-primary/10 transition-colors mt-4">
-            Improve Health
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className="w-full py-3 bg-primary/5 text-primary text-xs font-bold rounded-lg hover:bg-primary/10 transition-colors mt-4"
+          >
+            Manage Reviews
           </button>
         </div>
 
-        {/* Overview: Actions Chart */}
-        <div className="col-span-12 lg:col-span-8 bg-white rounded-xl p-8 style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}">
+        {/* Locations Overview */}
+        <div className="col-span-12 lg:col-span-8 bg-white rounded-xl p-8" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
           <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="text-lg font-bold font-headline">Overview: Actions</h3>
-              <p className="text-xs text-slate-500">Total conversions vs previous period</p>
-            </div>
-            <div className="flex gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-primary"></span>
-                <span className="text-xs font-medium text-slate-500">Conversions</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-slate-200"></span>
-                <span className="text-xs font-medium text-slate-500">Previous</span>
-              </div>
-            </div>
+            <h3 className="text-lg font-bold font-headline">Your Locations</h3>
+            <button
+              onClick={() => setActiveTab('listings')}
+              className="text-sm text-primary font-semibold hover:underline"
+            >
+              View All
+            </button>
           </div>
 
-          {/* Simple Line Chart */}
-          <div className="h-48 w-full flex items-end">
-            <svg className="w-full h-full" viewBox="0 0 800 200" preserveAspectRatio="none">
-              <path
-                d="M0,150 Q100,120 200,140 T400,80 T600,100 T800,40"
-                fill="none"
-                stroke="#003d9b"
-                strokeLinecap="round"
-                strokeWidth="3"
-              />
-              <path
-                d="M0,170 Q100,160 200,175 T400,140 T600,160 T800,130"
-                fill="none"
-                stroke="#e7e8e9"
-                strokeDasharray="8,4"
-                strokeLinecap="round"
-                strokeWidth="3"
-              />
-            </svg>
-          </div>
-          <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-          </div>
-        </div>
-
-        {/* Impressions Chart */}
-        <div className="col-span-12 lg:col-span-4 bg-white rounded-xl p-6 style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}">
-          <h3 className="text-sm font-bold font-headline mb-6">Overview: Impressions</h3>
-          <div className="flex items-end justify-between h-32 gap-2 mb-4">
-            {impressions.map((val, i) => (
-              <div
-                key={i}
-                className={`flex-1 rounded-t-lg transition-colors cursor-pointer group relative ${
-                  i === 3 ? 'bg-primary' : 'bg-primary/10 hover:bg-primary'
-                }`}
-                style={{ height: `${(val / maxImpression) * 100}%` }}
+          {locations.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-500">No locations added yet.</p>
+              <button
+                onClick={() => setActiveTab('listings')}
+                className="mt-4 px-6 py-2 bg-primary text-white rounded-xl font-bold text-sm"
               >
-                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  {val}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between text-[10px] font-bold text-slate-400">
-            <span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W5</span><span>W6</span><span>W7</span>
-          </div>
-        </div>
-
-        {/* Latest Reviews */}
-        <div className="col-span-12 lg:col-span-8 bg-white rounded-xl p-8 style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold font-headline">Latest Reviews</h3>
-            <div className="flex bg-slate-50 rounded-xl p-1 gap-1">
-              <button className="px-4 py-1.5 text-xs font-bold rounded-lg bg-white shadow-sm text-primary">All</button>
-              <button className="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-500 hover:bg-white transition-all">Positive</button>
-              <button className="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-500 hover:bg-white transition-all">Negative</button>
+                Add Location
+              </button>
             </div>
-          </div>
-
-          <div className="space-y-6">
-            {reviews.map((review, i) => (
-              <div key={i} className={`flex gap-4 items-start ${i < reviews.length - 1 ? 'pb-6 border-b border-slate-100' : ''}`}>
-                <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
-                  <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">
-                    {review.name.charAt(0)}
+          ) : (
+            <div className="space-y-4">
+              {locations.slice(0, 3).map((loc) => (
+                <div key={loc.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Map className="w-6 h-6 text-primary" />
                   </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-slate-900">{loc.name}</h4>
+                    <p className="text-sm text-slate-500">{loc.address || 'No address'}</p>
+                  </div>
+                  {loc.embedSocialLocationId ? (
+                    <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
+                      Connected
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setActiveTab('listings')}
+                      className="px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold"
+                    >
+                      Link EmbedSocial
+                    </button>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <h4 className="font-bold text-sm">{review.name}</h4>
-                    <span className="text-[10px] text-slate-400 font-medium">{review.time}</span>
-                  </div>
-                  <div className="flex text-amber-400 mb-2">
-                    {Array.from({ length: 5 }).map((_, si) => (
-                      <Star
-                        key={si}
-                        className={`w-4 h-4 ${si < review.stars ? 'text-amber-400' : 'text-slate-300'}`}
-                        style={{ fontVariationSettings: "'FILL' 1" }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">{review.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* AI Suggestion Card */}
         <div className="col-span-12 lg:col-span-4 bg-gradient-to-br from-primary/5 to-primary-container/5 rounded-xl p-6 border border-primary/10">
           <div className="flex items-center gap-2 text-tertiary font-bold mb-2">
             <AutoAwesome className="w-5 h-5" style={{ fontVariationSettings: "'FILL' 1" }} />
-            <span className="text-xs uppercase tracking-wider">Editorial Suggestion</span>
+            <span className="text-xs uppercase tracking-wider">Quick Tips</span>
           </div>
           <h3 className="text-xl font-extrabold font-headline mb-3">
-            Your organic search visibility has increased by 14% this month
+            {stats.unrepliedReviews > 0
+              ? `You have ${stats.unrepliedReviews} review${stats.unrepliedReviews > 1 ? 's' : ''} waiting for a reply`
+              : 'All reviews are replied to!'}
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed mb-6">
-            The "Digital Curator" has analyzed your recent content updates and location syncs. Your prominence in local map results is significantly higher.
+            {stats.unrepliedReviews > 0
+              ? 'Use AI to generate professional replies quickly and improve customer engagement.'
+              : 'Great job! Keep up the excellent customer service.'}
           </p>
           <button
-            onClick={() => setActiveTab('reports')}
-            className="bg-primary hover:bg-primary-container text-white px-6 py-3 rounded-full font-bold text-sm transition-all style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}"
+            onClick={() => setActiveTab('reviews')}
+            className="bg-primary hover:bg-primary-container text-white px-6 py-3 rounded-full font-bold text-sm transition-all"
+            style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}
           >
-            Generate Detailed Report
+            Go to Reviews
           </button>
+        </div>
+
+        {/* Latest Reviews */}
+        <div className="col-span-12 lg:col-span-12 bg-white rounded-xl p-8" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold font-headline">Latest Reviews</h3>
+            <button
+              onClick={() => setActiveTab('reviews')}
+              className="text-sm text-primary font-semibold hover:underline"
+            >
+              View All
+            </button>
+          </div>
+
+          {recentReviews.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                <Star className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="text-slate-500">No reviews yet. Sync reviews from EmbedSocial.</p>
+              <button
+                onClick={() => setActiveTab('reviews')}
+                className="mt-4 px-6 py-2 bg-primary text-white rounded-xl font-bold text-sm"
+              >
+                Sync Reviews
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {recentReviews.map((review, i) => (
+                <div key={review.id} className={`flex gap-4 items-start ${i < recentReviews.length - 1 ? 'pb-6 border-b border-slate-100' : ''}`}>
+                  <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
+                    <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">
+                      {review.author.charAt(0)}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-1">
+                      <h4 className="font-bold text-sm">{review.author}</h4>
+                      <span className="text-[10px] text-slate-400 font-medium">{review.date}</span>
+                    </div>
+                    <div className="flex text-amber-400 mb-2">
+                      {Array.from({ length: 5 }).map((_, si) => (
+                        <Star
+                          key={si}
+                          className={`w-4 h-4 ${si < review.rating ? 'text-amber-400' : 'text-slate-300'}`}
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">{review.text}</p>
+                    {review.replied && (
+                      <div className="mt-2 px-3 py-2 bg-green-50 rounded-lg text-xs">
+                        <span className="font-semibold text-green-700">Your reply:</span> {review.replyText}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

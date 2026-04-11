@@ -1,18 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Dashboard,
-  PushPin,
-  RateReview,
-  Edit,
-  CalendarToday,
-  History,
-  BarChart,
-  Public,
-  Settings,
   CheckCircle,
   Cancel,
   CalendarMonth,
-  Add,
+  History,
+  Refresh,
+  Clock,
+  FilterList,
 } from '@mui/icons-material';
 import { motion } from 'motion/react';
 
@@ -20,15 +14,122 @@ interface EditsLogProps {
   setActiveTab: (tab: string) => void;
 }
 
+interface EditLog {
+  id: string;
+  action: 'create' | 'update' | 'delete' | 'sync';
+  entity: string;
+  entityId: string;
+  details: string;
+  createdAt: Date;
+  status: 'completed' | 'pending' | 'failed';
+}
+
 export function EditsLog({ setActiveTab }: EditsLogProps) {
-  const [activeFilter, setActiveFilter] = useState('waiting');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [logs, setLogs] = useState<EditLog[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      // Fetch from a combined API that aggregates different actions
+      const [reviewsRes, locationsRes] = await Promise.all([
+        fetch('/api/reviews'),
+        fetch('/api/locations'),
+      ]);
+
+      const reviewData = reviewsRes.ok ? await reviewsRes.json() : { reviews: [] };
+      const locationsData = locationsRes.ok ? await locationsRes.json() : [];
+
+      // Build edit logs from various sources
+      const editLogs: EditLog[] = [];
+
+      // Add location creation logs
+      locationsData.forEach((loc: any) => {
+        editLogs.push({
+          id: `loc-create-${loc.id}`,
+          action: 'create',
+          entity: 'Location',
+          entityId: loc.id,
+          details: `Created location: ${loc.name}`,
+          createdAt: new Date(loc.createdAt || Date.now()),
+          status: 'completed',
+        });
+      });
+
+      // Add sync logs (from recent review activity)
+      if (reviewData.reviews?.length > 0) {
+        const latestReview = reviewData.reviews[0];
+        editLogs.push({
+          id: 'sync-reviews',
+          action: 'sync',
+          entity: 'Review',
+          entityId: 'all',
+          details: `Synced ${reviewData.reviews.length} reviews from EmbedSocial`,
+          createdAt: new Date(latestReview.date || Date.now()),
+          status: 'completed',
+        });
+      }
+
+      // Sort by date
+      editLogs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+      setLogs(editLogs);
+    } catch (error) {
+      console.error('Failed to fetch logs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filterItems = [
-    { id: 'waiting', label: 'Waiting for approval', icon: History, count: 0, active: true },
-    { id: 'accepted', label: 'Accepted', icon: CheckCircle, count: 0 },
-    { id: 'declined', label: 'Declined', icon: Cancel, count: 0 },
-    { id: 'history', label: 'History', icon: CalendarMonth, count: 0 },
+    { id: 'all', label: 'All Activity', icon: History, count: logs.length },
+    { id: 'create', label: 'Created', icon: CheckCircle, count: logs.filter(l => l.action === 'create').length },
+    { id: 'update', label: 'Updated', icon: History, count: logs.filter(l => l.action === 'update').length },
+    { id: 'sync', label: 'Sync', icon: Refresh, count: logs.filter(l => l.action === 'sync').length },
   ];
+
+  const filteredLogs = activeFilter === 'all'
+    ? logs
+    : logs.filter(l => l.action === activeFilter);
+
+  const formatDate = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getActionColor = (action: string) => {
+    switch (action) {
+      case 'create': return 'bg-green-100 text-green-700';
+      case 'update': return 'bg-blue-100 text-blue-700';
+      case 'delete': return 'bg-red-100 text-red-700';
+      case 'sync': return 'bg-purple-100 text-purple-700';
+      default: return 'bg-slate-100 text-slate-700';
+    }
+  };
+
+  const getActionIcon = (action: string) => {
+    switch (action) {
+      case 'create': return <CheckCircle className="w-4 h-4" />;
+      case 'update': return <History className="w-4 h-4" />;
+      case 'delete': return <Cancel className="w-4 h-4" />;
+      case 'sync': return <Refresh className="w-4 h-4" />;
+      default: return <History className="w-4 h-4" />;
+    }
+  };
 
   return (
     <motion.div
@@ -40,7 +141,7 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
       {/* Filter Sidebar */}
       <nav className="w-64 bg-slate-50 p-6 flex flex-col gap-6 overflow-y-auto">
         <div>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Filter by Status</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Filter by Action</h3>
           <ul className="space-y-1">
             {filterItems.map((item) => {
               const Icon = item.icon;
@@ -72,51 +173,77 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
         </div>
 
         <div className="pt-6 border-t border-slate-200">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Date Range</h3>
-          <div className="relative">
-            <input
-              className="w-full pl-10 pr-4 py-2.5 bg-white border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20"
-              placeholder="Select dates"
-              type="text"
-            />
-            <CalendarMonth className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-          </div>
+          <button
+            onClick={fetchLogs}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-slate-500 hover:bg-white/50 rounded-xl transition-all"
+          >
+            <Refresh className="w-5 h-5" />
+            <span className="text-sm">Refresh</span>
+          </button>
         </div>
       </nav>
 
-      {/* Empty State Canvas */}
-      <section className="flex-1 bg-white p-10 flex items-center justify-center">
-        <div className="max-w-md w-full text-center space-y-8">
-          {/* Glassmorphism Container */}
-          <div className="relative">
-            <div className="absolute -inset-10 bg-primary/5 blur-3xl rounded-full"></div>
-            <div className="relative bg-slate-50/80 backdrop-blur-xl rounded-[2.5rem] border border-white/50 p-12 shadow-2xl shadow-blue-900/5">
-              <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-container rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-lg shadow-primary/20">
-                <History className="text-white text-5xl w-12 h-12 opacity-30" />
-              </div>
-              <h3 className="text-2xl font-extrabold font-headline text-slate-900 mb-3 tracking-tight">No listing edits</h3>
-              <p className="text-slate-500 leading-relaxed mb-8 max-w-xs mx-auto">
-                All your listing edits have been processed. New requests awaiting review will appear here automatically.
-              </p>
-              <button className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-container text-white font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-95 shadow-md">
-                <Add className="w-5 h-5" />
-                Create New Edit
-              </button>
+      {/* Main Content */}
+      <section className="flex-1 bg-white p-8 overflow-y-auto">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Activity Log</h2>
+              <p className="text-sm text-slate-500 mt-1">Track all changes and sync activities</p>
             </div>
+            <FilterList className="w-5 h-5 text-slate-400" />
           </div>
 
-          {/* Subtle Footer Metadata */}
-          <div className="flex items-center justify-center gap-6 text-slate-400/40">
-            <div className="flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Sync Active</span>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Refresh className="w-6 h-6 text-primary animate-spin" />
             </div>
-            <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-            <div className="flex items-center gap-1.5">
-              <History className="w-4 h-4" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Updated Just Now</span>
+          ) : filteredLogs.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <History className="w-10 h-10 text-slate-400" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">No Activity Yet</h3>
+              <p className="text-slate-500 max-w-sm mx-auto">
+                Your edit history and sync activities will appear here.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredLogs.map((log, index) => (
+                <div
+                  key={log.id}
+                  className="flex items-start gap-4 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getActionColor(log.action)}`}>
+                    {getActionIcon(log.action)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getActionColor(log.action)}`}>
+                        {log.action}
+                      </span>
+                      <span className="font-semibold text-slate-900">{log.entity}</span>
+                    </div>
+                    <p className="text-sm text-slate-600">{log.details}</p>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatDate(log.createdAt)}</span>
+                    </div>
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    log.status === 'completed'
+                      ? 'bg-green-100 text-green-700'
+                      : log.status === 'pending'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-red-100 text-red-700'
+                  }`}>
+                    {log.status}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </motion.div>

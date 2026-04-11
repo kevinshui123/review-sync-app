@@ -10,6 +10,7 @@ import { Publishing } from './components/Publishing';
 import { Reports } from './components/Reports';
 import { SEO } from './components/SEO';
 import { Settings } from './components/Settings';
+import { Help } from './components/Help';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './contexts/LanguageContext';
@@ -56,6 +57,7 @@ export default function App() {
       case 'reports': return t('nav.reports');
       case 'seo': return t('nav.seo');
       case 'settings': return t('nav.settings');
+      case 'help': return 'Help';
       default: return t('nav.dashboard');
     }
   };
@@ -120,6 +122,7 @@ export default function App() {
               {activeTab === 'reports' && <Reports setActiveTab={setActiveTab} />}
               {activeTab === 'seo' && <SEO setActiveTab={setActiveTab} />}
               {activeTab === 'settings' && <Settings />}
+              {activeTab === 'help' && <Help />}
             </motion.div>
           </AnimatePresence>
         </main>
