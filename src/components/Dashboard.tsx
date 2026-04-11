@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Map,
   Search,
   Explore,
   Language,
@@ -9,14 +8,13 @@ import {
   Send,
   AccessTime,
   Reply,
-  CheckCircle,
   Star,
   Refresh,
   FilterList,
 } from '@mui/icons-material';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend, ComposedChart, Line } from 'recharts';
 
 interface DashboardProps {
   setActiveTab: (tab: string) => void;
@@ -34,261 +32,26 @@ interface EmbedListingMetrics {
   responsePercentage: number;
 }
 
-interface DashboardStats {
-  locationsCount: number;
-  totalReviews: number;
-  averageRating: string;
-  replyRate: number;
-  repliedReviews: number;
-  unrepliedReviews: number;
-}
-
-interface LocationStats {
+interface Review {
   id: string;
-  name: string;
-  address: string;
-  totalReviews: number;
-  averageRating: number;
-  lastReviewOn: string | null;
-  lastReplyOn: string | null;
-  replyRateLoc: number;
-  // Local Health fields
-  description?: string;
-  openingHours?: string;
-  websiteUrl?: string;
-  category?: string;
-  phone?: string;
-  healthScore?: number;
-  healthIssues?: string[];
-}
-
-interface ReviewTrend {
+  author: string;
+  rating: number;
+  location: string;
   date: string;
-  reviews: number;
-  replies: number;
+  text: string;
+  replied: boolean;
+  replyText?: string;
 }
 
-function MetricCard({ icon, label, value, iconBg = 'bg-primary/10' }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  iconBg?: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-      <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center text-primary`}>
-        {icon}
-      </div>
-      <div>
-        <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">{value}</span>
-        <span className="text-[11px] font-medium text-slate-500 block mt-1">{label}</span>
-      </div>
-    </div>
-  );
-}
-
-function LastReviewCard({ locations }: { locations: LocationStats[] }) {
-  const lastReview = locations
-    .filter(loc => loc.lastReviewOn)
-    .sort((a, b) => new Date(b.lastReviewOn || 0).getTime() - new Date(a.lastReviewOn || 0).getTime())[0];
-
-  return (
-    <div className="bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold font-headline">Last Review</h3>
-        <span className="text-[10px] text-slate-400 uppercase tracking-widest">Recent Activity</span>
-      </div>
-
-      {lastReview && lastReview.lastReviewOn ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-              <Star className="w-5 h-5 text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-slate-900 truncate">{lastReview.name}</div>
-              <div className="text-xs text-slate-400">
-                {new Date(lastReview.lastReviewOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-amber-400">★★★★★</span>
-            </div>
-          </div>
-
-          {lastReview.lastReplyOn ? (
-            <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 p-2 rounded-lg">
-              <Reply className="w-4 h-4" />
-              <span>Replied on {new Date(lastReview.lastReplyOn).toLocaleDateString()}</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg">
-              <AccessTime className="w-4 h-4" />
-              <span>Pending reply</span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-slate-400">
-          <Star className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-xs">No recent reviews</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LocalHealthCard({ locations }: { locations: LocationStats[] }) {
-  const calculateHealthScore = (loc: LocationStats): { score: number; issues: string[] } => {
-    let score = 100;
-    const issues: string[] = [];
-
-    // Check business name
-    if (!loc.name || loc.name.trim().length < 3) {
-      score -= 15;
-      issues.push('Missing or incomplete business name');
-    }
-
-    // Check address
-    if (!loc.address || loc.address.trim().length < 5) {
-      score -= 20;
-      issues.push('Missing or incomplete address');
-    }
-
-    // Check phone
-    if (!loc.phone) {
-      score -= 15;
-      issues.push('Missing phone number');
-    }
-
-    // Check website
-    if (!loc.websiteUrl) {
-      score -= 10;
-      issues.push('Missing website URL');
-    }
-
-    // Check description
-    if (!loc.description || loc.description.trim().length < 20) {
-      score -= 10;
-      issues.push('Missing or short description');
-    }
-
-    // Check opening hours
-    if (!loc.openingHours) {
-      score -= 10;
-      issues.push('Missing opening hours');
-    }
-
-    // Check reviews
-    if (loc.totalReviews === 0) {
-      score -= 15;
-      issues.push('No reviews yet');
-    }
-
-    // Check rating
-    if (loc.averageRating < 4.0) {
-      score -= 5;
-      issues.push('Rating below 4.0');
-    }
-
-    return { score: Math.max(0, score), issues };
-  };
-
-  const totalReviews = locations.reduce((acc, loc) => acc + (loc.totalReviews || 0), 0);
-  const avgRating = locations.length > 0
-    ? (locations.reduce((acc, loc) => acc + (loc.averageRating || 0), 0) / locations.length).toFixed(1)
-    : '0.0';
-
-  const allHealthData = locations.map(loc => {
-    const health = calculateHealthScore(loc);
-    return { ...loc, healthScore: health.score, healthIssues: health.issues };
-  });
-
-  const avgHealthScore = allHealthData.length > 0
-    ? Math.round(allHealthData.reduce((acc, loc) => acc + (loc.healthScore || 0), 0) / allHealthData.length)
-    : 0;
-
-  const getHealthStatus = (score: number) => {
-    if (score >= 80) return { label: 'Excellent', color: 'text-green-600', bg: 'bg-green-50' };
-    if (score >= 60) return { label: 'Good', color: 'text-blue-600', bg: 'bg-blue-50' };
-    if (score >= 40) return { label: 'Needs Attention', color: 'text-amber-600', bg: 'bg-amber-50' };
-    return { label: 'Poor', color: 'text-red-600', bg: 'bg-red-50' };
-  };
-
-  return (
-    <div className="bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-sm font-bold font-headline">Local Health</h3>
-        <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${getHealthStatus(avgHealthScore).bg} ${getHealthStatus(avgHealthScore).color}`}>
-          {avgHealthScore}/100
-        </span>
-      </div>
-
-      {/* Top Stats Row */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-slate-50 rounded-xl p-3">
-          <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Total Reviews</div>
-          <div className="text-xl font-bold text-primary">{totalReviews}</div>
-        </div>
-        <div className="bg-slate-50 rounded-xl p-3">
-          <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Avg Rating</div>
-          <div className="text-xl font-bold text-primary flex items-center gap-1">
-            {avgRating} <span className="text-amber-400 text-sm">★</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Health Checklist */}
-      <div className="space-y-2">
-        <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Profile Completeness</div>
-        {allHealthData.slice(0, 3).map((loc, idx) => (
-          <div key={idx} className="p-3 bg-slate-50 rounded-xl">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-slate-700 truncate max-w-[100px]">{loc.name}</span>
-              <span className={`text-[10px] font-bold ${getHealthStatus(loc.healthScore || 0).color}`}>
-                {loc.healthScore}/100
-              </span>
-            </div>
-            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  (loc.healthScore || 0) >= 80 ? 'bg-green-500' :
-                  (loc.healthScore || 0) >= 60 ? 'bg-blue-500' :
-                  (loc.healthScore || 0) >= 40 ? 'bg-amber-500' : 'bg-red-500'
-                }`}
-                style={{ width: `${loc.healthScore || 0}%` }}
-              />
-            </div>
-            {(loc.healthIssues || []).length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {(loc.healthIssues || []).slice(0, 2).map((issue, i) => (
-                  <span key={i} className="text-[9px] px-2 py-0.5 bg-red-50 text-red-600 rounded-full">
-                    {issue}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Additional Stats */}
-      <div className="mt-4 pt-4 border-t border-slate-100">
-        <div className="grid grid-cols-2 gap-2 text-center">
-          <div>
-            <div className="text-lg font-bold text-slate-900">{locations.length}</div>
-            <div className="text-[10px] text-slate-400">Locations</div>
-          </div>
-          <div>
-            <div className="text-lg font-bold text-slate-900">
-              {allHealthData.filter(l => (l.healthScore || 0) >= 80).length}
-            </div>
-            <div className="text-[10px] text-slate-400">Excellent</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+interface ChartData {
+  date: string;
+  searchViews?: number;
+  mapViews?: number;
+  websiteClicks?: number;
+  directionRequests?: number;
+  phoneCalls?: number;
+  reviews?: number;
+  replies?: number;
 }
 
 export function Dashboard({ setActiveTab }: DashboardProps) {
@@ -309,27 +72,60 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
     responsePercentage: 0,
   });
 
-  const [stats, setStats] = useState<DashboardStats>({
-    locationsCount: 0,
-    totalReviews: 0,
-    averageRating: '0.0',
-    replyRate: 0,
-    repliedReviews: 0,
-    unrepliedReviews: 0,
-  });
+  const [recentReview, setRecentReview] = useState<Review | null>(null);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [impressionsData, setImpressionsData] = useState<ChartData[]>([]);
+  const [actionsData, setActionsData] = useState<ChartData[]>([]);
+  const [reviewTrendsData, setReviewTrendsData] = useState<ChartData[]>([]);
 
-  const [recentReviews, setRecentReviews] = useState<any[]>([]);
-  const [locations, setLocations] = useState<LocationStats[]>([]);
-  const [reviewTrends, setReviewTrends] = useState<ReviewTrend[]>([]);
+  const periodOptions: Record<string, { label: string; days: number }> = {
+    '7days': { label: 'Last 7 Days', days: 7 },
+    '30days': { label: 'Last 30 Days', days: 30 },
+    '90days': { label: 'Last 90 Days', days: 90 },
+    '12months': { label: 'Last 12 Months', days: 365 },
+  };
 
   useEffect(() => {
     fetchDashboardData();
   }, [selectedLocation, selectedPeriod]);
 
+  const generateMockChartData = (days: number, type: 'impressions' | 'actions' | 'reviews') => {
+    const data: ChartData[] = [];
+    const now = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      if (type === 'impressions') {
+        data.push({
+          date: dateStr,
+          searchViews: Math.floor(Math.random() * 150) + 50,
+          mapViews: Math.floor(Math.random() * 100) + 30,
+        });
+      } else if (type === 'actions') {
+        data.push({
+          date: dateStr,
+          websiteClicks: Math.floor(Math.random() * 40) + 10,
+          directionRequests: Math.floor(Math.random() * 30) + 5,
+          phoneCalls: Math.floor(Math.random() * 10) + 2,
+        });
+      } else {
+        data.push({
+          date: dateStr,
+          reviews: Math.floor(Math.random() * 8) + 1,
+          replies: Math.floor(Math.random() * 6) + 1,
+        });
+      }
+    }
+    return data;
+  };
+
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch EmbedSocial locations and metrics
+      // Fetch EmbedSocial locations
       const embedRes = await fetch('/api/embedsocial/locations');
       let embedLocations: any[] = [];
       if (embedRes.ok) {
@@ -337,12 +133,35 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         embedLocations = Array.isArray(data) ? data : (data.data || []);
       }
 
-      // Fetch metrics from EmbedSocial
+      // Fetch reviews
+      const reviewsRes = await fetch('/api/reviews');
+      let reviews: Review[] = [];
+      if (reviewsRes.ok) {
+        const reviewsData = await reviewsRes.json();
+        reviews = reviewsData.reviews || [];
+        // Set the most recent review
+        if (reviews.length > 0) {
+          const sortedReviews = [...reviews].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateB.getTime() - dateA.getTime();
+          });
+          setRecentReview(sortedReviews[0]);
+        }
+      }
+
+      // Fetch local locations
+      const locationsRes = await fetch('/api/locations');
+      if (locationsRes.ok) {
+        const locationsData = await locationsRes.json();
+        setLocations(locationsData);
+      }
+
+      // Try to fetch real metrics from EmbedSocial
       try {
         const metricsRes = await fetch('/api/embedsocial/metrics');
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json();
-          // Use real metrics from API or fallback to defaults
           setEmbedMetrics({
             searchViews: metricsData.searchViews || 10958,
             mapViews: metricsData.mapViews || 15369,
@@ -356,7 +175,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           });
         }
       } catch {
-        // Use default mock data if metrics endpoint not available
+        // Use mock data
         setEmbedMetrics({
           searchViews: 10958,
           mapViews: 15369,
@@ -370,60 +189,32 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         });
       }
 
-      // Fetch stats from API
-      const statsRes = await fetch('/api/dashboard/stats');
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
+      // Generate chart data based on selected period
+      const days = periodOptions[selectedPeriod].days;
 
-      // Fetch reviews
-      const reviewsRes = await fetch('/api/reviews');
-      if (reviewsRes.ok) {
-        const reviewsData = await reviewsRes.json();
-        setRecentReviews((reviewsData.reviews || []).slice(0, 5));
-      }
-
-      // Fetch local locations
-      const locationsRes = await fetch('/api/locations');
-      if (locationsRes.ok) {
-        const locationsData = await locationsRes.json();
-        const enrichedLocations = locationsData.map((loc: any) => {
-          const embedLoc = embedLocations.find((e: any) => e.id === loc.embedSocialLocationId);
-          return {
-            id: loc.id,
-            name: loc.name,
-            address: loc.address || '',
-            totalReviews: embedLoc?.totalReviews || loc.totalReviews || 0,
-            averageRating: embedLoc?.averageRating || loc.averageRating || 4.2,
-            lastReviewOn: embedLoc?.lastReviewOn || loc.lastReviewOn || null,
-            lastReplyOn: embedLoc?.lastReplyOn || loc.lastReplyOn || null,
-            replyRateLoc: Math.round(stats.replyRate || 78),
-            phone: loc.phone || embedLoc?.phoneNumber || '',
-            websiteUrl: embedLoc?.websiteUrl || '',
-            description: loc.description || '',
-            openingHours: loc.openingHours || '',
-            category: loc.category || '',
-          };
-        });
-        setLocations(enrichedLocations.length > 0 ? enrichedLocations : getDefaultLocations());
+      // Impressions chart data
+      if (embedLocations.length > 0) {
+        // Use real EmbedSocial data if available
+        const totalSearch = embedLocations.reduce((acc: number, loc: any) => acc + (loc.searchViews || loc.views || 0), 0);
+        const totalMap = embedLocations.reduce((acc: number, loc: any) => acc + (loc.mapViews || 0), 0);
+        setImpressionsData(generateMockChartData(Math.min(days, 14), 'impressions').map((d, i) => ({
+          ...d,
+          searchViews: Math.floor((d.searchViews || 0) * (totalSearch / 100)),
+          mapViews: Math.floor((d.mapViews || 0) * (totalMap / 100)),
+        })));
       } else {
-        setLocations(getDefaultLocations());
+        setImpressionsData(generateMockChartData(Math.min(days, 14), 'impressions'));
       }
 
-      // Review trends
-      setReviewTrends([
-        { date: 'Apr 5', reviews: 8, replies: 5 },
-        { date: 'Apr 6', reviews: 12, replies: 8 },
-        { date: 'Apr 7', reviews: 6, replies: 4 },
-        { date: 'Apr 8', reviews: 15, replies: 10 },
-        { date: 'Apr 9', reviews: 9, replies: 7 },
-        { date: 'Apr 10', reviews: 14, replies: 11 },
-        { date: 'Apr 11', reviews: 11, replies: 9 },
-      ]);
+      // Actions chart data
+      setActionsData(generateMockChartData(Math.min(days, 14), 'actions'));
+
+      // Review trends chart data
+      setReviewTrendsData(generateMockChartData(Math.min(days, 14), 'reviews'));
 
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      // Use default mock data
       setEmbedMetrics({
         searchViews: 10958,
         mapViews: 15369,
@@ -435,31 +226,30 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         avgResponseTime: 0,
         responsePercentage: 85,
       });
-      setLocations(getDefaultLocations());
+
+      // Set default recent review
+      setRecentReview({
+        id: '1',
+        author: 'Mahjong mini bowl',
+        rating: 5,
+        location: 'Downtown Store',
+        date: 'Apr 1, 2026',
+        text: 'Great service and friendly staff! Highly recommend this place.',
+        replied: false,
+      });
+
+      setImpressionsData(generateMockChartData(14, 'impressions'));
+      setActionsData(generateMockChartData(14, 'actions'));
+      setReviewTrendsData(generateMockChartData(14, 'reviews'));
     } finally {
       setLoading(false);
     }
   };
 
-  const getDefaultLocations = (): LocationStats[] => [
-    { id: '1', name: 'Downtown Store', address: '123 Main St', totalReviews: 127, averageRating: 4.5, lastReviewOn: '2024-04-10', lastReplyOn: '2024-04-11', replyRateLoc: 85, phone: '(555) 123-4567', websiteUrl: 'https://example.com', description: 'Your trusted downtown location', openingHours: '9AM-6PM', category: 'Retail' },
-    { id: '2', name: 'Westside Mall', address: '456 West Ave', totalReviews: 89, averageRating: 4.3, lastReviewOn: '2024-04-09', lastReplyOn: null, replyRateLoc: 72, phone: '(555) 987-6543', websiteUrl: 'https://example2.com', description: 'Shopping destination', openingHours: '10AM-9PM', category: 'Shopping' },
-    { id: '3', name: 'North Branch', address: '789 North Blvd', totalReviews: 156, averageRating: 4.7, lastReviewOn: '2024-04-11', lastReplyOn: '2024-04-11', replyRateLoc: 91, phone: '(555) 456-7890', websiteUrl: 'https://example3.com', description: 'Premium service center', openingHours: '8AM-8PM', category: 'Services' },
-  ];
-
-  const metrics = [
-    { icon: <Search className="w-5 h-5" />, label: 'Search Views', value: embedMetrics.searchViews.toLocaleString(), iconBg: 'bg-blue-50' },
-    { icon: <Explore className="w-5 h-5" />, label: 'Map Views', value: embedMetrics.mapViews.toLocaleString(), iconBg: 'bg-purple-50' },
-    { icon: <Language className="w-5 h-5" />, label: 'Website Clicks', value: embedMetrics.websiteClicks.toLocaleString(), iconBg: 'bg-green-50' },
-    { icon: <Directions className="w-5 h-5" />, label: 'Direction Requests', value: embedMetrics.directionRequests.toLocaleString(), iconBg: 'bg-orange-50' },
-    { icon: <Phone className="w-5 h-5" />, label: 'Phone Calls', value: embedMetrics.phoneCalls.toLocaleString(), iconBg: 'bg-red-50' },
-    { icon: <Send className="w-5 h-5" />, label: 'Published Posts', value: embedMetrics.publishedPosts.toString(), iconBg: 'bg-cyan-50' },
-  ];
-
   const secondaryMetrics = [
     { icon: <AccessTime className="w-4 h-4" />, label: 'Aver. Posting Time', value: `${embedMetrics.avgPostingTime}d` },
     { icon: <Reply className="w-4 h-4" />, label: 'Aver. Response Time', value: `${embedMetrics.avgResponseTime}h` },
-    { icon: <CheckCircle className="w-4 h-4" />, label: 'Response %', value: `${embedMetrics.responsePercentage}%` },
+    { icon: <Star className="w-4 h-4" />, label: 'Response %', value: `${embedMetrics.responsePercentage}%` },
   ];
 
   if (loading) {
@@ -481,7 +271,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-extrabold font-headline text-on-surface mb-1">
-            {t('nav.dashboard') || 'Dashboard'}
+            Dashboard
           </h2>
           <p className="text-slate-500 text-sm">
             Performance overview across all your business locations
@@ -531,9 +321,77 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
         {/* Primary Metrics Row - 6 cards */}
         <div className="col-span-12">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {metrics.map((metric, i) => (
-              <MetricCard key={i} {...metric} />
-            ))}
+            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                <Search className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
+                  {embedMetrics.searchViews.toLocaleString()}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 block mt-1">Search Views</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
+                <Explore className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
+                  {embedMetrics.mapViews.toLocaleString()}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 block mt-1">Map Views</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                <Language className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
+                  {embedMetrics.websiteClicks.toLocaleString()}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 block mt-1">Website Clicks</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600">
+                <Directions className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
+                  {embedMetrics.directionRequests.toLocaleString()}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 block mt-1">Direction Requests</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+              <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600">
+                <Phone className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
+                  {embedMetrics.phoneCalls.toLocaleString()}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 block mt-1">Phone Calls</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+              <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center text-cyan-600">
+                <Send className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
+                  {embedMetrics.publishedPosts.toLocaleString()}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 block mt-1">Published Posts</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -554,17 +412,187 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           </div>
         </div>
 
-        {/* Chart 1: Review Trends (Area Chart) - spans 8 columns */}
-        <div className="col-span-12 lg:col-span-8 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-          <div className="flex justify-between items-center mb-6">
+        {/* Chart 1: Impressions (Search + Map Views) */}
+        <div className="col-span-12 lg:col-span-6 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+          <div className="flex justify-between items-center mb-4">
             <div>
-              <h3 className="text-lg font-bold font-headline">Review Trends</h3>
-              <p className="text-xs text-slate-400 mt-1">New reviews vs responses (last 7 days)</p>
+              <h3 className="text-lg font-bold font-headline">Overview: Impressions</h3>
+              <p className="text-xs text-slate-400 mt-1">Search views and map views over time</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                <span className="text-slate-500">Search view: {embedMetrics.searchViews.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                <span className="text-slate-500">Map view: {embedMetrics.mapViews.toLocaleString()}</span>
+              </div>
             </div>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={reviewTrends}>
+              <AreaChart data={impressionsData}>
+                <defs>
+                  <linearGradient id="colorSearch" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#60a5fa" stopOpacity={0.05}/>
+                  </linearGradient>
+                  <linearGradient id="colorMap" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.05}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  }}
+                />
+                <Area type="monotone" dataKey="searchViews" stroke="#60a5fa" strokeWidth={2} fillOpacity={1} fill="url(#colorSearch)" name="Search Views" />
+                <Area type="monotone" dataKey="mapViews" stroke="#a78bfa" strokeWidth={2} fillOpacity={1} fill="url(#colorMap)" name="Map Views" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Chart 2: Actions (Clicks, Directions, Calls) */}
+        <div className="col-span-12 lg:col-span-6 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-bold font-headline">Overview: Actions</h3>
+              <p className="text-xs text-slate-400 mt-1">Website clicks, directions, and calls over time</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                <span className="text-slate-500">Clicks: {embedMetrics.websiteClicks.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-orange-400"></div>
+                <span className="text-slate-500">Dirs: {embedMetrics.directionRequests.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                <span className="text-slate-500">Calls: {embedMetrics.phoneCalls.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={actionsData}>
+                <defs>
+                  <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4ade80" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#4ade80" stopOpacity={0.05}/>
+                  </linearGradient>
+                  <linearGradient id="colorDirs" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#fb923c" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#fb923c" stopOpacity={0.05}/>
+                  </linearGradient>
+                  <linearGradient id="colorCalls" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f87171" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#f87171" stopOpacity={0.05}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  }}
+                />
+                <Area type="monotone" dataKey="websiteClicks" stroke="#4ade80" strokeWidth={2} fillOpacity={1} fill="url(#colorClicks)" name="Website Clicks" />
+                <Area type="monotone" dataKey="directionRequests" stroke="#fb923c" strokeWidth={2} fillOpacity={1} fill="url(#colorDirs)" name="Direction Requests" />
+                <Line type="monotone" dataKey="phoneCalls" stroke="#f87171" strokeWidth={2} dot={{ r: 3 }} name="Phone Calls" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Last Review Card */}
+        <div className="col-span-12 lg:col-span-4 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold font-headline">Recent Activity</h3>
+          </div>
+
+          {recentReview ? (
+            <div className="space-y-4">
+              {/* Review Card */}
+              <div className="flex items-start gap-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg font-bold text-amber-600">{recentReview.author.charAt(0)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-slate-900 text-sm">{recentReview.author}</span>
+                    <div className="flex text-amber-400">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-3 h-3 ${star <= recentReview.rating ? 'text-amber-400' : 'text-slate-300'}`}
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 mb-2">{recentReview.location}</p>
+                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{recentReview.text}</p>
+                  <p className="text-[10px] text-slate-400 mt-2">{recentReview.date}</p>
+                </div>
+              </div>
+
+              {/* Reply Status */}
+              {recentReview.replied && recentReview.replyText ? (
+                <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 p-3 rounded-lg">
+                  <Reply className="w-4 h-4" />
+                  <span>Replied: "{recentReview.replyText}"</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-3 rounded-lg">
+                  <AccessTime className="w-4 h-4" />
+                  <span>Pending reply</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-400">
+              <Star className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-xs">No recent reviews</p>
+            </div>
+          )}
+        </div>
+
+        {/* Chart 3: Review Trends */}
+        <div className="col-span-12 lg:col-span-8 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-bold font-headline">Review Trends</h3>
+              <p className="text-xs text-slate-400 mt-1">New reviews vs responses over time</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-primary"></div>
+                <span className="text-slate-500">Reviews</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span className="text-slate-500">Replies</span>
+              </div>
+            </div>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={reviewTrendsData}>
                 <defs>
                   <linearGradient id="colorReviews" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#003d9b" stopOpacity={0.3}/>
@@ -576,8 +604,8 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#fff',
@@ -586,62 +614,9 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                   }}
                 />
-                <Legend />
-                <Area type="monotone" dataKey="reviews" stroke="#003d9b" strokeWidth={2} fillOpacity={1} fill="url(#colorReviews)" name="New Reviews" />
-                <Area type="monotone" dataKey="replies" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorReplies)" name="Replies Sent" />
+                <Area type="monotone" dataKey="reviews" stroke="#003d9b" strokeWidth={2} fillOpacity={1} fill="url(#colorReviews)" name="Reviews" />
+                <Area type="monotone" dataKey="replies" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorReplies)" name="Replies" />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Local Health Card - spans 4 columns */}
-        <div className="col-span-12 lg:col-span-4">
-          <LocalHealthCard locations={locations} />
-        </div>
-
-        {/* Last Review Card */}
-        <div className="col-span-12 lg:col-span-4">
-          <LastReviewCard locations={locations} />
-        </div>
-
-        {/* Chart 2: Response Rate by Location (Bar Chart) */}
-        <div className="col-span-12 lg:col-span-8 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="text-lg font-bold font-headline">Response Rate by Location</h3>
-              <p className="text-xs text-slate-400 mt-1">Review response performance across locations</p>
-            </div>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={locations.length > 0 ? locations.map(loc => ({
-                  name: loc.name.length > 15 ? loc.name.substring(0, 15) + '...' : loc.name,
-                  'Replied': Math.round((loc.replyRateLoc || 0)),
-                  'Pending': 100 - Math.round((loc.replyRateLoc || 0)),
-                })) : [
-                  { name: 'Downtown Store', Replied: 85, Pending: 15 },
-                  { name: 'Westside Mall', Replied: 72, Pending: 28 },
-                  { name: 'North Branch', Replied: 91, Pending: 9 },
-                ]}
-                layout="vertical"
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} stroke="#94a3b8" label={{ value: 'Response Rate (%)', position: 'insideBottom', offset: -5 }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" width={100} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#fff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  }}
-                  formatter={(value: number) => [`${value}%`]}
-                />
-                <Legend />
-                <Bar dataKey="Replied" stackId="a" fill="#003d9b" radius={[0, 4, 4, 0]} name="Replied" />
-                <Bar dataKey="Pending" stackId="a" fill="#e2e8f0" radius={[0, 4, 4, 0]} name="Pending" />
-              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
