@@ -77,9 +77,11 @@ model Location {
 model Review {
   id             String   @id @default(uuid())
   locationId     String
-  googleReviewId String   @unique
-  embedSocialReviewId String?  @unique
-  reviewerName   String
+  googleReviewId          String   @unique
+  embedSocialReviewId     String?
+  reviewerName            String
+
+  @@unique([locationId, embedSocialReviewId])
   rating         Int
   comment        String?
   replyText      String?
