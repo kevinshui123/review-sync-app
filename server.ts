@@ -913,14 +913,14 @@ async function startServer() {
 
           for (const r of reviewList) {
             const normalized = normalizeEmbedSocialReview(r, loc.id);
-            const existing = await prisma.review.findUnique({
+            const existing = await prisma.review.findFirst({
               where: { embedSocialReviewId: normalized.embedSocialReviewId },
             });
 
             if (existing) {
               if (existing.comment !== normalized.comment || existing.rating !== normalized.rating) {
                 await prisma.review.update({
-                  where: { embedSocialReviewId: normalized.embedSocialReviewId },
+                  where: { id: existing.id },
                   data: { comment: normalized.comment, rating: normalized.rating },
                 });
               }
@@ -960,7 +960,7 @@ async function startServer() {
 
             const normalized = normalizeEmbedSocialReview(r, matchedLoc?.id || '');
 
-            const existing = await prisma.review.findUnique({
+            const existing = await prisma.review.findFirst({
               where: { embedSocialReviewId: normalized.embedSocialReviewId },
             });
 
