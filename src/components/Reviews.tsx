@@ -75,6 +75,7 @@ export function Reviews() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showLocationMenu, setShowLocationMenu] = useState(false);
 
@@ -179,6 +180,7 @@ export function Reviews() {
 
   const sendReply = async () => {
     if (!selectedReview || !replyText.trim()) return;
+    setSending(true);
     try {
       const res = await apiPost(`/api/reviews/${selectedReview.id}/reply`, { replyText });
       if (res.ok) {
@@ -188,15 +190,20 @@ export function Reviews() {
         setReviews(updatedReviews);
         setSelectedReview({ ...selectedReview, replied: true, replyText });
         setReplyText('');
-        // Update filters
         setFilters(prev => ({
           ...prev,
           waiting: prev.waiting - 1,
           replied: prev.replied + 1,
         }));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to send reply. Please try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to send reply:', error);
+      alert('Network error. Please try again: ' + (error?.message || 'Unknown error'));
+    } finally {
+      setSending(false);
     }
   };
 
@@ -628,11 +635,11 @@ export function Reviews() {
                 </button>
                 <button
                   onClick={sendReply}
-                  disabled={!replyText.trim()}
+                  disabled={!replyText.trim() || sending}
                   className="px-8 py-2.5 bg-primary text-white text-sm font-bold rounded-full shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Send reply
-                  <Send className="w-4 h-4" />
+                  {sending ? 'Sending...' : 'Send reply'}
+                  {!sending && <Send className="w-4 h-4" />}
                 </button>
               </div>
             </footer>
