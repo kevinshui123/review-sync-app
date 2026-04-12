@@ -172,6 +172,28 @@ export function SEO({ setActiveTab }: SEOProps) {
           locations = await locationsRes.json();
         }
 
+        // Check if we have locations but all missing coordinates
+        const hasCoords = locations.some((l: any) => l.latitude || l.lat);
+
+        // If locations exist but all are missing coords, try to backfill them
+        if (locations.length > 0 && !hasCoords) {
+          console.log('[SEO] Locations found but all missing coordinates — attempting backfill…');
+          try {
+            const backfillRes = await apiPost('/api/embedsocial/listings/backfill-coordinates');
+            if (backfillRes.ok) {
+              const result = await backfillRes.json();
+              console.log('[SEO] Backfill result:', result);
+              // Re-fetch locations after backfill
+              const refreshed = await apiGet('/api/embedsocial/locations');
+              if (refreshed.ok) {
+                locations = await refreshed.json();
+              }
+            }
+          } catch (e) {
+            console.warn('[SEO] Backfill failed:', e);
+          }
+        }
+
         // Use first location as the active business
         const primary = locations[0];
         if (primary) {

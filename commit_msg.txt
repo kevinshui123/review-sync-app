@@ -1,10 +1,8 @@
-fix: all EmbedSocial endpoints use env vars priority + safe tenantId fallback
+fix: auto-backfill coordinates on SEO page load
 
-Fixes GBP Performance Data / chart-data showing empty on Reports page.
-
-- /api/embedsocial/chart-data: env vars priority, safe tenantId fallback
-- /api/embedsocial/metrics: env vars priority, safe tenantId fallback
-- /api/reports/gbp-pdf: env vars priority
-- getReportChartData: tenantId can be null/undefined
-- All three endpoints now read process.env.EMBEDSOCIAL_API_KEY first
-  (survives Railway DB wipe on redeploy), then fall back to DB
+- Add POST /api/embedsocial/listings/backfill-coordinates endpoint:
+  fetches GBP coordinates via OAuth and updates all tenant listings
+  missing lat/lng, then saves to DB
+- SEO.tsx: when locations load without coordinates, automatically
+  calls backfill endpoint then re-fetches locations
+- /api/embedsocial/locations: env vars priority + safe tenantId fallback

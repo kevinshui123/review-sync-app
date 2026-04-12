@@ -1380,15 +1380,23 @@ async function startServer() {
   // Only returns listings that belong to this tenant
   app.get('/api/embedsocial/locations', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey(req.tenantId);
+      // Priority: Railway env vars > DB
+      const apiKey = process.env.EMBEDSOCIAL_API_KEY || await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
 
+      // Safe tenantId lookup
+      const tenantId = req.tenantId
+        ? req.tenantId
+        : (await prisma.tenant.findFirst())?.id;
+
       // Get this tenant's connected listings from LOCAL DB (with lat/lng)
-      const dbListings = await prisma.tenantListing.findMany({
-        where: { tenantId: req.tenantId!, status: 'active' },
-      });
+      const dbListings = tenantId
+        ? await prisma.tenantListing.findMany({
+            where: { tenantId, status: 'active' },
+          })
+        : [];
 
       if (dbListings.length === 0) {
         return res.json([]);
@@ -1581,6 +1589,76 @@ async function startServer() {
     } catch (error: any) {
       console.error('Sync listings error:', error);
       res.status(500).json({ error: 'Failed to sync listings', details: error.message });
+    }
+  });
+
+  // Backfill missing coordinates for existing tenant listings using GBP API
+  app.post('/api/embedsocial/listings/backfill-coordinates', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      // Priority: Railway env vars > DB
+      const apiKey = process.env.EMBEDSOCIAL_API_KEY || await getEmbedSocialApiKey(req.tenantId);
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+
+      const tenantId = req.tenantId
+        ? req.tenantId
+        : (await prisma.tenant.findFirst())?.id;
+      if (!tenantId) return res.status(404).json({ error: 'Tenant not found' });
+
+      // Get Google OAuth for GBP API
+      const gbpAuthResult = await getValidAuthForTenant(tenantId);
+      const gbpCoords = new Map<string, { lat: number; lng: number }>();
+      if (gbpAuthResult) {
+        try {
+          const coords = await fetchGbpLocationsWithCoordinates(gbpAuthResult.auth);
+          gbpCoords.clear();
+          for (const [k, v] of coords) gbpCoords.set(k, v);
+        } catch (e) {
+          console.warn('[backfill-coords] GBP failed:', (e as any).message);
+        }
+      }
+
+      const placesApiKey = await getGooglePlacesApiKey(tenantId);
+
+      // Get all tenant listings missing coordinates
+      const missing = await prisma.tenantListing.findMany({
+        where: { tenantId, status: 'active', OR: [{ latitude: null }, { longitude: null }] },
+        select: { id: true, embedSocialListingId: true, googleId: true, address: true, name: true },
+      });
+
+      let updated = 0;
+      for (const listing of missing) {
+        let lat: number | null = null;
+        let lng: number | null = null;
+
+        // Priority 1: GBP API via placeId
+        if (gbpCoords.size > 0 && listing.googleId) {
+          const g = gbpCoords.get(listing.googleId);
+          if (g) { lat = g.lat; lng = g.lng; }
+        }
+        // Priority 2: Google Places API via address
+        if ((lat === null || lng === null) && placesApiKey && listing.address) {
+          const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
+          if (coords) { lat = coords.lat; lng = coords.lng; }
+        }
+
+        if (lat !== null && lng !== null) {
+          await prisma.tenantListing.update({
+            where: { id: listing.id },
+            data: { latitude: lat, longitude: lng },
+          });
+          updated++;
+          console.log(`[backfill-coords] Updated listing "${listing.name}" (${listing.id}) lat=${lat} lng=${lng}`);
+        } else {
+          console.log(`[backfill-coords] Could not get coords for listing "${listing.name}" (${listing.id})`);
+        }
+      }
+
+      res.json({ success: true, updated, totalMissing: missing.length });
+    } catch (error: any) {
+      console.error('[backfill-coords] Error:', error);
+      res.status(500).json({ error: 'Failed to backfill coordinates', details: error.message });
     }
   });
 
