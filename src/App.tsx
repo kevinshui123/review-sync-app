@@ -13,7 +13,6 @@ import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
@@ -127,16 +126,8 @@ function AppContent() {
         )}
 
         <main className="flex-1 flex flex-col min-h-0 overflow-y-auto relative bg-white">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="flex-1 flex flex-col min-h-0"
-            >
-              {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
+          <div className="flex-1 flex flex-col min-h-0">
+            {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
               {activeTab === 'listings' && (
                 listingsSubTab === 'edit' ? (
                   <EditBusinessPage
@@ -175,8 +166,7 @@ function AppContent() {
               {activeTab === 'seo' && <SEO setActiveTab={setActiveTab} />}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
-            </motion.div>
-          </AnimatePresence>
+          </div>
         </main>
       </div>
     </div>

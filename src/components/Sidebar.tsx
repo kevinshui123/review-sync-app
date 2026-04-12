@@ -24,7 +24,7 @@ interface SidebarProps {
   setIsOpen: (isOpen: boolean) => void;
 }
 
-const NAV_ITEMS = [
+const NAV_ITEMS: Array<{ id: string; labelKey: string; icon: React.ElementType; hasSubmenu?: boolean; badge?: string }> = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: Dashboard },
   { id: 'listings', labelKey: 'nav.listings', icon: PushPin },
   { id: 'reviews', labelKey: 'nav.reviews', icon: RateReview },

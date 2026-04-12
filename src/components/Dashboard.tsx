@@ -252,6 +252,7 @@ function LocationHealthCard({ locations }: { locations: LocationData[] }) {
 
 export function Dashboard({ setActiveTab }: DashboardProps) {
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedPeriod, setSelectedPeriod] = useState('30days');
   const [reviewFilter, setReviewFilter] = useState<'all' | 'positive' | 'negative'>('all');
@@ -280,6 +281,10 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
     '90days': { label: 'Last 90 Days', days: 90 },
     '12months': { label: 'Last 12 Months', days: 365 },
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
@@ -317,7 +322,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
               authorPhoto: r.authorPhoto || r.profilePhotoUrl || null,
               rating: r.rating || 0,
               location: r.sourceName || embedLocations[0]?.name || 'Google',
-              date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+              date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '',
               text: r.captionText || r.text || '',
               replied: r.replies && r.replies.length > 0,
               replyText: undefined,
@@ -346,7 +351,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
             authorPhoto: null,
             rating: r.rating || 0,
             location: r.locationName || r.location || 'Unknown',
-            date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+            date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '',
             text: r.comment || r.text || '',
             replied: !!r.replyText,
             replyText: r.replyText,

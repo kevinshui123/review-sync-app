@@ -30,6 +30,7 @@ interface Review {
   authorName?: string;
   authorPhotoUrl?: string;
   rating?: number;
+  author?: string;  // fallback for some API responses
   location?: string;
   sourceName?: string;
   captionText?: string;
@@ -241,7 +242,7 @@ export function Reviews() {
         const hasReplied = r.replied || (r.replies && r.replies.length > 0);
         return hasReplied;
       }
-      if (activeFilter === 'ai' && r.hasReply) {
+      if (activeFilter === 'ai' && (r as any).hasReply) {
         return true;
       }
       return true;
