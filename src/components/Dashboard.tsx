@@ -252,6 +252,7 @@ function LocationHealthCard({ locations }: { locations: LocationData[] }) {
 export function Dashboard({ setActiveTab }: DashboardProps) {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [debugSection, setDebugSection] = useState<number>(99); // 99 = all sections, lower = fewer sections
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedPeriod, setSelectedPeriod] = useState('30days');
   const [reviewFilter, setReviewFilter] = useState<'all' | 'positive' | 'negative'>('all');
@@ -575,8 +576,19 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+      {/* Debug section toggler - REMOVE AFTER DEBUG */}
+      <div className="mb-4 p-2 bg-yellow-100 rounded flex gap-2 flex-wrap">
+        <span className="text-xs font-bold text-yellow-800">Debug sections:</span>
+        {[1,2,3,4,5,6,7,8,9,99].map(n => (
+          <button key={n} onClick={() => setDebugSection(n)}
+            className={`px-2 py-1 text-xs rounded ${debugSection === n ? 'bg-yellow-500 text-white' : 'bg-yellow-200 text-yellow-800'}`}>
+            {n === 99 ? 'All' : n}
+          </button>
+        ))}
+      </div>
+
       {/* Page Header with Filters */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      {debugSection >= 1 && (<div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-extrabold font-headline text-on-surface mb-1">Dashboard</h2>
           <p className="text-slate-500 text-sm">Performance overview across all your business locations</p>
@@ -620,7 +632,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
       </div>
 
       {/* Bento Grid Layout */}
-      <div className="grid grid-cols-12 gap-6">
+      {debugSection >= 2 && (<div className="grid grid-cols-12 gap-6">
         {/* Primary Metrics Row */}
         <div className="col-span-12">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -848,7 +860,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
+      </div>)}
     </div>
   );
 }
