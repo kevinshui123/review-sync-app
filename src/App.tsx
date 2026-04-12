@@ -12,7 +12,6 @@ import { SEO } from './components/SEO';
 import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
-import { ConnectBusiness } from './components/ConnectBusiness';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './contexts/LanguageContext';
@@ -39,13 +38,12 @@ function AppContent() {
           return;
         }
         const data = await res.json();
-        const hasPlaces = !!(data.googlePlacesApiKey && String(data.googlePlacesApiKey).trim());
-        const hasOAuth = !!data.googleConnected;
+        const hasEmbedSocial = !!(data.embedSocialApiKey && String(data.embedSocialApiKey).trim());
         const hasAi = !!(
           (data.geminiApiKey && String(data.geminiApiKey).trim()) ||
           (data.openaiApiKey && String(data.openaiApiKey).trim())
         );
-        setIsConfigured(hasOAuth || hasPlaces || hasAi);
+        setIsConfigured(hasEmbedSocial || hasAi);
       } catch (error) {
         console.error('Failed to check configuration:', error);
         setIsConfigured(false);
@@ -176,7 +174,6 @@ function AppContent() {
               {activeTab === 'seo' && <SEO setActiveTab={setActiveTab} />}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
-              {activeTab === 'connect-business' && <ConnectBusiness onConnected={() => setActiveTab('listings')} />}
             </motion.div>
           </AnimatePresence>
         </main>

@@ -125,8 +125,8 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     // Generate JWT
     const token = generateToken(user.id, tenant.id);
 
-    // Redirect to app with token
-    res.redirect(`${APP_URL}/auth/callback?token=${token}&tenantId=${tenant.id}`);
+    // Redirect to app with token in URL
+    res.redirect(`${APP_URL}/?token=${token}&tenantId=${tenant.id}`);
   } catch (error: any) {
     console.error('[oauth/google] Callback error:', error);
     res.redirect(`${APP_URL}/auth?error=${encodeURIComponent(error.message)}`);

@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for token in URL (after OAuth callback)
+  // Check for token in URL (after OAuth callback) or in storage
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
@@ -48,14 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (urlTenantId) {
         localStorage.setItem('tenantId', urlTenantId);
       }
-      // Clean URL
-      window.history.replaceState({}, '', '/');
+      // Clean URL without triggering page reload
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
       setToken(urlToken);
       if (urlTenantId) setCurrentTenantId(urlTenantId);
       fetchUser(urlToken);
     } else if (urlError) {
       console.error('OAuth error:', urlError);
-      window.history.replaceState({}, '', '/auth');
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+      setIsLoading(false);
     } else {
       // Check stored token
       const storedToken = localStorage.getItem('token');

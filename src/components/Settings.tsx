@@ -1,15 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, ExternalLink } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, ExternalLink, Copy, Refresh, Store, Link, Unlink } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+
+interface TenantListing {
+  id: string;
+  embedSocialListingId: string;
+  name: string;
+  address?: string;
+  phoneNumber?: string;
+  status: string;
+  connectedAt: string;
+}
+
+interface AvailableListing {
+  id: string;
+  name: string;
+  address?: string;
+  phoneNumber?: string;
+}
 
 export function Settings() {
   const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-
-
 
   const [formData, setFormData] = useState({
     yelpApiKey: '',
@@ -20,6 +35,16 @@ export function Settings() {
 
   const [embedSocialConnected, setEmbedSocialConnected] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
+
+  // Merchant management
+  const [tenantListings, setTenantListings] = useState<TenantListing[]>([]);
+  const [availableListings, setAvailableListings] = useState<AvailableListing[]>([]);
+  const [loadingListings, setLoadingListings] = useState(false);
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Invite link (your EmbedSocial token - this is specific to your account)
+  const INVITE_LINK = 'https://embedsocial.com/app/public/grant_listing_access?token=esb7ebfffb58b61f1e223b7dabf36a48';
 
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -60,6 +85,41 @@ export function Settings() {
       setIsLoading(false);
     });
   }, []);
+
+  // Fetch connected listings when modal opens
+  useEffect(() => {
+    if (showConnectModal && embedSocialConnected) {
+      fetchConnectedListings();
+      fetchAvailableListings();
+    }
+  }, [showConnectModal, embedSocialConnected]);
+
+  const fetchConnectedListings = async () => {
+    setLoadingListings(true);
+    try {
+      const res = await fetch('/api/tenant/listings');
+      if (res.ok) {
+        const data = await res.json();
+        setTenantListings(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch connected listings:', error);
+    } finally {
+      setLoadingListings(false);
+    }
+  };
+
+  const fetchAvailableListings = async () => {
+    try {
+      const res = await fetch('/api/embedsocial/listings/available');
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableListings(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch available listings:', error);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -145,6 +205,41 @@ export function Settings() {
     }
   };
 
+  const handleConnectListing = async (listingId: string, name: string) => {
+    try {
+      const res = await fetch('/api/embedsocial/listings/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embedSocialListingId: listingId, name }),
+      });
+      if (res.ok) {
+        fetchConnectedListings();
+        fetchAvailableListings();
+      }
+    } catch (error) {
+      console.error('Failed to connect listing:', error);
+    }
+  };
+
+  const handleDisconnectListing = async (listingId: string) => {
+    if (!confirm('Are you sure you want to disconnect this listing?')) return;
+    try {
+      const res = await fetch(`/api/embedsocial/listings/${listingId}/disconnect`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchConnectedListings();
+        fetchAvailableListings();
+      }
+    } catch (error) {
+      console.error('Failed to disconnect listing:', error);
+    }
+  };
+
+  const handleCopyInviteLink = () => {
+    navigator.clipboard.writeText(INVITE_LINK);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -183,54 +278,29 @@ export function Settings() {
 
       <div className="space-y-8">
 
-        {/* EmbedSocial Section */}
+        {/* EmbedSocial Section - Merchant Connection */}
         <section className="bg-surface-container rounded-2xl p-8 border border-outline-variant/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
           <div className="flex items-start gap-4 relative z-10">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Key className="w-6 h-6 text-primary" />
+              <Store className="w-6 h-6 text-primary" />
             </div>
             <div className="space-y-6 flex-1">
               <div>
-                <h3 className="text-xl font-bold text-on-surface">EmbedSocial</h3>
+                <h3 className="text-xl font-bold text-on-surface">Google Business Listings</h3>
                 <p className="text-sm text-on-surface-variant mt-1">
-                  Connect EmbedSocial to sync Google reviews, reply to customers, and manage your Business Profile — without your own Google API setup.
+                  Connect your Google Business Profile through EmbedSocial to sync reviews and manage your listings. This is separate from your app login account.
                 </p>
               </div>
 
-              {embedSocialConnected ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
-                    <div>
-                      <p className="font-bold text-emerald-700 dark:text-emerald-400">EmbedSocial connected</p>
-                      <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Reviews sync from EmbedSocial. Manage locations in Listings.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 flex-wrap">
-                    <a
-                      href="https://embedsocial.com/app/public/listings"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Open EmbedSocial Listings
-                    </a>
-                    <p className="text-xs text-on-surface-variant self-center">
-                      To add more business listings, open EmbedSocial and connect your Google Business Profile there.
-                    </p>
-                  </div>
-                </div>
-              ) : (
+              {!embedSocialConnected ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-surface-container-low rounded-lg border border-outline-variant/20">
                     <p className="text-xs font-medium text-on-surface-variant mb-2">Setup Steps:</p>
                     <ol className="text-xs text-on-surface-variant space-y-1 list-decimal list-inside">
-                      <li>Copy your EmbedSocial API key from your account</li>
-                      <li>Paste it below and save</li>
-                      <li>Go to Listings → link your locations to EmbedSocial sources</li>
-                      <li>Sync reviews from the Reviews tab</li>
+                      <li>Enter your EmbedSocial API Key below (find it in EmbedSocial → Settings → API)</li>
+                      <li>Click "Test Connection" to verify</li>
+                      <li>Click "Connect Listings" to connect your Google Business Profile listings</li>
                     </ol>
                     <a
                       href="https://app.embedsocial.com"
@@ -267,6 +337,35 @@ export function Settings() {
                         {testingConnection ? 'Testing...' : 'Test Connection'}
                       </button>
                     </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
+                    <div>
+                      <p className="font-bold text-emerald-700 dark:text-emerald-400">EmbedSocial Connected</p>
+                      <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">You can now connect Google Business Profile listings.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 flex-wrap">
+                    <button
+                      onClick={() => setShowConnectModal(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      <Link className="w-4 h-4" />
+                      Connect Listings
+                    </button>
+                    <a
+                      href="https://embedsocial.com/app/public/listings"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open EmbedSocial
+                    </a>
                   </div>
                 </div>
               )}
@@ -426,6 +525,125 @@ export function Settings() {
           </div>
         </section>
       </div>
+
+      {/* Connect Listings Modal */}
+      {showConnectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowConnectModal(false)}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900">Connect Google Business Listings</h2>
+              <button onClick={() => setShowConnectModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100">
+                <span className="text-slate-400">✕</span>
+              </button>
+            </div>
+
+            {/* Invite Link Section */}
+            <div className="mb-6 p-4 bg-blue-50 rounded-xl">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">Invite Client to Connect Their Listings</h4>
+              <p className="text-xs text-blue-700 mb-3">
+                Share this link with your client. They can securely connect their Google account to your EmbedSocial account - no EmbedSocial signup required for them.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={INVITE_LINK}
+                  readOnly
+                  className="flex-1 px-3 py-2 bg-white border border-blue-200 rounded-lg text-xs"
+                />
+                <button
+                  onClick={handleCopyInviteLink}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 flex items-center gap-1"
+                >
+                  {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 mb-4 border-b border-slate-200 pb-4">
+              <button
+                onClick={() => {}}
+                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium"
+              >
+                My Listings ({tenantListings.length})
+              </button>
+            </div>
+
+            {/* Connected Listings */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingListings ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                </div>
+              ) : tenantListings.length === 0 ? (
+                <div className="text-center py-8">
+                  <Store className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 text-sm">No listings connected yet.</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Connect from EmbedSocial or use the invite link above.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tenantListings.map((listing) => (
+                    <div key={listing.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
+                          <Store className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-900">{listing.name}</div>
+                          <div className="text-xs text-slate-500">{listing.address || 'No address'}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">
+                          Connected {new Date(listing.connectedAt).toLocaleDateString()}
+                        </span>
+                        <button
+                          onClick={() => handleDisconnectListing(listing.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                          title="Disconnect"
+                        >
+                          <Unlink className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Available Listings Section */}
+            {availableListings.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-slate-200">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Available in EmbedSocial</h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {availableListings.map((listing) => (
+                    <button
+                      key={listing.id}
+                      onClick={() => handleConnectListing(listing.id, listing.name)}
+                      className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-xl text-left transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                          <Store className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-slate-900 text-sm">{listing.name}</div>
+                          <div className="text-xs text-slate-500">{listing.address || 'No address'}</div>
+                        </div>
+                      </div>
+                      <Link className="w-5 h-5 text-primary" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
