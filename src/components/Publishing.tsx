@@ -14,7 +14,8 @@ import {
   Link as LinkIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
-import { apiGet, apiPost } from '../utils/api';
+import { apiGet, apiPost, apiDelete } from '../utils/api';
+import { addActivityLog } from './EditsLog';
 
 interface PublishingProps {
   setActiveTab: (tab: string) => void;
@@ -53,6 +54,13 @@ export function Publishing({ setActiveTab }: PublishingProps) {
     imageUrls: [] as string[],
   });
   const [creating, setCreating] = useState(false);
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', text: string) => {
+    setToast({ type, text });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
 
@@ -142,12 +150,26 @@ export function Publishing({ setActiveTab }: PublishingProps) {
       });
 
       if (res.ok) {
+        const data = await res.json();
         await fetchData();
         setShowCreateModal(false);
         setNewPost({ captionText: '', sourceIds: [], scheduledOn: '', imageUrls: [] });
+        const action = newPost.scheduledOn ? 'Scheduled' : 'Saved as draft';
+        showToast('success', `${action} post created!`);
+        addActivityLog({
+          action: 'post',
+          entity: 'Post',
+          entityId: data.id,
+          details: `${action}: ${newPost.captionText.slice(0, 50)}${newPost.captionText.length > 50 ? '...' : ''}`,
+          status: 'pending',
+        });
+      } else {
+        const data = await res.json();
+        showToast('error', data.error || 'Failed to create post.');
       }
     } catch (error) {
       console.error('Failed to create post:', error);
+      showToast('error', 'Network error. Please try again.');
     } finally {
       setCreating(false);
     }
@@ -158,9 +180,38 @@ export function Publishing({ setActiveTab }: PublishingProps) {
       const res = await apiDelete(`/api/posts/${id}`);
       if (res.ok) {
         setPosts(posts.filter(p => p.id !== id));
+        showToast('success', 'Post deleted successfully.');
       }
     } catch (error) {
       console.error('Failed to delete post:', error);
+      showToast('error', 'Failed to delete post. Please try again.');
+    }
+  };
+
+  const handlePublishPost = async (id: string) => {
+    setPublishing(id);
+    try {
+      const res = await apiPost(`/api/posts/${id}/publish`);
+      if (res.ok) {
+        const data = await res.json();
+        await fetchData();
+        showToast('success', 'Post published successfully!');
+        addActivityLog({
+          action: 'post',
+          entity: 'Post',
+          entityId: id,
+          details: 'Published post via EmbedSocial',
+          status: 'completed',
+        });
+      } else {
+        const data = await res.json();
+        showToast('error', data.error || 'Failed to publish post.');
+      }
+    } catch (error: any) {
+      console.error('Failed to publish post:', error);
+      showToast('error', 'Network error. Please try again: ' + (error?.message || ''));
+    } finally {
+      setPublishing(null);
     }
   };
 
@@ -282,6 +333,24 @@ export function Publishing({ setActiveTab }: PublishingProps) {
         )}
       </AnimatePresence>
 
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-xl shadow-lg text-sm font-medium max-w-md ${
+              toast.type === 'success'
+                ? 'bg-green-50 text-green-800 border border-green-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}
+          >
+            {toast.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Sub Header / Controls */}
       <div className="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border-b border-slate-100">
         <div className="flex items-center gap-4">
@@ -366,7 +435,7 @@ export function Publishing({ setActiveTab }: PublishingProps) {
               return (
                 <div
                   key={index}
-                  className={`border-r border-b border-slate-50 p-2 hover:bg-slate-50/50 transition-colors min-h-[100px] ${
+                  className={`border-r border-b border-slate-50 p-2 hover:bg-slate-50/50 transition-colors min-h-[100px] group ${
                     !item.isCurrentMonth ? 'bg-slate-50/30 opacity-40' : ''
                   }`}
                 >
@@ -379,17 +448,32 @@ export function Publishing({ setActiveTab }: PublishingProps) {
                   </span>
 
                   {/* Posts */}
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-1 group">
                     {dayPosts.map((post) => (
                       <div
                         key={post.id}
-                        className={`p-1.5 rounded-md text-[10px] font-bold border-l-2 truncate flex items-center gap-1 ${getStatusColor(post.publishStatus)}`}
+                        className={`p-1.5 rounded-md text-[10px] font-bold border-l-2 flex items-center gap-1 ${getStatusColor(post.publishStatus)}`}
                       >
                         {getStatusIcon(post.publishStatus)}
-                        <span className="truncate">{post.captionText}</span>
+                        <span className="truncate flex-1">{post.captionText}</span>
+                        {post.publishStatus !== 'published' && (
+                          <button
+                            onClick={() => handlePublishPost(post.id)}
+                            disabled={publishing === post.id}
+                            className="opacity-0 group-hover:opacity-100 hover:text-green-600 shrink-0 disabled:opacity-50"
+                            title="Publish now"
+                          >
+                            {publishing === post.id ? (
+                              <Refresh className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Send className="w-3 h-3" />
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeletePost(post.id)}
-                          className="ml-auto opacity-0 group-hover:opacity-100 hover:text-red-600"
+                          className="opacity-0 group-hover:opacity-100 hover:text-red-600 shrink-0"
+                          title="Delete post"
                         >
                           <Delete className="w-3 h-3" />
                         </button>

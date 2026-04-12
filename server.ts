@@ -2200,6 +2200,83 @@ async function startServer() {
     }
   });
 
+  // Publish a post via EmbedSocial
+  app.post('/api/posts/:id/publish', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const post = await prisma.post.findUnique({
+        where: { id },
+        include: { location: true },
+      });
+      if (!post) return res.status(404).json({ error: 'Post not found' });
+
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
+      if (!apiKey) return res.status(401).json({ error: 'EmbedSocial API key not configured. Please add it in Settings.' });
+
+      // Find the TenantListing that matches this post's location (by embedSocialLocationId)
+      let embedSourceIds: string[] = [];
+      if (post.location?.embedSocialLocationId) {
+        const tenantListing = await prisma.tenantListing.findFirst({
+          where: { embedSocialListingId: post.location.embedSocialLocationId, tenantId: req.tenantId! },
+        });
+        if (tenantListing?.embedSocialListingId) {
+          embedSourceIds = [tenantListing.embedSocialListingId];
+        }
+      }
+
+      // Fallback: look up by embedSocialListingId stored on the location itself
+      if (embedSourceIds.length === 0 && post.locationId) {
+        const tenantListing = await prisma.tenantListing.findFirst({
+          where: { embedSocialListingId: post.locationId, tenantId: req.tenantId! },
+        });
+        if (tenantListing?.embedSocialListingId) {
+          embedSourceIds = [tenantListing.embedSocialListingId];
+        }
+      }
+
+      if (embedSourceIds.length === 0) {
+        return res.status(400).json({ error: 'No connected listing found for this post. Please reconnect your location in Settings.' });
+      }
+
+      // Call EmbedSocial Content Publishing API
+      const publishBody: any = {
+        type: post.type === 'OFFER' ? 'offer' : post.type === 'EVENT' ? 'event' : 'update',
+        sourceIds: embedSourceIds,
+        captionText: post.content || '',
+      };
+
+      if (post.scheduledFor) {
+        publishBody.scheduledOn = new Date(post.scheduledFor).toISOString();
+      }
+
+      console.log(`[publish] Publishing post ${id} to EmbedSocial:`, JSON.stringify(publishBody));
+
+      const esResponse = await embedSocialFetchWithKey(
+        apiKey,
+        '/rest/v1/content_publishing_media',
+        {
+          method: 'POST',
+          body: JSON.stringify(publishBody),
+        },
+      );
+
+      console.log(`[publish] EmbedSocial response:`, JSON.stringify(esResponse).slice(0, 300));
+
+      // Update post status to PUBLISHED
+      const updatedPost = await prisma.post.update({
+        where: { id },
+        data: { status: 'PUBLISHED' },
+        include: { location: true },
+      });
+
+      res.json({ success: true, post: updatedPost, embedResponse: esResponse });
+    } catch (error: any) {
+      console.error('[publish] Publish error:', error);
+      const errMsg = error?.details?.title || error?.message || 'Failed to publish post';
+      res.status(500).json({ error: errMsg });
+    }
+  });
+
   // ==========================================
   // Comments Gen API Routes
   // ==========================================

@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../utils/api';
+import { addActivityLog } from './EditsLog';
 
 interface Review {
   id: string;
@@ -195,6 +196,15 @@ export function Reviews() {
           waiting: prev.waiting - 1,
           replied: prev.replied + 1,
         }));
+        setSyncMessage({ type: 'success', text: `Reply sent successfully!` });
+        setTimeout(() => setSyncMessage(null), 4000);
+        addActivityLog({
+          action: 'reply',
+          entity: 'Review',
+          entityId: selectedReview.id,
+          details: `Replied to review by ${selectedReview.reviewerName || selectedReview.authorName || 'a customer'}`,
+          status: 'completed',
+        });
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to send reply. Please try again.');
