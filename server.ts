@@ -3593,7 +3593,9 @@ Return ONLY valid JSON like this, nothing else:
 
   app.post('/api/reports/seo-optimization', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId! } });
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
       const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;

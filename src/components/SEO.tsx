@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
   Notifications,
@@ -16,6 +16,14 @@ import {
   TrendingDown,
   Place,
   Refresh,
+  AutoAwesome,
+  Lightbulb,
+  Speed,
+  OpenInNew,
+  CheckCircle,
+  ArrowForward,
+  LocalFireDepartment,
+  Error as ErrorIcon,
 } from '@mui/icons-material';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -81,12 +89,24 @@ interface LocalSearchGridResult {
   summary: GridSummary;
 }
 
+function getScoreColor(score: number) {
+  if (score >= 80) return { color: '#22c55e', label: 'Excellent', bg: 'bg-green-50', border: 'border-green-200' };
+  if (score >= 60) return { color: '#f59e0b', label: 'Good', bg: 'bg-amber-50', border: 'border-amber-200' };
+  if (score >= 40) return { color: '#f97316', label: 'Fair', bg: 'bg-orange-50', border: 'border-orange-200' };
+  return { color: '#ef4444', label: 'Needs Work', bg: 'bg-red-50', border: 'border-red-200' };
+}
+
 export function SEO({ setActiveTab }: SEOProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeSection, setActiveSection] = useState('citations');
   const [citations, setCitations] = useState<Citation[]>([]);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Optimization state
+  const [seoReport, setSeoReport] = useState<any>(null);
+  const [seoLoading, setSeoLoading] = useState(false);
+  const [seoError, setSeoError] = useState<string | null>(null);
 
   // Local Search Grid state
   const [gridKeyword, setGridKeyword] = useState('restaurant near me');
@@ -122,6 +142,25 @@ export function SEO({ setActiveTab }: SEOProps) {
       setGridLoading(false);
     }
   };
+
+  const generateSeoReport = useCallback(async () => {
+    setSeoLoading(true);
+    setSeoError(null);
+    try {
+      const res = await apiPost('/api/reports/seo-optimization', { lang: language });
+      if (res.ok) {
+        const data = await res.json();
+        setSeoReport(data);
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        setSeoError(err.error || 'Failed to generate report');
+      }
+    } catch (e: any) {
+      setSeoError(e.message || 'Network error');
+    } finally {
+      setSeoLoading(false);
+    }
+  }, [language]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -761,51 +800,240 @@ export function SEO({ setActiveTab }: SEOProps) {
 
         {/* Section: Optimization */}
         {activeSection === 'optimization' && (
-          <div className="flex flex-col items-center justify-center min-h-[600px]">
-            <div className="max-w-xl w-full text-center space-y-8 px-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-center gap-3">
-                  <LocalOffer className="w-7 h-7 text-slate-700" />
-                  <h2 className="text-3xl font-extrabold tracking-tight">{t('reports.seoOptimization')}</h2>
-                </div>
-                <h3 className="text-2xl font-semibold text-slate-600">{businessInfo?.name}</h3>
-                  <p className="text-slate-500 max-w-sm mx-auto text-sm leading-relaxed">
-                    {t('reports.generateOptReport')}
-                  </p>
-              </div>
-
-              <div className="space-y-4 flex flex-col items-center">
-                <div className="relative w-72">
-                  <select className="w-full pl-4 pr-10 py-3 border border-slate-300 rounded-lg text-sm appearance-none focus:ring-2 focus:ring-primary focus:border-primary">
-                    <option>{t('reports.periodLastWeek')}</option>
-                    <option>{t('reports.periodLastMonth')}</option>
-                    <option>{t('reports.periodLast3Months')}</option>
-                  </select>
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</span>
-                </div>
-                <button className="flex items-center bg-pink-50 hover:bg-pink-100 border border-pink-100 text-slate-800 font-semibold px-5 py-3 rounded-lg transition-all">
-                  <LocalOffer className="w-4 h-4 mr-2 text-pink-500" />
-                  <span className="mr-3">{t('reports.generateReport')}</span>
-                  <span className="bg-white border border-slate-200 text-[10px] px-2 py-0.5 rounded">5 {t('reports.credits')}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Chat Bubble */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-              <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-xl flex items-start gap-3 max-w-sm mb-2 animate-pulse">
-                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Search className="w-5 h-5" />
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                  <AutoAwesome className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium leading-tight mb-1">Just checking in to see if you still ne...</p>
-                  <p className="text-[10px] text-slate-400">Fin • 16分钟</p>
+                  <h2 className="text-2xl font-bold text-slate-900">{t('reports.seoOptimization')}</h2>
+                  <p className="text-sm text-slate-500">{businessInfo?.name}</p>
                 </div>
               </div>
-              <button className="relative w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform">
-                <Public className="w-7 h-7 text-white" />
+              <button
+                onClick={generateSeoReport}
+                disabled={seoLoading}
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
+              >
+                {seoLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                    <span className="animate-pulse">Analyzing...</span>
+                  </>
+                ) : (
+                  <>
+                    <AutoAwesome className="w-4 h-4" />
+                    {t('reports.generateReport')}
+                  </>
+                )}
               </button>
             </div>
+
+            {/* Error */}
+            {seoError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                <ErrorIcon className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-700">{seoError}</p>
+                  <p className="text-xs text-red-500 mt-0.5">Make sure your Gemini API key is configured in Settings.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Loading skeleton */}
+            {seoLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1,2,3].map(i => (
+                  <div key={i} className="bg-white rounded-2xl p-5 border border-slate-100 animate-pulse">
+                    <div className="h-4 bg-slate-200 rounded w-1/3 mb-4" />
+                    <div className="h-3 bg-slate-100 rounded w-full mb-2" />
+                    <div className="h-3 bg-slate-100 rounded w-5/6 mb-2" />
+                    <div className="h-3 bg-slate-100 rounded w-4/6" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Report Content */}
+            {seoReport && !seoLoading && (
+              <div className="space-y-6">
+                {/* Score + Quick Wins */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Score Card */}
+                  <div className={`rounded-2xl p-6 border ${getScoreColor(seoReport.overallScore).border} ${getScoreColor(seoReport.overallScore).bg}`}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Speed className="w-5 h-5" style={{ color: getScoreColor(seoReport.overallScore).color }} />
+                      <h4 className="font-bold text-slate-800">SEO Health Score</h4>
+                      <span className="ml-auto text-xs font-bold px-2 py-1 rounded-full" style={{ backgroundColor: `${getScoreColor(seoReport.overallScore).color}20`, color: getScoreColor(seoReport.overallScore).color }}>
+                        {getScoreColor(seoReport.overallScore).label}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-center mb-4">
+                      <div className="relative w-32 h-32">
+                        <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                          <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                          <circle cx="60" cy="60" r="50" fill="none" stroke={getScoreColor(seoReport.overallScore).color} strokeWidth="10"
+                            strokeLinecap="round"
+                            strokeDasharray={`${(seoReport.overallScore / 100) * 314} 314`}
+                            style={{ transition: 'stroke-dasharray 1s ease-out' }}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-3xl font-extrabold" style={{ color: getScoreColor(seoReport.overallScore).color }}>{seoReport.overallScore}</span>
+                          <span className="text-xs text-slate-400">/ 100</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-600 text-center">{seoReport.overallSummary}</p>
+                  </div>
+
+                  {/* Quick Wins */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-100 md:col-span-2">
+                    <div className="flex items-center gap-2 mb-4">
+                      <LocalFireDepartment className="w-5 h-5 text-orange-500" />
+                      <h4 className="font-bold text-slate-800">Quick Wins</h4>
+                      <span className="ml-auto bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.quickWins?.length || 0} items</span>
+                    </div>
+                    <div className="space-y-2">
+                      {(seoReport.quickWins || []).map((win: any, i: number) => (
+                        <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                          <div className="w-6 h-6 rounded-full bg-white border-2 border-orange-400 flex items-center justify-center mt-0.5 flex-shrink-0">
+                            <span className="text-xs font-bold text-orange-500">{i+1}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-700">{win.action}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                                style={{ backgroundColor: win.impact === 'high' ? '#fef2f2' : win.impact === 'medium' ? '#fffbeb' : '#f0fdf4', color: win.impact === 'high' ? '#dc2626' : win.impact === 'medium' ? '#d97706' : '#16a34a' }}>
+                                {win.impact} impact
+                              </span>
+                              <span className="text-xs text-slate-400">effort: {win.effort}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Insights */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-5">
+                    <Lightbulb className="w-5 h-5 text-amber-500" />
+                    <h4 className="font-bold text-slate-800">Key Optimization Insights</h4>
+                    <span className="ml-auto bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.insights?.length || 0} recommendations</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(seoReport.insights || []).map((insight: any, i: number) => {
+                      const prioColor = insight.priority === 'high' ? '#dc2626' : insight.priority === 'medium' ? '#d97706' : '#16a34a';
+                      return (
+                        <div key={i} className="rounded-xl border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all p-4">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>
+                              <Lightbulb className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h5 className="font-bold text-slate-800 text-sm mb-1">{insight.title}</h5>
+                              <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>{insight.priority} priority</span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500 leading-relaxed mb-3">{insight.description}</p>
+                          {insight.currentValue && (
+                            <div className="bg-slate-50 rounded-lg p-2.5 mb-3 text-xs space-y-1">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-slate-400" />
+                                <span className="text-slate-400 font-semibold">Current:</span>
+                                <span className="text-slate-600 ml-auto">{insight.currentValue}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <ArrowForward className="w-3 h-3 text-purple-400" />
+                                <span className="text-slate-400 font-semibold">Suggested:</span>
+                                <span className="text-purple-600 ml-auto">{insight.suggestedValue}</span>
+                              </div>
+                            </div>
+                          )}
+                          {insight.potentialImpact && (
+                            <p className="text-xs text-slate-400 italic mb-3 flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />{insight.potentialImpact}
+                            </p>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (insight.actionType === 'editable') setActiveTab('listings');
+                              else if (insight.actionType === 'review') setActiveTab('reviews');
+                              else if (insight.actionType === 'citation') setActiveTab('seo');
+                              else setActiveTab('publishing');
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 hover:border-purple-400 transition-all"
+                          >
+                            {insight.actionLabel} <OpenInNew className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Competitive Opportunities */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-5">
+                    <TrendingUp className="w-5 h-5 text-indigo-500" />
+                    <h4 className="font-bold text-slate-800">Competitive Opportunities</h4>
+                    <span className="ml-auto bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.competitiveInsights?.length || 0} insights</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(seoReport.competitiveInsights || []).map((comp: any, i: number) => {
+                      const prioColor = comp.priority === 'high' ? '#dc2626' : comp.priority === 'medium' ? '#d97706' : '#16a34a';
+                      return (
+                        <div key={i} className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl p-5 border border-slate-200">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${prioColor}15` }}>
+                              <Star className="w-4 h-4" style={{ color: prioColor }} />
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-slate-800 text-sm mb-1">{comp.title}</h5>
+                              <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>{comp.priority} priority</span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500 leading-relaxed mb-3">{comp.description}</p>
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Steps:</p>
+                            {comp.actionSteps.map((step: string, j: number) => (
+                              <div key={j} className="flex items-start gap-2">
+                                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{j+1}</span>
+                                <p className="text-xs text-slate-600 leading-snug">{step}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!seoReport && !seoLoading && !seoError && (
+              <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-12 border border-slate-200 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
+                  <AutoAwesome className="w-8 h-8 text-purple-500" />
+                </div>
+                <h4 className="text-lg font-bold text-slate-800 mb-2">Generate Your SEO Optimization Report</h4>
+                <p className="text-sm text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
+                  Click the button above to analyze your business listings with AI. Get personalized recommendations for categories, descriptions, review response, and more.
+                </p>
+                <button
+                  onClick={generateSeoReport}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
+                >
+                  <AutoAwesome className="w-4 h-4" />
+                  {t('reports.generateReport')}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>
