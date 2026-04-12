@@ -13,6 +13,7 @@ import {
   Bolt,
   AutoAwesome,
   Logout,
+  AddBusiness,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -27,6 +28,7 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: Dashboard },
   { id: 'listings', labelKey: 'nav.listings', icon: PushPin },
+  { id: 'connect-business', labelKey: 'nav.connectBusiness', icon: AddBusiness, badge: 'New' },
   { id: 'reviews', labelKey: 'nav.reviews', icon: RateReview },
   { id: 'bulk-edits', labelKey: 'nav.bulkEdits', icon: Edit },
   { id: 'edits-log', labelKey: 'nav.editsLog', icon: History },
@@ -38,7 +40,7 @@ const NAV_ITEMS = [
 export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarProps) {
   const { t } = useLanguage();
 
-  const navItem = (id: string, labelKey: string, Icon: React.ElementType, isActive: boolean) => {
+  const navItem = (id: string, labelKey: string, Icon: React.ElementType, isActive: boolean, badge?: string) => {
     return (
       <button
         key={id}
@@ -53,7 +55,12 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
         }`}
       >
         <Icon className="w-5 h-5" />
-        <span className="text-sm font-medium">{t(labelKey)}</span>
+        <span className="text-sm font-medium flex-1">{t(labelKey)}</span>
+        {badge && (
+          <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[9px] font-bold rounded-full">
+            {badge}
+          </span>
+        )}
       </button>
     );
   };
@@ -87,8 +94,8 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
 
       {/* Main navigation */}
       <nav className="flex-1 space-y-1 px-2">
-        {NAV_ITEMS.map(({ id, labelKey, icon }) =>
-          navItem(id, labelKey, icon, activeTab === id)
+        {NAV_ITEMS.map(({ id, labelKey, icon, badge }) =>
+          navItem(id, labelKey, icon, activeTab === id, badge)
         )}
       </nav>
 

@@ -28,6 +28,7 @@ import {
   AccountCircle,
   CheckCircle,
 } from '@mui/icons-material';
+import { ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EditBusinessPage } from './EditBusinessPage';
@@ -86,6 +87,8 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [embedSources, setEmbedSources] = useState<EmbedSocialSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
+  const [connectModalTab, setConnectModalTab] = useState<'connect' | 'manage'>('manage');
+  const [inviteLink, setInviteLink] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -101,58 +104,56 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   const fetchLocations = async () => {
     setLoading(true);
     try {
-      // Fetch from both local DB and EmbedSocial
-      const [localRes, embedRes] = await Promise.all([
-        fetch('/api/locations'),
+      // Fetch connected listings from TenantListing table
+      const [tenantListingsRes, embedRes] = await Promise.all([
+        fetch('/api/tenant/listings'),
         fetch('/api/embedsocial/locations'),
       ]);
 
-      let localLocations: any[] = [];
+      let tenantListings: any[] = [];
       let embedLocations: any[] = [];
 
-      if (localRes.ok) {
-        localLocations = await localRes.json();
+      if (tenantListingsRes.ok) {
+        tenantListings = await tenantListingsRes.json();
       }
 
       if (embedRes.ok) {
         embedLocations = await embedRes.json();
       }
 
-      // Create a map of local locations by embedSocialLocationId
-      const localByEmbedId = new Map<string, any>();
-      for (const loc of localLocations) {
-        if (loc.embedSocialLocationId) {
-          localByEmbedId.set(loc.embedSocialLocationId, loc);
-        }
+      // Create a map of EmbedSocial data by listing ID
+      const embedById = new Map<string, any>();
+      for (const loc of embedLocations) {
+        embedById.set(loc.id, loc);
       }
 
-      // Combine EmbedSocial data with local settings
-      const combinedLocations: Location[] = embedLocations.map((embedLoc: any) => {
-        const localLoc = localByEmbedId.get(embedLoc.id);
+      // Combine TenantListing data with EmbedSocial enrichment
+      const combinedLocations: Location[] = tenantListings.map((tl: any) => {
+        const embedData = embedById.get(tl.embedSocialListingId) || {};
         return {
-          id: localLoc?.id || embedLoc.id,
-          embedId: embedLoc.id,
-          name: embedLoc.name || 'Unnamed Location',
-          address: embedLoc.address || '',
+          id: tl.id,
+          embedId: tl.embedSocialListingId,
+          name: tl.name || embedData.name || 'Unnamed Location',
+          address: tl.address || embedData.address || '',
           account: 'Google',
           group: 'Default',
-          lastSync: localLoc?.isSynced ? new Date().toLocaleString() : 'Never',
-          synced: !!localLoc?.isSynced,
-          embedSocialLocationId: embedLoc.id,
-          googleId: embedLoc.googleId,
-          websiteUrl: embedLoc.websiteUrl,
-          phoneNumber: embedLoc.phoneNumber,
-          totalReviews: embedLoc.totalReviews,
-          averageRating: embedLoc.averageRating,
-          isLinked: !!localLoc,
-          openingHours: embedLoc.openingHours || '',
-          categories: embedLoc.categories || [],
-          status: embedLoc.status || 'Active',
-          ownerName: embedLoc.ownerName || 'Arthur',
-          photos: embedLoc.photos || [],
-          tags: embedLoc.tags || [],
-          latitude: embedLoc.latitude,
-          longitude: embedLoc.longitude,
+          lastSync: new Date(tl.connectedAt).toLocaleString(),
+          synced: true,
+          embedSocialLocationId: tl.embedSocialListingId,
+          googleId: tl.googleId || embedData.googleId,
+          websiteUrl: tl.websiteUrl || embedData.websiteUrl,
+          phoneNumber: tl.phoneNumber || embedData.phoneNumber,
+          totalReviews: embedData.totalReviews || tl.totalReviews || 0,
+          averageRating: embedData.averageRating || tl.averageRating || 0,
+          isLinked: true,
+          openingHours: embedData.openingHours || '',
+          categories: embedData.categories || [],
+          status: tl.status || 'active',
+          ownerName: 'Owner',
+          photos: embedData.photos || [],
+          tags: embedData.tags || [],
+          latitude: embedData.latitude,
+          longitude: embedData.longitude,
         };
       });
 
@@ -189,13 +190,50 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   };
 
   const handleDeleteLocation = async (id: string) => {
+    if (!confirm('Are you sure you want to disconnect this listing?')) return;
     try {
-      const res = await fetch(`/api/locations/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/embedsocial/listings/${id}/disconnect`, { method: 'DELETE' });
       if (res.ok) {
         setLocations(locations.filter(l => l.id !== id));
       }
     } catch (error) {
-      console.error('Failed to delete location:', error);
+      console.error('Failed to disconnect listing:', error);
+    }
+  };
+
+  const handleConnectListing = async (source: EmbedSocialSource) => {
+    try {
+      const res = await fetch('/api/embedsocial/listings/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embedSocialListingId: source.id || source.source_id,
+          name: source.name,
+        }),
+      });
+
+      if (res.ok) {
+        await fetchLocations();
+        setConnectModalTab('manage');
+      }
+    } catch (error) {
+      console.error('Failed to connect listing:', error);
+    }
+  };
+
+  const fetchAvailableListings = async () => {
+    setLoadingSources(true);
+    try {
+      const res = await fetch('/api/embedsocial/listings/available');
+      if (res.ok) {
+        const data = await res.json();
+        const sources: EmbedSocialSource[] = Array.isArray(data) ? data : [];
+        setEmbedSources(sources);
+      }
+    } catch (error) {
+      console.error('Failed to fetch available listings:', error);
+    } finally {
+      setLoadingSources(false);
     }
   };
 
@@ -234,6 +272,19 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
       }
     } catch (error) {
       console.error('Failed to fetch EmbedSocial sources:', error);
+    } finally {
+      setLoadingSources(false);
+    }
+  };
+
+  const handleOpenAddModal = async () => {
+    setShowAddModal(true);
+    setConnectModalTab('manage');
+    setLoadingSources(true);
+    try {
+      await fetchAvailableListings();
+    } catch (error) {
+      console.error('Failed to fetch available listings:', error);
     } finally {
       setLoadingSources(false);
     }
@@ -287,7 +338,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
               </div>
             </div>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={handleOpenAddModal}
               className="ml-auto flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-primary/20 transition-all"
             >
               <Add className="w-5 h-5" />
@@ -427,11 +478,11 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                         <p className="text-sm text-slate-500 mt-1">Add a location to start syncing reviews.</p>
                       </div>
                       <button
-                        onClick={() => setShowAddModal(true)}
+                        onClick={handleOpenAddModal}
                         className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm"
                       >
                         <Add className="w-5 h-5" />
-                        Add Location
+                        Connect Listing
                       </button>
                     </div>
                   </td>
@@ -502,7 +553,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
         <AutoAwesome className="w-6 h-6" />
       </button>
 
-      {/* Add Location Modal */}
+      {/* Merchant Connection Modal */}
       <AnimatePresence>
         {showAddModal && (
           <motion.div
@@ -516,11 +567,11 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl"
+              className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[80vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-slate-900">Add New Location</h2>
+                <h2 className="text-xl font-bold text-slate-900">Manage Listings</h2>
                 <button
                   onClick={() => setShowAddModal(false)}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
@@ -529,58 +580,137 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Business Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Enter business name"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Address</label>
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Enter business address"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
-                  <input
-                    type="text"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="Enter phone number"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
+              {/* Tab buttons */}
+              <div className="flex gap-2 mb-6">
                 <button
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
+                  onClick={() => setConnectModalTab('manage')}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    connectModalTab === 'manage'
+                      ? 'bg-primary text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
                 >
-                  Cancel
+                  My Listings ({locations.length})
                 </button>
                 <button
-                  onClick={handleAddLocation}
-                  disabled={!formData.name.trim()}
-                  className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setConnectModalTab('connect')}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    connectModalTab === 'connect'
+                      ? 'bg-primary text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
                 >
-                  Add Location
+                  Connect New
                 </button>
               </div>
+
+              {connectModalTab === 'manage' ? (
+                /* Manage Tab - Show connected listings */
+                <div className="flex-1 overflow-y-auto">
+                  {locations.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Store className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500">No listings connected yet.</p>
+                      <button
+                        onClick={() => setConnectModalTab('connect')}
+                        className="mt-3 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium"
+                      >
+                        Connect a listing
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {locations.map((loc) => (
+                        <div key={loc.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                              <Store className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-900">{loc.name}</div>
+                              <div className="text-xs text-slate-500">{loc.address || 'No address'}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">{loc.totalReviews || 0} reviews</span>
+                            <button
+                              onClick={() => handleDeleteLocation(loc.id)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Delete className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Connect Tab - Show available listings from EmbedSocial */
+                <div className="flex-1 overflow-y-auto">
+                  {/* Invite Link Section */}
+                  <div className="mb-6 p-4 bg-blue-50 rounded-xl">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-2">Invite Client to Connect</h4>
+                    <p className="text-xs text-blue-700 mb-3">
+                      Share this link with your client. They can securely connect their Google account without needing an EmbedSocial account.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={inviteLink || 'https://embedsocial.com/app/public/grant_listing_access?token=esb7ebfffb58b61f1e223b7dabf36a48'}
+                        readOnly
+                        className="flex-1 px-3 py-2 bg-white border border-blue-200 rounded-lg text-xs"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(inviteLink || 'https://embedsocial.com/app/public/grant_listing_access?token=esb7ebfffb58b61f1e223b7dabf36a48');
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Available Listings from EmbedSocial */}
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Available Listings from EmbedSocial</h4>
+                  {loadingSources ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Refresh className="w-6 h-6 text-primary animate-spin" />
+                    </div>
+                  ) : embedSources.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-slate-500 text-sm">No listings available to connect.</p>
+                      <p className="text-xs text-slate-400 mt-2">
+                        Add listings in EmbedSocial or use the invite link above.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {embedSources.map((source) => (
+                        <button
+                          key={source.id}
+                          onClick={() => handleConnectListing(source)}
+                          className="w-full p-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-left transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
+                                <Store className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="font-semibold text-slate-900">{source.name}</div>
+                                <div className="text-xs text-slate-500">ID: {source.source_id || source.id}</div>
+                              </div>
+                            </div>
+                            <Add className="w-5 h-5 text-primary" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -623,14 +753,28 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                   <Refresh className="w-6 h-6 text-primary animate-spin" />
                 </div>
               ) : embedSources.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="text-center py-8">
                   <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
                     <Store className="w-8 h-8 text-slate-400" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900">No Sources Found</h3>
-                  <p className="text-sm text-slate-500 mt-2">
-                    Make sure your EmbedSocial API key is configured in Settings.
+                  <h3 className="text-lg font-bold text-slate-900">No Listings Found</h3>
+                  <p className="text-sm text-slate-500 mt-2 mb-4">
+                    You haven't connected any Google Business Profile listings yet. Add your listings in EmbedSocial first.
                   </p>
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href="https://embedsocial.com/app/public/listings"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open EmbedSocial to Add Listings
+                    </a>
+                    <p className="text-xs text-slate-400">
+                      1. Open EmbedSocial &nbsp; 2. Click "New listing" &nbsp; 3. Connect your Google account &nbsp; 4. Select your business
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-80 overflow-y-auto">

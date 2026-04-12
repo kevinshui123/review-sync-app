@@ -12,6 +12,7 @@ import { SEO } from './components/SEO';
 import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
+import { ConnectBusiness } from './components/ConnectBusiness';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './contexts/LanguageContext';
@@ -175,6 +176,7 @@ function AppContent() {
               {activeTab === 'seo' && <SEO setActiveTab={setActiveTab} />}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
+              {activeTab === 'connect-business' && <ConnectBusiness onConnected={() => setActiveTab('listings')} />}
             </motion.div>
           </AnimatePresence>
         </main>

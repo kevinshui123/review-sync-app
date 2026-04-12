@@ -24,6 +24,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.docs': 'Documentation',
     'nav.settings': 'Settings',
     'nav.help': 'Help',
+    'nav.connectBusiness': 'Connect Business',
 
     // Header
     'header.search': 'Search...',

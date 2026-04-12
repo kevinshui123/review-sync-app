@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import express, { Response } from 'express';
-import authRoutes from './src/server/authRoutes';
-import oauthRoutes from './src/server/oauthRoutes';
+import authRoutes from './src/server/authRoutes.js';
+import oauthRoutes from './src/server/oauthRoutes.js';
 import { PrismaClient } from '@prisma/client';
-import { authMiddleware, AuthRequest } from './src/server/auth';
+import { authMiddleware, AuthRequest } from './src/server/auth.js';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { Auth } from 'googleapis';
@@ -941,9 +941,10 @@ async function startServer() {
         try {
           console.log(`[syncReviews] Syncing from EmbedSocial for locationId=${loc.embedSocialLocationId}`);
 
+          // Use sourceId parameter to filter by specific listing
           const reviewsData = await embedSocialFetchWithKey(
             apiKey,
-            `/rest/v1/items?source_id=${loc.embedSocialLocationId}&source_names[]=Google`,
+            `/rest/v1/items?sourceId=${loc.embedSocialLocationId}&pageSize=50`,
           );
 
           const reviewList: any[] = Array.isArray(reviewsData) ? reviewsData : (reviewsData.data || reviewsData.items || []);
@@ -1121,41 +1122,54 @@ async function startServer() {
   });
 
   // List locations (sources) from EmbedSocial with full details
+  // Only returns listings that belong to this tenant
   app.get('/api/embedsocial/locations', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
-      // EmbedSocial uses "listings" for the connected Google Business locations
-      const data = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
-      // Normalize the response to ensure it's an array
-      const listings = Array.isArray(data) ? data : (data.data || []);
 
-      // Fetch full details for each listing (includes description, openingHours, etc.)
-      // Note: GET /rest/v1/listings returns basic info, but description/openingHours may be in the listing object or require separate fetch
-      const enrichedListings = await Promise.all(
-        listings.map(async (listing: any) => {
-          try {
-            // Try to get full listing details
-            const detailRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listings/${listing.id}`);
-            console.log(`[locations] Detail for ${listing.id}:`, JSON.stringify(detailRes)?.slice(0, 1000));
-            if (detailRes && !detailRes.status) {
-              return { ...listing, ...detailRes };
-            }
-          } catch (e) {
-            // Ignore errors, use basic listing data
+      // Get this tenant's connected listing IDs from TenantListing
+      const tenantListings = await prisma.tenantListing.findMany({
+        where: { tenantId: req.tenantId!, status: 'active' },
+        select: { embedSocialListingId: true },
+      });
+      const tenantSourceIds = tenantListings.map(l => l.embedSocialListingId).filter(Boolean);
+
+      if (tenantSourceIds.length === 0) {
+        return res.json([]);
+      }
+
+      // Fetch from EmbedSocial with sourceId filter - only get user's connected listings
+      const allEmbedListings: any[] = [];
+      for (const sourceId of tenantSourceIds) {
+        try {
+          const data = await embedSocialFetchWithKey(apiKey, `/rest/v1/listings/${sourceId}`);
+          if (data && data.id) {
+            allEmbedListings.push(data);
           }
-          return listing;
-        })
-      );
+        } catch (e) {
+          console.log(`[locations] Failed to fetch listing ${sourceId}:`, (e as any).message);
+        }
+      }
 
-      console.log('[locations] Returning enriched listings with details');
-      console.log('[locations] First listing keys:', Object.keys(enrichedListings[0] || {}));
-      console.log('[locations] Has description?', enrichedListings[0]?.description);
-      console.log('[locations] Has openingHours?', enrichedListings[0]?.openingHours);
-      console.log('[locations] Has category?', enrichedListings[0]?.category);
-      res.json(enrichedListings);
+      // Enrich with basic data (totalReviews, averageRating from list call)
+      try {
+        const listData = await embedSocialFetchWithKey(apiKey, `/rest/v1/listings?page=1&pageSize=100`);
+        const allListings: any[] = Array.isArray(listData) ? listData : (listData.data || []);
+        for (const listing of allEmbedListings) {
+          const match = allListings.find(l => l.id === listing.id);
+          if (match) {
+            listing.totalReviews = match.totalReviews;
+            listing.averageRating = match.averageRating;
+          }
+        }
+      } catch (e) {
+        console.log('[locations] Could not enrich with list data:', (e as any).message);
+      }
+
+      res.json(allEmbedListings);
     } catch (error: any) {
       console.error('EmbedSocial sources error:', error);
       res.status(500).json({ error: 'Failed to fetch sources', details: error.message });
@@ -1186,53 +1200,60 @@ async function startServer() {
       let totalReviews = 0;
       let averageRating = 0;
 
-      // Get listings first to get source IDs
+      // Get this tenant's connected listing IDs
+      const tenantListings = await prisma.tenantListing.findMany({
+        where: { tenantId: req.tenantId!, status: 'active' },
+        select: { embedSocialListingId: true },
+      });
+      const tenantSourceIds = tenantListings.map(l => l.embedSocialListingId).filter(Boolean);
+
+      // Get listings from EmbedSocial - only this tenant's connected listings
       let listings: any[] = [];
       try {
+        // First get all listings and filter
         const listingsData = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
         console.log('[metrics] Listings raw response:', JSON.stringify(listingsData)?.slice(0, 1000));
 
-        listings = Array.isArray(listingsData) ? listingsData : (listingsData.data || listingsData.listings || []);
-        console.log('[metrics] Parsed listings count:', listings.length);
+        const allListings: any[] = Array.isArray(listingsData) ? listingsData : (listingsData.data || listingsData.listings || []);
+        // Filter to only this tenant's connected listings
+        listings = allListings.filter(l => tenantSourceIds.includes(l.id));
+        console.log('[metrics] Filtered listings count:', listings.length);
 
         // Extract data from each listing
         for (const listing of listings) {
           totalReviews += listing.totalReviews || 0;
           averageRating = listing.averageRating || averageRating;
 
-          // listing_metrics API - requires startDate and endDate
-          // Try both googleId and embedSocial listing id as sourceId
-          const sourceIds = [listing.googleId, listing.id].filter(Boolean);
+          // listing_metrics API - use embedSocial listing id as sourceId
+          const sourceId = listing.id;
+          if (!sourceId) continue;
 
-          for (const sourceId of sourceIds) {
-            try {
-              // GET /rest/v1/listing_metrics?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY&sourceId=xxx
-              const today = new Date();
-              const startDate = new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
-              const startDateStr = `${String(startDate.getDate()).padStart(2, '0')}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${startDate.getFullYear()}`;
-              const endDateStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+          try {
+            // GET /rest/v1/listing_metrics?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY&sourceId=xxx
+            const today = new Date();
+            const startDate = new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
+            const startDateStr = `${String(startDate.getDate()).padStart(2, '0')}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${startDate.getFullYear()}`;
+            const endDateStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
 
-              const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=100`);
-              console.log(`[metrics] Listing metrics response for sourceId ${sourceId} (period=${period}):`, JSON.stringify(metricsRes)?.slice(0, 1000));
+            const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=100`);
+            console.log(`[metrics] Listing metrics response for sourceId ${sourceId} (period=${period}):`, JSON.stringify(metricsRes)?.slice(0, 1000));
 
-              if (metricsRes && metricsRes.listings && metricsRes.listings.length > 0) {
-                for (const m of metricsRes.listings) {
-                  // searchViews = googleSearchDesktop + googleSearchMobile
-                  const searchViews = (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0);
-                  // mapViews = googleMapsDesktop + googleMapsMobile
-                  const mapViews = (m.googleMapsDesktop || 0) + (m.googleMapsMobile || 0);
+            if (metricsRes && metricsRes.listings && metricsRes.listings.length > 0) {
+              for (const m of metricsRes.listings) {
+                // searchViews = googleSearchDesktop + googleSearchMobile
+                const searchViews = (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0);
+                // mapViews = googleMapsDesktop + googleMapsMobile
+                const mapViews = (m.googleMapsDesktop || 0) + (m.googleMapsMobile || 0);
 
-                  totalSearchViews += searchViews;
-                  totalMapViews += mapViews;
-                  totalWebsiteClicks += m.websiteClicks || 0;
-                  totalDirectionRequests += m.directions || 0;
-                  totalPhoneCalls += m.callClicks || 0;
-                }
-                break; // Got data, no need to try other IDs
+                totalSearchViews += searchViews;
+                totalMapViews += mapViews;
+                totalWebsiteClicks += m.websiteClicks || 0;
+                totalDirectionRequests += m.directions || 0;
+                totalPhoneCalls += m.callClicks || 0;
               }
-            } catch (e: any) {
-              console.log(`[metrics] Listing metrics fetch error for sourceId ${sourceId}:`, e.message);
             }
+          } catch (e: any) {
+            console.log(`[metrics] Listing metrics fetch error for sourceId ${sourceId}:`, e.message);
           }
 
           if (listing.status === 'published' || listing.isPublished) publishedPosts++;
@@ -1241,20 +1262,17 @@ async function startServer() {
         console.log('[metrics] Listings fetch error:', e.message);
       }
 
-      // Calculate response metrics from reviews in database
-      const tenant = await prisma.tenant.findFirst();
+      // Calculate response metrics from reviews in database - use req.tenantId
       let responsePercentage = 0;
       let avgResponseTime = 0;
       let avgPostingTime = 1;
 
-      if (tenant) {
-        const reviews = await prisma.review.findMany({
-          where: { location: { tenantId: tenant.id } },
-        });
-        const totalDbReviews = reviews.length;
-        const repliedReviews = reviews.filter(r => r.replyText).length;
-        responsePercentage = totalDbReviews > 0 ? Math.round((repliedReviews / totalDbReviews) * 100) : 0;
-      }
+      const reviews = await prisma.review.findMany({
+        where: { location: { tenantId: req.tenantId! } },
+      });
+      const totalDbReviews = reviews.length;
+      const repliedReviews = reviews.filter(r => r.replyText).length;
+      responsePercentage = totalDbReviews > 0 ? Math.round((repliedReviews / totalDbReviews) * 100) : 0;
 
       // Return formatted metrics
       const formattedMetrics = {
@@ -1311,21 +1329,15 @@ async function startServer() {
 
       console.log(`[chart-data] Fetching data for period: ${period}, days: ${days}`);
 
-      // First get listings to get source IDs - need BOTH googleId and listing id
-      let sourceIdsToTry: string[] = [];
-      try {
-        const listingsData = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
-        const listings = Array.isArray(listingsData) ? listingsData : (listingsData.data || []);
-        // Extract both googleId and id for each listing
-        for (const l of listings) {
-          if (l.id) sourceIdsToTry.push(l.id);
-          if (l.googleId) sourceIdsToTry.push(l.googleId);
-        }
-        sourceIdsToTry = [...new Set(sourceIdsToTry)]; // Remove duplicates
-        console.log('[chart-data] Found source IDs to try:', sourceIdsToTry);
-      } catch (e: any) {
-        console.log('[chart-data] Could not fetch listings:', e.message);
-      }
+      // Get this tenant's connected listing IDs
+      const tenantListings = await prisma.tenantListing.findMany({
+        where: { tenantId: req.tenantId!, status: 'active' },
+        select: { embedSocialListingId: true },
+      });
+      const tenantSourceIds = tenantListings.map(l => l.embedSocialListingId).filter(Boolean);
+
+      // Only use this tenant's connected source IDs
+      const sourceIdsToTry: string[] = [...new Set(tenantSourceIds)];
 
       // Try to fetch daily metrics for each source
       const impressions: any[] = [];
@@ -1451,38 +1463,14 @@ async function startServer() {
         }
       }
 
-      // If no real data, generate based on period
+      // If no real data: return empty chart
       if (!hasRealData) {
-        console.log('[chart-data] No real data, generating based on period');
-
-        let baseMultiplier = 1;
-        if (period === '7days') baseMultiplier = 0.25;
-        else if (period === '30days') baseMultiplier = 1;
-        else if (period === '90days') baseMultiplier = 3;
-        else if (period === '12months') baseMultiplier = 12;
-
-        for (let i = days - 1; i >= 0; i--) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
-          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-          const dayOfWeek = date.getDay();
-          const weekendMultiplier = (dayOfWeek === 0 || dayOfWeek === 6) ? 1.3 : 1;
-          const randomVariation = 0.7 + Math.random() * 0.6;
-
-          impressions.push({
-            date: dateStr,
-            searchViews: Math.round(365 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
-            mapViews: Math.round(512 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
-          });
-
-          actions.push({
-            date: dateStr,
-            websiteClicks: Math.round(53 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
-            directionRequests: Math.round(50 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
-            phoneCalls: Math.round(5 * weekendMultiplier * randomVariation * baseMultiplier / days * 7),
-          });
+        if (tenantSourceIds.length === 0) {
+          console.log('[chart-data] Tenant has no connected listings, returning empty chart');
+          return res.json({ impressions: [], actions: [] });
         }
+        console.log('[chart-data] No real data yet, returning empty chart');
+        return res.json({ impressions: [], actions: [] });
       }
 
       console.log(`[chart-data] Returning impressions: ${impressions.length}, actions: ${actions.length}`);
@@ -1514,145 +1502,91 @@ async function startServer() {
 
       console.log(`[review-trends] Fetching for period: ${period}, start: ${startDateStr}, end: ${endDateStr}`);
 
-      // Get listings first to get source IDs
-      let sourceIdsToTry: string[] = [];
-      try {
-        const listingsData = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
-        const listings = Array.isArray(listingsData) ? listingsData : (listingsData.data || []);
-        for (const l of listings) {
-          if (l.id) sourceIdsToTry.push(l.id);
-          if (l.googleId) sourceIdsToTry.push(l.googleId);
-        }
-        sourceIdsToTry = [...new Set(sourceIdsToTry)];
-      } catch (e: any) {
-        console.log('[review-trends] Could not fetch listings:', e.message);
+      // Get this tenant's connected listing IDs
+      const tenantListings = await prisma.tenantListing.findMany({
+        where: { tenantId: req.tenantId!, status: 'active' },
+        select: { embedSocialListingId: true },
+      });
+      const tenantSourceIds = tenantListings.map(l => l.embedSocialListingId).filter(Boolean);
+
+      // Only use this tenant's connected source IDs
+      const sourceIdsToTry: string[] = [...new Set(tenantSourceIds)];
+
+      if (sourceIdsToTry.length === 0) {
+        return res.json({ reviewTrends: [] });
       }
 
-      // Fetch review metrics
       const reviewTrends: any[] = [];
-      const hasRealData = false;
+      for (const sourceId of sourceIdsToTry) {
+        try {
+          const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_item_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=100`);
+          console.log(`[review-trends] Metrics response for ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 500));
 
-      if (sourceIdsToTry.length > 0) {
-        for (const sourceId of sourceIdsToTry) {
-          try {
-            const metricsRes = await embedSocialFetchWithKey(apiKey, `/rest/v1/listing_item_metrics?startDate=${startDateStr}&endDate=${endDateStr}&sourceId=${sourceId}&pageSize=100`);
-            console.log(`[review-trends] Metrics response for ${sourceId}:`, JSON.stringify(metricsRes)?.slice(0, 500));
+          if (metricsRes && metricsRes.listings && metricsRes.listings.length > 0) {
+            // Use listing_item_metrics for review trends
+            const m = metricsRes.listings[0];
 
-            if (metricsRes && metricsRes.listings && metricsRes.listings.length > 0) {
-              // Use listing_item_metrics for review trends
-              const m = metricsRes.listings[0];
-
-              // For 7days/30days, generate daily/weekly data
-              if (period === '7days') {
-                // Show daily data for last 7 days
-                for (let i = 6; i >= 0; i--) {
-                  const date = new Date(now);
-                  date.setDate(date.getDate() - i);
-                  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                  reviewTrends.push({
-                    date: dateStr,
-                    reviews: Math.floor((m.numberOfReviews || 0) / 30),
-                    replies: Math.floor((m.numberReplies || 0) / 30),
-                  });
-                }
-              } else if (period === '30days') {
-                // Show weekly data for last 4 weeks
-                for (let i = 3; i >= 0; i--) {
-                  const weekDate = new Date(now);
-                  weekDate.setDate(weekDate.getDate() - (i * 7 + 7));
-                  const weekEnd = new Date(now);
-                  weekEnd.setDate(weekEnd.getDate() - (i * 7));
-                  const dateStr = `${weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-                  reviewTrends.push({
-                    date: dateStr,
-                    reviews: Math.floor((m.numberOfReviews || 0) / 4),
-                    replies: Math.floor((m.numberReplies || 0) / 4),
-                  });
-                }
-              } else if (period === '90days') {
-                // Show monthly data for last 3 months
-                for (let i = 2; i >= 0; i--) {
-                  const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                  const dateStr = monthNames[monthDate.getMonth()];
-                  reviewTrends.push({
-                    date: dateStr,
-                    reviews: Math.floor((m.numberOfReviews || 0) / 3),
-                    replies: Math.floor((m.numberReplies || 0) / 3),
-                  });
-                }
-              } else {
-                // 12months - show all 12 months
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                for (let i = 11; i >= 0; i--) {
-                  const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                  const dateStr = monthNames[monthDate.getMonth()];
-                  reviewTrends.push({
-                    date: dateStr,
-                    reviews: Math.floor((m.numberOfReviews || 0) / 12),
-                    replies: Math.floor((m.numberReplies || 0) / 12),
-                  });
-                }
+            // For 7days/30days, generate daily/weekly data
+            if (period === '7days') {
+              // Show daily data for last 7 days
+              for (let i = 6; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                reviewTrends.push({
+                  date: dateStr,
+                  reviews: Math.floor((m.numberOfReviews || 0) / 30),
+                  replies: Math.floor((m.numberReplies || 0) / 30),
+                });
               }
-
-              break; // Got data, no need to try other IDs
+            } else if (period === '30days') {
+              // Show weekly data for last 4 weeks
+              for (let i = 3; i >= 0; i--) {
+                const weekDate = new Date(now);
+                weekDate.setDate(weekDate.getDate() - (i * 7 + 7));
+                const weekEnd = new Date(now);
+                weekEnd.setDate(weekEnd.getDate() - (i * 7));
+                const dateStr = `${weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                reviewTrends.push({
+                  date: dateStr,
+                  reviews: Math.floor((m.numberOfReviews || 0) / 4),
+                  replies: Math.floor((m.numberReplies || 0) / 4),
+                });
+              }
+            } else if (period === '90days') {
+              // Show monthly data for last 3 months
+              for (let i = 2; i >= 0; i--) {
+                const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const dateStr = monthNames[monthDate.getMonth()];
+                reviewTrends.push({
+                  date: dateStr,
+                  reviews: Math.floor((m.numberOfReviews || 0) / 3),
+                  replies: Math.floor((m.numberReplies || 0) / 3),
+                });
+              }
+            } else {
+              // 12months - show all 12 months
+              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              for (let i = 11; i >= 0; i--) {
+                const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const dateStr = monthNames[monthDate.getMonth()];
+                reviewTrends.push({
+                  date: dateStr,
+                  reviews: Math.floor((m.numberOfReviews || 0) / 12),
+                  replies: Math.floor((m.numberReplies || 0) / 12),
+                });
+              }
             }
-          } catch (e: any) {
-            console.log(`[review-trends] Metrics fetch error for ${sourceId}:`, e.message);
+
+            break; // Got data, no need to try other IDs
           }
+        } catch (e: any) {
+          console.log(`[review-trends] Metrics fetch error for ${sourceId}:`, e.message);
         }
       }
 
-      // If no real data, generate based on period
-      if (reviewTrends.length === 0) {
-        console.log('[review-trends] No real data, generating based on period');
-        if (period === '7days') {
-          for (let i = 6; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            reviewTrends.push({
-              date: dateStr,
-              reviews: Math.floor(Math.random() * 5) + 1,
-              replies: Math.floor(Math.random() * 3) + 1,
-            });
-          }
-        } else if (period === '30days') {
-          for (let i = 3; i >= 0; i--) {
-            const weekDate = new Date(now);
-            weekDate.setDate(weekDate.getDate() - (i * 7 + 7));
-            const weekEnd = new Date(now);
-            weekEnd.setDate(weekEnd.getDate() - (i * 7));
-            const dateStr = `${weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-            reviewTrends.push({
-              date: dateStr,
-              reviews: Math.floor(Math.random() * 15) + 5,
-              replies: Math.floor(Math.random() * 10) + 2,
-            });
-          }
-        } else if (period === '90days') {
-          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          for (let i = 2; i >= 0; i--) {
-            const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            reviewTrends.push({
-              date: monthNames[monthDate.getMonth()],
-              reviews: Math.floor(Math.random() * 30) + 10,
-              replies: Math.floor(Math.random() * 20) + 5,
-            });
-          }
-        } else {
-          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          for (let i = 11; i >= 0; i--) {
-            const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            reviewTrends.push({
-              date: monthNames[monthDate.getMonth()],
-              reviews: Math.floor(Math.random() * 30) + 10,
-              replies: Math.floor(Math.random() * 20) + 5,
-            });
-          }
-        }
-      }
-
+      console.log('[review-trends] No real data yet');
       console.log(`[review-trends] Returning: ${reviewTrends.length} data points`);
       res.json({ reviewTrends });
     } catch (error: any) {
@@ -1662,32 +1596,52 @@ async function startServer() {
   });
 
   // Get reviews for a specific location from EmbedSocial
+  // Filters by this tenant's connected listings
   app.get('/api/embedsocial/reviews', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
-      // EmbedSocial uses "items" for reviews
+
       const { location_id, source_names } = req.query;
 
-      // Fetch all pages of reviews
+      const tenantListings = await prisma.tenantListing.findMany({
+        where: { tenantId: req.tenantId!, status: 'active' },
+        select: { embedSocialListingId: true },
+      });
+      const tenantSourceIds = tenantListings.map(l => l.embedSocialListingId).filter(Boolean);
+
+      if (tenantSourceIds.length === 0) {
+        return res.json([]);
+      }
+
+      let filterSourceIds: string[] | undefined;
+      if (location_id) {
+        const loc = tenantListings.find(l => l.embedSocialListingId === String(location_id));
+        if (loc) {
+          filterSourceIds = [loc.embedSocialListingId];
+        }
+      }
+
       const allReviews: any[] = [];
       let page = 1;
       let hasMore = true;
-      const maxPages = 10; // Safety limit
+      const maxPages = 10;
+      const sourceIdsToFilter = filterSourceIds || tenantSourceIds;
 
       while (hasMore && page <= maxPages) {
-        // Build URL with pagination
         let pageUrl = `/rest/v1/items?page=${page}&pageSize=50`;
         if (source_names) {
           pageUrl += `&source_names[]=${encodeURIComponent(String(source_names))}`;
         }
+        if (sourceIdsToFilter.length > 0) {
+          pageUrl += `&sourceId=${sourceIdsToFilter.join(',')}`;
+        }
         console.log(`[reviews] Fetching page ${page}:`, pageUrl);
-        
+
         const data = await embedSocialFetchWithKey(apiKey, pageUrl);
-        
-        // Handle different response formats
+
         let items: any[] = [];
         if (Array.isArray(data)) {
           items = data;
@@ -1696,13 +1650,12 @@ async function startServer() {
         } else if (data.items) {
           items = Array.isArray(data.items) ? data.items : [];
         }
-        
+
         console.log(`[reviews] Page ${page} returned ${items.length} items`);
-        
+
         if (items.length > 0) {
           allReviews.push(...items);
           page++;
-          // If fewer items than requested, we've reached the end
           if (items.length < 50) {
             hasMore = false;
           }
@@ -2141,15 +2094,12 @@ The review should sound natural, authentic, and written by a real customer. Keep
   // ==========================================
   // Dashboard API Routes
   // ==========================================
-  app.get('/api/dashboard/stats', async (req, res) => {
+  app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const tenant = await prisma.tenant.findFirst();
-      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
-
-      const locationsCount = await prisma.location.count({ where: { tenantId: tenant.id } });
+      const locationsCount = await prisma.location.count({ where: { tenantId: req.tenantId! } });
 
       const reviews = await prisma.review.findMany({
-        where: { location: { tenantId: tenant.id } },
+        where: { location: { tenantId: req.tenantId! } },
       });
 
       const totalReviews = reviews.length;
@@ -2345,9 +2295,173 @@ The review should sound natural, authentic, and written by a real customer. Keep
     }
   });
 
+  // ==========================================
+  // Tenant Listing Management (multi-tenant EmbedSocial)
+  // ==========================================
+
+  // Generate invite link for a tenant to share with their clients
+  app.get('/api/embedsocial/invite-link', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId! } });
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const baseInviteUrl = 'https://embedsocial.com/app/public/grant_listing_access';
+      const inviteToken = process.env.EMBEDSOCIAL_INVITE_TOKEN || 'esb7ebfffb58b61f1e223b7dabf36a48';
+      const inviteUrl = `${baseInviteUrl}?token=${inviteToken}`;
+
+      const connectedListings = await prisma.tenantListing.count({
+        where: { tenantId: req.tenantId! }
+      });
+
+      res.json({ inviteUrl, connectedListings, message: 'Share this link with your client.' });
+    } catch (error: any) {
+      console.error('[invite-link] Error:', error);
+      res.status(500).json({ error: 'Failed to generate invite link', details: error.message });
+    }
+  });
+
+  // Get tenant's connected listings from local DB
+  app.get('/api/tenant/listings', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const listings = await prisma.tenantListing.findMany({
+        where: { tenantId: req.tenantId!, status: 'active' },
+        orderBy: { connectedAt: 'desc' },
+      });
+      res.json(listings);
+    } catch (error: any) {
+      console.error('[tenant-listings] Error:', error);
+      res.status(500).json({ error: 'Failed to fetch listings', details: error.message });
+    }
+  });
+
+  // Webhook from EmbedSocial when a listing is connected
+  app.post('/api/webhook/embedsocial', async (req, res) => {
+    try {
+      console.log('[embedsocial-webhook] Received:', JSON.stringify(req.body, null, 2));
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('[embedsocial-webhook] Error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
   // Auth routes
   app.use('/api/auth', authRoutes);
   app.use('/api/auth', oauthRoutes);
+
+  // ==========================================
+  // EmbedSocial Listings Management (Multi-tenant)
+  // ==========================================
+
+  // Get available listings from EmbedSocial that can be connected
+  app.get('/api/embedsocial/listings/available', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+
+      // Get all listings from EmbedSocial
+      const allListings: any[] = [];
+      let page = 1;
+      let hasMore = true;
+      while (hasMore) {
+        const data = await embedSocialFetchWithKey(apiKey, `/rest/v1/listings?page=${page}&pageSize=50`);
+        const listings: any[] = Array.isArray(data) ? data : (data.data || []);
+        if (listings.length === 0) break;
+        allListings.push(...listings);
+        hasMore = listings.length === 50;
+        page++;
+        if (page > 20) break;
+      }
+
+      // Get already connected listing IDs
+      const connectedListings = await prisma.tenantListing.findMany({
+        where: { tenantId: req.tenantId!, status: 'active' },
+        select: { embedSocialListingId: true },
+      });
+      const connectedIds = new Set(connectedListings.map(l => l.embedSocialListingId));
+
+      // Filter out already connected listings
+      const availableListings = allListings
+        .filter(l => !connectedIds.has(l.id))
+        .map(l => ({
+          id: l.id,
+          name: l.name,
+          address: l.address,
+          phoneNumber: l.phoneNumber,
+          totalReviews: l.totalReviews,
+          averageRating: l.averageRating,
+        }));
+
+      res.json(availableListings);
+    } catch (error: any) {
+      console.error('[available-listings] Error:', error);
+      res.status(500).json({ error: 'Failed to fetch available listings', details: error.message });
+    }
+  });
+
+  // Connect a listing to the tenant
+  app.post('/api/embedsocial/listings/connect', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { embedSocialListingId, name, address, phoneNumber, websiteUrl, googleId } = req.body;
+
+      if (!embedSocialListingId) {
+        return res.status(400).json({ error: 'embedSocialListingId is required' });
+      }
+
+      // Check if already connected
+      const existing = await prisma.tenantListing.findFirst({
+        where: {
+          tenantId: req.tenantId!,
+          embedSocialListingId,
+          status: 'active',
+        },
+      });
+
+      if (existing) {
+        return res.status(400).json({ error: 'Listing already connected' });
+      }
+
+      const listing = await prisma.tenantListing.create({
+        data: {
+          tenantId: req.tenantId!,
+          embedSocialListingId,
+          name: name || 'Unknown',
+          address: address || null,
+          phoneNumber: phoneNumber || null,
+          websiteUrl: websiteUrl || null,
+          googleId: googleId || null,
+          status: 'active',
+        },
+      });
+
+      res.json(listing);
+    } catch (error: any) {
+      console.error('[connect-listing] Error:', error);
+      res.status(500).json({ error: 'Failed to connect listing', details: error.message });
+    }
+  });
+
+  // Disconnect a listing from the tenant
+  app.delete('/api/embedsocial/listings/:id/disconnect', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      await prisma.tenantListing.updateMany({
+        where: {
+          id,
+          tenantId: req.tenantId!,
+        },
+        data: { status: 'disconnected' },
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[disconnect-listing] Error:', error);
+      res.status(500).json({ error: 'Failed to disconnect listing', details: error.message });
+    }
+  });
 
   // ==========================================
   // Vite Middleware (For Frontend Integration)

@@ -59,6 +59,7 @@ model Tenant {
   // 1-to-many relations
   locations   Location[]
   commentTasks CommentTask[]
+  tenantListings TenantListing[]
 }
 
 model Location {
@@ -150,4 +151,24 @@ model CommentTask {
   @@index([tenantId])
   @@index([googleAccountId])
   @@index([createdAt])
+}
+
+model TenantListing {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  embedSocialListingId String  @unique  // The listing ID from EmbedSocial (used as sourceId in API calls)
+  name                String
+  address             String?
+  phoneNumber         String?
+  websiteUrl          String?
+  googleId            String?  // The Google Business Profile ID
+  totalReviews        Int      @default(0)
+  averageRating       Float    @default(0)
+  connectedAt         DateTime @default(now())
+  status              String   @default("active") // active, disconnected
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([embedSocialListingId])
 }

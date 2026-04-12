@@ -199,11 +199,27 @@ export function Settings() {
               </div>
 
               {embedSocialConnected ? (
-                <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
-                  <div>
-                    <p className="font-bold text-emerald-700 dark:text-emerald-400">EmbedSocial connected</p>
-                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Reviews sync from EmbedSocial. Manage locations in Listings.</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
+                    <div>
+                      <p className="font-bold text-emerald-700 dark:text-emerald-400">EmbedSocial connected</p>
+                      <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Reviews sync from EmbedSocial. Manage locations in Listings.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 flex-wrap">
+                    <a
+                      href="https://embedsocial.com/app/public/listings"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open EmbedSocial Listings
+                    </a>
+                    <p className="text-xs text-on-surface-variant self-center">
+                      To add more business listings, open EmbedSocial and connect your Google Business Profile there.
+                    </p>
                   </div>
                 </div>
               ) : (
