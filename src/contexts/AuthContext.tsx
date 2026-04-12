@@ -73,9 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = async (authToken: string) => {
     try {
-      const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      const res = await apiGet('/api/auth/me', { requireAuth: false });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);

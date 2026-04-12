@@ -9,6 +9,7 @@ import {
   FilterList,
 } from '@mui/icons-material';
 import { motion } from 'motion/react';
+import { apiGet } from '../utils/api';
 
 interface EditsLogProps {
   setActiveTab: (tab: string) => void;
@@ -38,8 +39,8 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
     try {
       // Fetch from a combined API that aggregates different actions
       const [reviewsRes, locationsRes] = await Promise.all([
-        fetch('/api/reviews'),
-        fetch('/api/locations'),
+        apiGet('/api/reviews'),
+        apiGet('/api/locations'),
       ]);
 
       const reviewData = reviewsRes.ok ? await reviewsRes.json() : { reviews: [] };

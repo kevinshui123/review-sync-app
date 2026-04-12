@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { apiGet, apiPut } from '../utils/api';
 
 interface EditBusinessInfoProps {
   location: {
@@ -43,11 +44,7 @@ export function EditBusinessInfo({ location, onClose, onSuccess }: EditBusinessI
     setSaveMessage(null);
 
     try {
-      const res = await fetch(`/api/embedsocial/locations/${location.embedId || location.embedSocialLocationId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const res = await apiPut(`/api/embedsocial/locations/${location.embedId || location.embedSocialLocationId}`, formData);
 
       if (res.ok) {
         const updated = await res.json();

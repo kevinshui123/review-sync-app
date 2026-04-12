@@ -14,6 +14,7 @@ import {
   Link as LinkIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
+import { apiGet, apiPost } from '../utils/api';
 
 interface PublishingProps {
   setActiveTab: (tab: string) => void;
@@ -66,7 +67,7 @@ export function Publishing({ setActiveTab }: PublishingProps) {
     setLoading(true);
     try {
       // Fetch listings
-      const locationsRes = await fetch('/api/embedsocial/locations');
+      const locationsRes = await apiGet('/api/embedsocial/locations');
       if (locationsRes.ok) {
         const data = await locationsRes.json();
         const sources: EmbedListing[] = Array.isArray(data) ? data : (data.data || []);
@@ -74,7 +75,7 @@ export function Publishing({ setActiveTab }: PublishingProps) {
       }
 
       // Fetch posts (stored in local DB)
-      const postsRes = await fetch('/api/posts');
+      const postsRes = await apiGet('/api/posts');
       if (postsRes.ok) {
         const postsData = await postsRes.json();
         setPosts(postsData.map((p: any) => ({
@@ -132,16 +133,12 @@ export function Publishing({ setActiveTab }: PublishingProps) {
 
     setCreating(true);
     try {
-      const res = await fetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: newPost.captionText,
-          type: 'UPDATE',
-          status: newPost.scheduledOn ? 'SCHEDULED' : 'DRAFT',
-          scheduledFor: newPost.scheduledOn || null,
-          locationId: newPost.sourceIds[0] || null,
-        }),
+      const res = await apiPost('/api/posts', {
+        content: newPost.captionText,
+        type: 'UPDATE',
+        status: newPost.scheduledOn ? 'SCHEDULED' : 'DRAFT',
+        scheduledFor: newPost.scheduledOn || null,
+        locationId: newPost.sourceIds[0] || null,
       });
 
       if (res.ok) {
@@ -158,7 +155,7 @@ export function Publishing({ setActiveTab }: PublishingProps) {
 
   const handleDeletePost = async (id: string) => {
     try {
-      const res = await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+      const res = await apiDelete(`/api/posts/${id}`);
       if (res.ok) {
         setPosts(posts.filter(p => p.id !== id));
       }

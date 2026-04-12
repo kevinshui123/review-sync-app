@@ -4,6 +4,7 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EditBusinessPage } from './EditBusinessPage';
+import { apiGet, apiPost, apiDelete } from '../utils/api';
 
 interface ListingsProps {
   setActiveTab: (tab: string) => void;
@@ -54,7 +55,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   const fetchLocations = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/tenant/listings');
+      const res = await apiGet('/api/tenant/listings');
       if (res.ok) {
         const data = await res.json();
         const mappedLocations: Location[] = data.map((tl: any) => ({
@@ -89,7 +90,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
     setSyncMessage(null);
 
     try {
-      const res = await fetch('/api/reviews/sync', { method: 'POST' });
+      const res = await apiPost('/api/reviews/sync', undefined);
       const data = await res.json();
 
       if (res.ok) {
@@ -107,7 +108,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   const handleDeleteLocation = async (id: string) => {
     if (!confirm('Are you sure you want to disconnect this listing?')) return;
     try {
-      const res = await fetch(`/api/embedsocial/listings/${id}/disconnect`, { method: 'DELETE' });
+      const res = await apiDelete(`/api/embedsocial/listings/${id}/disconnect`);
       if (res.ok) {
         setLocations(locations.filter(l => l.id !== id));
       }

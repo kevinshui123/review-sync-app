@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
+import { apiGet } from './utils/api';
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -31,7 +32,7 @@ function AppContent() {
   useEffect(() => {
     const checkConfig = async () => {
       try {
-        const res = await fetch('/api/settings');
+        const res = await apiGet('/api/settings');
         if (!res.ok) {
           console.error('Settings check failed:', res.status, res.statusText);
           setIsConfigured(false);

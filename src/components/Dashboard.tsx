@@ -18,6 +18,7 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend, ComposedChart, Line } from 'recharts';
+import { apiGet } from '../utils/api';
 
 interface DashboardProps {
   setActiveTab: (tab: string) => void;
@@ -288,7 +289,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
     setLoading(true);
     try {
       // Fetch EmbedSocial locations - this has the real data!
-      const embedRes = await fetch('/api/embedsocial/locations');
+      const embedRes = await apiGet('/api/embedsocial/locations');
       let embedLocations: any[] = [];
       if (embedRes.ok) {
         const data = await embedRes.json();
@@ -300,7 +301,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
       let reviews: Review[] = [];
       let embedReviews: any[] = [];
       try {
-        const embedReviewsRes = await fetch('/api/embedsocial/reviews');
+        const embedReviewsRes = await apiGet('/api/embedsocial/reviews');
         console.log('[Dashboard] EmbedSocial reviews response status:', embedReviewsRes.status);
         if (embedReviewsRes.ok) {
           const embedReviewsData = await embedReviewsRes.json();
@@ -334,7 +335,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
 
       // If no EmbedSocial reviews, try database
       if (reviews.length === 0) {
-        const reviewsRes = await fetch('/api/reviews');
+        const reviewsRes = await apiGet('/api/reviews');
         if (reviewsRes.ok) {
           const reviewsData = await reviewsRes.json();
           const rawReviews = reviewsData.reviews || [];
@@ -358,7 +359,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
       setRecentReviews(reviews);
 
       // Fetch local locations
-      const locationsRes = await fetch('/api/locations');
+      const locationsRes = await apiGet('/api/locations');
       let localLocations: any[] = [];
       if (locationsRes.ok) {
         localLocations = await locationsRes.json();
@@ -483,7 +484,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
 
       // Fetch metrics from EmbedSocial
       try {
-        const metricsRes = await fetch(`/api/embedsocial/metrics?period=${selectedPeriod}`);
+        const metricsRes = await apiGet(`/api/embedsocial/metrics?period=${selectedPeriod}`);
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json();
           setEmbedMetrics({
@@ -505,7 +506,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
 
       // Fetch chart data
       try {
-        const chartRes = await fetch(`/api/embedsocial/chart-data?period=${selectedPeriod}`);
+        const chartRes = await apiGet(`/api/embedsocial/chart-data?period=${selectedPeriod}`);
         if (chartRes.ok) {
           const chartData = await chartRes.json();
           if (chartData.impressions) setImpressionsData(chartData.impressions);
@@ -517,7 +518,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
 
       // Fetch review trends from EmbedSocial
       try {
-        const trendsRes = await fetch(`/api/embedsocial/review-trends?period=${selectedPeriod}`);
+        const trendsRes = await apiGet(`/api/embedsocial/review-trends?period=${selectedPeriod}`);
         if (trendsRes.ok) {
           const trendsData = await trendsRes.json();
           if (trendsData.reviewTrends) {

@@ -18,6 +18,7 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { apiGet, apiPost } from '../utils/api';
 
 interface Review {
   id: string;
@@ -58,7 +59,7 @@ export function Reviews() {
 
   const fetchReviews = async () => {
     try {
-      const res = await fetch('/api/embedsocial/reviews');
+      const res = await apiGet('/api/embedsocial/reviews');
       if (res.ok) {
         const data = await res.json();
         // Reviews from EmbedSocial API
@@ -90,7 +91,7 @@ export function Reviews() {
     setSyncMessage(null);
     try {
       // Trigger sync via EmbedSocial API (already handled by the fetch above)
-      const res = await fetch('/api/embedsocial/reviews');
+      const res = await apiGet('/api/embedsocial/reviews');
       const data = await res.json();
       if (res.ok) {
         const embedReviews = Array.isArray(data) ? data : [];
@@ -116,11 +117,7 @@ export function Reviews() {
     if (!selectedReview) return;
     setGenerating(true);
     try {
-      const res = await fetch('/api/reviews/generate-reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewId: selectedReview.id }),
-      });
+      const res = await apiPost('/api/reviews/generate-reply', { reviewId: selectedReview.id });
       if (res.ok) {
         const data = await res.json();
         setReplyText(data.replyText || data.reply || '');
@@ -135,11 +132,7 @@ export function Reviews() {
   const sendReply = async () => {
     if (!selectedReview || !replyText.trim()) return;
     try {
-      const res = await fetch(`/api/reviews/${selectedReview.id}/reply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ replyText }),
-      });
+      const res = await apiPost(`/api/reviews/${selectedReview.id}/reply`, { replyText });
       if (res.ok) {
         const updatedReviews = reviews.map(r =>
           r.id === selectedReview.id ? { ...r, replied: true, replyText } : r

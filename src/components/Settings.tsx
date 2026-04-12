@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, ExternalLink, Copy, Store, Unlink, RotateCw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { apiGet, apiPost, apiDelete } from '../utils/api';
 
 interface TenantListing {
   id: string;
@@ -41,7 +42,7 @@ export function Settings() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('/api/settings');
+        const res = await apiGet('/api/settings');
         if (res.ok) {
           const data = await res.json();
           setFormData({
@@ -57,7 +58,7 @@ export function Settings() {
 
     const fetchTeam = async () => {
       try {
-        const res = await fetch('/api/team');
+        const res = await apiGet('/api/team');
         if (res.ok) {
           const data = await res.json();
           setTeamMembers(data);
@@ -70,7 +71,7 @@ export function Settings() {
     const fetchListings = async () => {
       setLoadingListings(true);
       try {
-        const res = await fetch('/api/tenant/listings');
+        const res = await apiGet('/api/tenant/listings');
         if (res.ok) {
           const data = await res.json();
           setTenantListings(data);
@@ -95,11 +96,7 @@ export function Settings() {
     setIsSaving(true);
     setSaveMessage(null);
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const res = await apiPost('/api/settings', formData);
 
       if (res.ok) {
         setSaveMessage({ type: 'success', text: 'Settings saved successfully.' });
@@ -118,11 +115,7 @@ export function Settings() {
     if (!newMemberEmail) return;
     setIsAddingMember(true);
     try {
-      const res = await fetch('/api/team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newMemberEmail }),
-      });
+      const res = await apiPost('/api/team', { email: newMemberEmail });
       if (res.ok) {
         const member = await res.json();
         setTeamMembers([...teamMembers, member]);
@@ -138,7 +131,7 @@ export function Settings() {
   const handleRemoveMember = async (id: string) => {
     if (!confirm('Are you sure you want to remove this team member?')) return;
     try {
-      const res = await fetch(`/api/team/${id}`, { method: 'DELETE' });
+      const res = await apiDelete(`/api/team/${id}`);
       if (res.ok) {
         setTeamMembers(teamMembers.filter((m) => m.id !== id));
       }
@@ -150,7 +143,7 @@ export function Settings() {
   const handleDisconnectListing = async (listingId: string) => {
     if (!confirm('Are you sure you want to disconnect this listing?')) return;
     try {
-      const res = await fetch(`/api/embedsocial/listings/${listingId}/disconnect`, { method: 'DELETE' });
+      const res = await apiDelete(`/api/embedsocial/listings/${listingId}/disconnect`);
       if (res.ok) {
         setTenantListings(tenantListings.filter(l => l.id !== listingId));
       }
@@ -171,7 +164,7 @@ export function Settings() {
 
   const refreshListings = async () => {
     try {
-      const res = await fetch('/api/tenant/listings');
+      const res = await apiGet('/api/tenant/listings');
       if (res.ok) {
         const data = await res.json();
         setTenantListings(data);
@@ -185,7 +178,7 @@ export function Settings() {
     setLoadingListings(true);
     setSyncMessage(null);
     try {
-      const res = await fetch('/api/embedsocial/listings/sync', { method: 'POST' });
+      const res = await apiPost('/api/embedsocial/listings/sync', undefined);
       const data = await res.json();
       if (res.ok) {
         setSyncMessage({ type: 'success', text: `Synced! Found ${data.totalFound} listings, added ${data.newlyAdded} new.` });

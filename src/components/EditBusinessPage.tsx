@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowBack, Add, Delete } from '@mui/icons-material';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { apiGet, apiPut } from '../utils/api';
 
 interface EditBusinessPageProps {
   location: {
@@ -65,13 +66,9 @@ export function EditBusinessPage({ location, onBack, onSuccess }: EditBusinessPa
     setSaveMessage(null);
 
     try {
-      const res = await fetch(`/api/embedsocial/locations/${location.embedId || location.embedSocialLocationId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          categories,
-        }),
+      const res = await apiPut(`/api/embedsocial/locations/${location.embedId || location.embedSocialLocationId}`, {
+        ...formData,
+        categories,
       });
 
       if (res.ok) {

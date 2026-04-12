@@ -11,6 +11,7 @@ import {
   Edit,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
+import { apiGet, apiFetch } from '../utils/api';
 
 interface BulkEditsProps {
   setActiveTab: (tab: string) => void;
@@ -57,7 +58,7 @@ export function BulkEdits({ setActiveTab }: BulkEditsProps) {
   const fetchListings = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/embedsocial/locations');
+      const res = await apiGet('/api/embedsocial/locations');
       if (res.ok) {
         const data = await res.json();
         const sources: EmbedListing[] = Array.isArray(data) ? data : (data.data || []);
@@ -113,9 +114,8 @@ export function BulkEdits({ setActiveTab }: BulkEditsProps) {
           continue;
         }
 
-        const res = await fetch(`/api/embedsocial/listings/${id}`, {
+        const res = await apiFetch(`/api/embedsocial/listings/${id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         });
 
