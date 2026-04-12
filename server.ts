@@ -26,38 +26,81 @@ const SCOPES = [
 
 // Helper function to extract replies from text when JSON parsing fails
 function extractRepliesFromText(text: string): { professional: string; friendly: string; empathetic: string } {
-  // Try to split by tone labels
-  const sections: Record<string, string> = {};
-  
-  const tonePatterns = [
-    { key: 'professional', patterns: [/professional[:\s]*["']?([^"'\n]+)/gi, /"professional"[:\s]*["']([^"']+)["']/gi] },
-    { key: 'friendly', patterns: [/friendly[:\s]*["']?([^"'\n]+)/gi, /"friendly"[:\s]*["']([^"']+)["']/gi] },
-    { key: 'empathetic', patterns: [/empathetic[:\s]*["']?([^"'\n]+)/gi, /"empathetic"[:\s]*["']([^"']+)["']/gi] },
-  ];
+  // Strategy: find all potential JSON objects, try to parse each, use the best one
+  // Also clean up common AI response artifacts (```, leading/trailing text)
 
-  for (const { key, patterns } of tonePatterns) {
-    for (const pattern of patterns) {
-      const match = pattern.exec(text);
-      if (match && match[1]) {
-        sections[key] = match[1].trim();
-        break;
+  // Remove markdown code blocks
+  let cleaned = text.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+
+  // Strategy 1: Find ALL potential JSON objects and try to parse each
+  // Look for the pattern {"professional": "...", "friendly": "...", "empathetic": "..."}
+  // or {"professional": "...", ...} with any ordering
+  const jsonBlockRegex = /\{[\s\S]*?\}/g;
+  let matches = cleaned.match(jsonBlockRegex);
+
+  if (matches) {
+    for (const match of matches) {
+      // Skip obviously too-short or too-long blocks (likely not the JSON we want)
+      if (match.length < 20 || match.length > 3000) continue;
+
+      try {
+        const parsed = JSON.parse(match);
+        if (
+          typeof parsed === 'object' &&
+          parsed !== null &&
+          parsed.professional &&
+          parsed.friendly &&
+          parsed.empathetic
+        ) {
+          return {
+            professional: String(parsed.professional).trim(),
+            friendly: String(parsed.friendly).trim(),
+            empathetic: String(parsed.empathetic).trim(),
+          };
+        }
+      } catch {
+        // Not valid JSON, try next match
       }
+    }
+
+    // Strategy 2: Try to extract individual fields from any partial match
+    const fieldPatterns = {
+      professional: /"professional"\s*:\s*"((?:[^"\\]|\\.)*)"/,
+      friendly: /"friendly"\s*:\s*"((?:[^"\\]|\\.)*)"/,
+      empathetic: /"empathetic"\s*:\s*"((?:[^"\\]|\\.)*)"/,
+    };
+
+    const found: Record<string, string> = {};
+    for (const [key, pattern] of Object.entries(fieldPatterns)) {
+      const match = cleaned.match(pattern);
+      if (match && match[1]) {
+        found[key] = match[1].replace(/\\"/g, '"').trim();
+      }
+    }
+
+    if (found.professional && found.friendly && found.empathetic) {
+      return found as { professional: string; friendly: string; empathetic: string };
     }
   }
 
-  // If we found all three, return them
-  if (sections.professional && sections.friendly && sections.empathetic) {
-    return sections as { professional: string; friendly: string; empathetic: string };
+  // Strategy 3: Fallback to splitting by tone labels in plain text
+  // e.g. "Professional: ..." / "Professional Reply: ..."
+  const toneSplitRegex = /(?:^|\n)\s*(?:professional|friendly|empathetic)[\s:—]*/gi;
+  const parts = cleaned.split(toneSplitRegex).filter(s => s.trim().length > 5);
+
+  if (parts.length >= 3) {
+    return {
+      professional: parts[0].replace(/^["']|["']$/g, '').trim().slice(0, 500),
+      friendly: parts[1].replace(/^["']|["']$/g, '').trim().slice(0, 500),
+      empathetic: parts[2].replace(/^["']|["']$/g, '').trim().slice(0, 500),
+    };
   }
 
-  // Fallback: split text into 3 parts
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
-  const third = Math.ceil(sentences.length / 3);
-  
+  // Last resort fallback
   return {
-    professional: sentences.slice(0, third).join('. ').trim() + '.',
-    friendly: sentences.slice(third, third * 2).join('. ').trim() + '.',
-    empathetic: sentences.slice(third * 2).join('. ').trim() + '.',
+    professional: 'Thank you for your feedback! We appreciate your kind words.',
+    friendly: 'Thanks so much for the review! We love hearing from you.',
+    empathetic: 'We truly appreciate you taking the time to share your experience.',
   };
 }
 
@@ -1142,30 +1185,24 @@ async function startServer() {
   });
 
   // Reply to review via EmbedSocial
+  // NOTE: review ID comes from EmbedSocial API (not from Prisma), so we call EmbedSocial directly
   app.post('/api/reviews/:id/reply', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const { id } = req.params;
+      const { id: esReviewId } = req.params;
       const { replyText } = req.body;
 
       if (!replyText?.trim()) {
         return res.status(400).json({ error: 'Reply text is required' });
       }
 
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({
           error: 'EmbedSocial API key not configured. Please add it in Settings.',
         });
       }
 
-      const review = await prisma.review.findUnique({ where: { id } });
-      if (!review) return res.status(404).json({ error: 'Review not found' });
-
-      // EmbedSocial reply: the review reply endpoint depends on the platform.
-      // For Google reviews via EmbedSocial, we POST to /reviews/:id/reply.
-      // We store the embedSocial review id in review.embedSocialReviewId.
-      const esReviewId = review.embedSocialReviewId || review.googleReviewId;
-
+      // Call EmbedSocial reply API directly using the review ID from the frontend
       try {
         await embedSocialFetchWithKey(
           apiKey,
@@ -1176,18 +1213,14 @@ async function startServer() {
           },
         );
       } catch (e: any) {
-        // If EmbedSocial rejects the reply (e.g. wrong endpoint), still save locally
-        if (e.status !== 404) {
-          console.warn(`[reply] EmbedSocial reply failed (${e.status}): ${e.message}`);
-        }
+        console.error(`[reply] EmbedSocial reply failed (${e.status}): ${e.message}`);
+        // Surface EmbedSocial errors to the client
+        const errBody = e.details || {};
+        const errMsg = errBody.title || errBody.message || e.message || 'Failed to submit reply to EmbedSocial';
+        return res.status(e.status || 500).json({ error: errMsg });
       }
 
-      const updatedReview = await prisma.review.update({
-        where: { id },
-        data: { replyText: replyText.trim() },
-      });
-
-      res.json({ success: true, review: updatedReview });
+      res.json({ success: true });
     } catch (error: any) {
       console.error('Submit reply error:', error);
       res.status(500).json({ error: 'Failed to submit reply', details: error.message });
@@ -2587,23 +2620,8 @@ Return ONLY valid JSON like this, nothing else:
           };
         }
       } catch {
-        // Try to extract JSON from text using regex
-        const jsonMatch = replyText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            replies = {
-              professional: String(parsed.professional || '').trim(),
-              friendly: String(parsed.friendly || '').trim(),
-              empathetic: String(parsed.empathetic || '').trim(),
-            };
-          } catch {
-            // Fallback - try to split by tone labels
-            replies = extractRepliesFromText(replyText);
-          }
-        } else {
-          replies = extractRepliesFromText(replyText);
-        }
+        // Try to extract a well-formed JSON object (handle cases where Gemini adds text before/after the JSON)
+        replies = extractRepliesFromText(replyText);
       }
 
       // Validate and ensure all fields exist

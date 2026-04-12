@@ -419,7 +419,12 @@ export function Reviews() {
             {filteredAndSortedReviews.length > 0 ? filteredAndSortedReviews.map((review) => (
               <div
                 key={review.id}
-                onClick={() => setSelectedReview(review)}
+                onClick={() => {
+                  setSelectedReview(review);
+                  setAiReplyOptions(null);
+                  setSelectedTone(null);
+                  setReplyText('');
+                }}
                 className={`p-4 rounded-xl cursor-pointer transition-all ${
                   selectedReview?.id === review.id
                     ? 'bg-primary text-white shadow-lg scale-[1.02]'
