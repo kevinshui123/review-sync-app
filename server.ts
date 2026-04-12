@@ -1898,8 +1898,10 @@ async function startServer() {
     for (let d = 0; d < days; d++) {
       const date = new Date(startDate.getTime() + d * 24 * 60 * 60 * 1000);
       const dateStr = date.toISOString().split('T')[0];
+      const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
       dailyData[dateStr] = {
         date: dateStr,
+        dayOfWeek,
         googleMapsDesktop: 0,
         googleSearchDesktop: 0,
         googleMapsMobile: 0,
@@ -1910,7 +1912,6 @@ async function startServer() {
       };
     }
 
-    // Fetch daily data for each sourceId
     const sourceIds = (await sourceIdsPromise)
       .map(s => s.embedSocialListingId)
       .filter(Boolean);
@@ -1942,10 +1943,56 @@ async function startServer() {
       }
     }
 
-    return Object.values(dailyData);
+    // Compute monthly aggregates
+    const monthlySearch: Record<string, any> = {};
+    const monthlyActions: Record<string, any> = {};
+    for (const d of Object.values(dailyData) as any[]) {
+      const month = d.date.substring(0, 7);
+      if (!monthlySearch[month]) {
+        monthlySearch[month] = { googleMapsDesktop: 0, googleSearchDesktop: 0, googleMapsMobile: 0, googleSearchMobile: 0, directions: 0, callClicks: 0, websiteClicks: 0 };
+        monthlyActions[month] = { directions: 0, callClicks: 0, websiteClicks: 0 };
+      }
+      monthlySearch[month].googleMapsDesktop += d.googleMapsDesktop || 0;
+      monthlySearch[month].googleSearchDesktop += d.googleSearchDesktop || 0;
+      monthlySearch[month].googleMapsMobile += d.googleMapsMobile || 0;
+      monthlySearch[month].googleSearchMobile += d.googleSearchMobile || 0;
+      monthlySearch[month].directions += d.directions || 0;
+      monthlySearch[month].callClicks += d.callClicks || 0;
+      monthlySearch[month].websiteClicks += d.websiteClicks || 0;
+      monthlyActions[month].directions += d.directions || 0;
+      monthlyActions[month].callClicks += d.callClicks || 0;
+      monthlyActions[month].websiteClicks += d.websiteClicks || 0;
+    }
+
+    // Compute weekday aggregates (Mon–Sun)
+    const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const weekdaySearch: Record<string, any> = {};
+    const weekdayActions: Record<string, any> = {};
+    for (const day of weekdays) {
+      weekdaySearch[day] = { googleMapsDesktop: 0, googleSearchDesktop: 0, googleMapsMobile: 0, googleSearchMobile: 0 };
+      weekdayActions[day] = { directions: 0, callClicks: 0, websiteClicks: 0 };
+    }
+    for (const d of Object.values(dailyData) as any[]) {
+      const day = d.dayOfWeek;
+      if (weekdaySearch[day]) {
+        weekdaySearch[day].googleMapsDesktop += d.googleMapsDesktop || 0;
+        weekdaySearch[day].googleSearchDesktop += d.googleSearchDesktop || 0;
+        weekdaySearch[day].googleMapsMobile += d.googleMapsMobile || 0;
+        weekdaySearch[day].googleSearchMobile += d.googleSearchMobile || 0;
+        weekdayActions[day].directions += d.directions || 0;
+        weekdayActions[day].callClicks += d.callClicks || 0;
+        weekdayActions[day].websiteClicks += d.websiteClicks || 0;
+      }
+    }
+
+    return {
+      daily: Object.values(dailyData),
+      monthly: Object.keys(monthlySearch).sort().map(month => ({ month, ...monthlySearch[month] })),
+      weekdaySearch: weekdays.map(day => ({ day, ...weekdaySearch[day] })),
+      weekdayActions: weekdays.map(day => ({ day, ...weekdayActions[day] })),
+    };
   }
 
-  // Generate GBP Performance PDF report
   app.get('/api/reports/gbp-pdf', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const apiKey = await getEmbedSocialApiKey(req.tenantId!);
@@ -1953,300 +2000,342 @@ async function startServer() {
 
       const { startDate: startDateStr, endDate: endDateStr, sourceId } = req.query as Record<string, string>;
 
-      // Fetch metrics for the date range
       const startD = new Date(startDateStr);
       const endD = new Date(endDateStr);
       const days = Math.max(1, Math.round((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
 
-      // Fetch listings to get business name
       const listingsData: any = await embedSocialFetchWithKey(apiKey, '/rest/v1/listings');
       const allListings: any[] = Array.isArray(listingsData) ? listingsData : (listingsData.data || listingsData.listings || []);
       const listing = allListings.find((l: any) => l.id === sourceId) || allListings[0] || {};
       const businessName = listing.name || 'Business';
 
-      // Get daily data
-      const dailyData = await getReportChartData(req.tenantId!, apiKey, days);
+      const chartData = await getReportChartData(req.tenantId!, apiKey, days);
+      const { daily, monthly, weekdaySearch, weekdayActions } = chartData;
 
-      // Compute monthly aggregates for search (4 separate metrics)
-      const monthlySearch: Record<string, any> = {};
-      for (const d of dailyData) {
-        const month = d.date.substring(0, 7);
-        if (!monthlySearch[month]) monthlySearch[month] = {
-          googleMapsDesktop: 0, googleSearchDesktop: 0,
-          googleMapsMobile: 0, googleSearchMobile: 0,
-          directions: 0, callClicks: 0, websiteClicks: 0,
-        };
-        monthlySearch[month].googleMapsDesktop += d.googleMapsDesktop || 0;
-        monthlySearch[month].googleSearchDesktop += d.googleSearchDesktop || 0;
-        monthlySearch[month].googleMapsMobile += d.googleMapsMobile || 0;
-        monthlySearch[month].googleSearchMobile += d.googleSearchMobile || 0;
-        monthlySearch[month].directions += d.directions || 0;
-        monthlySearch[month].callClicks += d.callClicks || 0;
-        monthlySearch[month].websiteClicks += d.websiteClicks || 0;
-      }
+      // Totals for donut charts
+      const totalMapsDesktop = monthly.reduce((s, m) => s + (m.googleMapsDesktop || 0), 0);
+      const totalSearchDesktop = monthly.reduce((s, m) => s + (m.googleSearchDesktop || 0), 0);
+      const totalMapsMobile = monthly.reduce((s, m) => s + (m.googleMapsMobile || 0), 0);
+      const totalSearchMobile = monthly.reduce((s, m) => s + (m.googleSearchMobile || 0), 0);
+      const totalDirections = monthly.reduce((s, m) => s + (m.directions || 0), 0);
+      const totalCallClicks = monthly.reduce((s, m) => s + (m.callClicks || 0), 0);
+      const totalWebsiteClicks = monthly.reduce((s, m) => s + (m.websiteClicks || 0), 0);
 
-      const months = Object.keys(monthlySearch).sort();
+      const last7 = daily.slice(-7);
 
-      // Compute summarized totals for KPI cards
-      const totalMapsDesktop = months.reduce((s, m) => s + (monthlySearch[m].googleMapsDesktop || 0), 0);
-      const totalSearchDesktop = months.reduce((s, m) => s + (monthlySearch[m].googleSearchDesktop || 0), 0);
-      const totalMapsMobile = months.reduce((s, m) => s + (monthlySearch[m].googleMapsMobile || 0), 0);
-      const totalSearchMobile = months.reduce((s, m) => s + (monthlySearch[m].googleSearchMobile || 0), 0);
-      const totalDirections = months.reduce((s, m) => s + (monthlySearch[m].directions || 0), 0);
-      const totalCallClicks = months.reduce((s, m) => s + (monthlySearch[m].callClicks || 0), 0);
-      const totalWebsiteClicks = months.reduce((s, m) => s + (monthlySearch[m].websiteClicks || 0), 0);
-
-      // Period-over-period change for search (all 4 combined)
-      const currentMonth = months[months.length - 1];
-      const prevMonth = months[months.length - 2];
-      const curTotal = (months.reduce((s, m) => {
-        if (m === currentMonth) return s +
-          (monthlySearch[m].googleMapsDesktop || 0) + (monthlySearch[m].googleSearchDesktop || 0) +
-          (monthlySearch[m].googleMapsMobile || 0) + (monthlySearch[m].googleSearchMobile || 0);
-        return s;
-      }, 0));
-      const prevTotal = (months.reduce((s, m) => {
-        if (m === prevMonth) return s +
-          (monthlySearch[m].googleMapsDesktop || 0) + (monthlySearch[m].googleSearchDesktop || 0) +
-          (monthlySearch[m].googleMapsMobile || 0) + (monthlySearch[m].googleSearchMobile || 0);
-        return s;
-      }, 0));
-      const periodChange = prevTotal > 0 ? Math.round(((curTotal - prevTotal) / prevTotal) * 100) : 0;
-
-      // Last 7 days
-      const last7 = dailyData.slice(-7);
-
-      // Build PDF
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="GBP_Insights_Report_${startDateStr}_to_${endDateStr}.pdf"`);
       doc.pipe(res);
 
       const W = doc.page.width - 80;
-      const dark = '#1e293b', lightBg = '#f8fafc';
+      const dark = '#1e293b', lightBg = '#f8fafc', primary = '#2563eb';
 
-      // ── Page 1: Title ──
-      doc.rect(0, 0, doc.page.width, 120).fill('#2563eb');
-      doc.fillColor('white').fontSize(24).font('Helvetica-Bold').text('GMB Insights Report', 40, 40);
-      doc.fontSize(11).font('Helvetica').text(`${businessName}`, 40, 75);
-      doc.text(`Selected Date Range: ${startDateStr} - ${endDateStr}`, 40, 92);
+      // ─── Page 1: Title ───
+      doc.rect(0, 0, doc.page.width, 140).fill(primary);
+      doc.fillColor('white').fontSize(26).font('Helvetica-Bold').text('GMB Insights Report', 40, 50);
+      doc.fontSize(13).font('Helvetica').text(businessName, 40, 88);
+      doc.fontSize(10).text(`${startDateStr}  →  ${endDateStr}`, 40, 108);
+      doc.fontSize(9).text(`Generated: ${new Date().toLocaleDateString()}`, 40, 122);
 
-      // ── Page 2: Search Performance Overview ──
+      // Footer on title page
+      doc.rect(0, doc.page.height - 30, doc.page.width, 30).fill('#f1f5f9');
+      doc.fillColor('#94a3b8').fontSize(8).font('Helvetica')
+        .text('Powered by EmbedSocial • Google Business Profile Analytics', 40, doc.page.height - 18);
+
+      // ─── Page 2: Search Overview ───
       doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Search Performance: ${startDateStr} - ${endDateStr}`, 40, 40);
-      let y = 70;
+      let y = 40;
 
-      // 4 KPI cards in a row
+      // Header
+      doc.fillColor(dark).fontSize(16).font('Helvetica-Bold').text('Search Performance Overview', 40, y);
+      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, y + 22);
+      y += 52;
+
+      // 4 KPI Cards
       const kpiW = (W - 30) / 4;
-      const kpis = [
-        { label: 'Google Maps Desktop', value: totalMapsDesktop, color: '#9333ea' },
-        { label: 'Google Search Desktop', value: totalSearchDesktop, color: '#2563eb' },
-        { label: 'Google Maps Mobile', value: totalMapsMobile, color: '#c084fc' },
-        { label: 'Google Search Mobile', value: totalSearchMobile, color: '#93c5fd' },
+      const searchSeries = [
+        { label: 'Maps Desktop', value: totalMapsDesktop, color: '#9333ea' },
+        { label: 'Search Desktop', value: totalSearchDesktop, color: '#2563eb' },
+        { label: 'Maps Mobile', value: totalMapsMobile, color: '#c084fc' },
+        { label: 'Search Mobile', value: totalSearchMobile, color: '#93c5fd' },
       ];
-      for (let i = 0; i < kpis.length; i++) {
-        const k = kpis[i];
+      for (let i = 0; i < searchSeries.length; i++) {
+        const k = searchSeries[i];
         const kx = 40 + i * (kpiW + 10);
-        doc.rect(kx, y, kpiW, 60).fill(k.color);
-        doc.fillColor('white').fontSize(9).font('Helvetica').text(k.label, kx + 8, y + 8, { width: kpiW - 16 });
-        doc.fontSize(16).font('Helvetica-Bold').text(k.value.toLocaleString(), kx + 8, y + 28, { width: kpiW - 16 });
+        doc.rect(kx, y, kpiW, 70).fill(k.color);
+        doc.fillColor('white').fontSize(8).font('Helvetica').text(k.label, kx + 8, y + 8, { width: kpiW - 16 });
+        doc.fontSize(18).font('Helvetica-Bold').text(k.value.toLocaleString(), kx + 8, y + 30, { width: kpiW - 16 });
       }
-      y += 68;
+      y += 80;
 
-      // Period change banner
-      const changeColor = periodChange >= 0 ? '#16a34a' : '#dc2626';
-      doc.rect(40, y, W, 22).fill(changeColor);
-      doc.fillColor('white').fontSize(10).font('Helvetica-Bold')
-        .text(`Period Change: ${periodChange >= 0 ? '+' : ''}${periodChange}% vs Previous Period`, 50, y + 5);
-      y += 30;
+      // Overall donut for search
+      doc.fillColor(dark).fontSize(12).font('Helvetica-Bold').text('Search Channels — Total Share', 40, y);
+      y += 25;
+      drawDonutChart(doc, [
+        { label: 'Maps Mobile', value: totalMapsMobile, color: '#c084fc' },
+        { label: 'Search Mobile', value: totalSearchMobile, color: '#93c5fd' },
+        { label: 'Maps Desktop', value: totalMapsDesktop, color: '#9333ea' },
+        { label: 'Search Desktop', value: totalSearchDesktop, color: '#2563eb' },
+      ], 40, y, 320);
 
-      // Monthly table: Date | Maps Desktop | Search Desktop | Maps Mobile | Search Mobile | Total | % Chg
-      doc.rect(40, y, W, 20).fill('#e2e8f0');
-      doc.fillColor(dark).fontSize(8).font('Helvetica-Bold');
-      doc.text('Date', 45, y + 6);
-      doc.text('Maps Desktop', 105, y + 6);
-      doc.text('Search Desktop', 175, y + 6);
-      doc.text('Maps Mobile', 245, y + 6);
-      doc.text('Search Mobile', 315, y + 6);
-      doc.text('Total', 385, y + 6);
-      doc.text('% Chg', 440, y + 6);
-      y += 20;
-
-      for (let i = 0; i < months.length; i++) {
-        const m = months[i];
-        const md = monthlySearch[m];
-        const rowTotal = (md.googleMapsDesktop || 0) + (md.googleSearchDesktop || 0) + (md.googleMapsMobile || 0) + (md.googleSearchMobile || 0);
-        const prevMd = monthlySearch[months[i - 1]];
-        const prevRowTotal = prevMd ? (prevMd.googleMapsDesktop || 0) + (prevMd.googleSearchDesktop || 0) + (prevMd.googleMapsMobile || 0) + (prevMd.googleSearchMobile || 0) : 0;
-        const pctChange = prevRowTotal > 0 ? Math.round(((rowTotal - prevRowTotal) / prevRowTotal) * 100) : 0;
-        if (i % 2 === 0) doc.rect(40, y, W, 16).fill(lightBg);
-        doc.fillColor(dark).fontSize(8).font('Helvetica').text(m, 45, y + 4);
-        doc.text((md.googleMapsDesktop || 0).toLocaleString(), 105, y + 4);
-        doc.text((md.googleSearchDesktop || 0).toLocaleString(), 175, y + 4);
-        doc.text((md.googleMapsMobile || 0).toLocaleString(), 245, y + 4);
-        doc.text((md.googleSearchMobile || 0).toLocaleString(), 315, y + 4);
-        doc.text(rowTotal.toLocaleString(), 385, y + 4);
-        doc.text(`${pctChange > 0 ? '+' : ''}${pctChange}%`, 440, y + 4);
-        y += 16;
+      // Legend table next to donut
+      const legX = 390;
+      doc.fillColor(dark).fontSize(9).font('Helvetica-Bold').text('Channel', legX, y);
+      doc.text('Total', legX + 100, y);
+      doc.text('% Share', legX + 160, y);
+      y += 18;
+      const totalSearchAll = totalMapsDesktop + totalSearchDesktop + totalMapsMobile + totalSearchMobile;
+      const donutData = [
+        { label: 'Maps Mobile', value: totalMapsMobile, color: '#c084fc' },
+        { label: 'Search Mobile', value: totalSearchMobile, color: '#93c5fd' },
+        { label: 'Maps Desktop', value: totalMapsDesktop, color: '#9333ea' },
+        { label: 'Search Desktop', value: totalSearchDesktop, color: '#2563eb' },
+      ];
+      for (const d of donutData) {
+        doc.rect(legX - 4, y - 3, 8, 8).fill(d.color);
+        doc.fillColor(dark).fontSize(9).font('Helvetica').text(d.label, legX + 8, y);
+        doc.text(d.value.toLocaleString(), legX + 100, y);
+        const pct = totalSearchAll > 0 ? Math.round((d.value / totalSearchAll) * 100) : 0;
+        doc.text(`${pct}%`, legX + 160, y);
+        y += 18;
       }
 
-      // Total row
-      const grandTotal = (totalMapsDesktop + totalSearchDesktop + totalMapsMobile + totalSearchMobile);
-      doc.rect(40, y, W, 16).fill('#e2e8f0');
-      doc.font('Helvetica-Bold').text('Total', 45, y + 4);
-      doc.text(totalMapsDesktop.toLocaleString(), 105, y + 4);
-      doc.text(totalSearchDesktop.toLocaleString(), 175, y + 4);
-      doc.text(totalMapsMobile.toLocaleString(), 245, y + 4);
-      doc.text(totalSearchMobile.toLocaleString(), 315, y + 4);
-      doc.text(grandTotal.toLocaleString(), 385, y + 4);
-
-      // ── Page 3: Search Performance Chart (stacked bar) ──
+      // ─── Page 3: Search Monthly Line + Grouped Bar ───
       doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Search Performance', 40, 40);
-      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, 58);
-      y = 85;
-      drawStackedBarChart(doc,
-        dailyData.map((d: any) => d.date),
+      y = 40;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Search Performance — Monthly Trend', 40, y);
+      doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, y + 18);
+      y += 35;
+      drawLineChart(doc,
+        monthly.map((m: any) => m.month),
         [
-          { key: 'googleMapsDesktop', label: 'Google Maps Desktop', color: '#9333ea' },
-          { key: 'googleSearchDesktop', label: 'Google Search Desktop', color: '#2563eb' },
-          { key: 'googleMapsMobile', label: 'Google Maps Mobile', color: '#c084fc' },
-          { key: 'googleSearchMobile', label: 'Google Search Mobile', color: '#93c5fd' },
+          { key: 'googleMapsDesktop', label: 'Maps Desktop', color: '#9333ea' },
+          { key: 'googleSearchDesktop', label: 'Search Desktop', color: '#2563eb' },
+          { key: 'googleMapsMobile', label: 'Maps Mobile', color: '#c084fc' },
+          { key: 'googleSearchMobile', label: 'Search Mobile', color: '#93c5fd' },
         ],
-        40, y, W, 240, dailyData as Record<string, any>[]);
+        40, y, W, 200, monthly as Record<string, any>[]);
 
-      // ── Page 4: Weekly Search Performance ──
+      y += 215;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Search Performance — Monthly Comparison', 40, y);
+      y += 22;
+      drawGroupedBarChart(doc,
+        monthly.map((m: any) => m.month),
+        [
+          { key: 'googleMapsDesktop', label: 'Maps Desktop', color: '#9333ea' },
+          { key: 'googleSearchDesktop', label: 'Search Desktop', color: '#2563eb' },
+          { key: 'googleMapsMobile', label: 'Maps Mobile', color: '#c084fc' },
+          { key: 'googleSearchMobile', label: 'Search Mobile', color: '#93c5fd' },
+        ],
+        40, y, W, 200, monthly as Record<string, any>[]);
+
+      // ─── Page 4: Search Monthly Stacked ───
       doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Weekly Search Performance', 40, 40);
-      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${last7[0]?.date} - ${last7[last7.length - 1]?.date}`, 40, 58);
-      y = 85;
+      y = 40;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Search Performance — Monthly Stacked Total', 40, y);
+      doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, y + 18);
+      y += 35;
+      drawStackedBarChart(doc,
+        monthly.map((m: any) => m.month),
+        [
+          { key: 'googleMapsDesktop', label: 'Maps Desktop', color: '#9333ea' },
+          { key: 'googleSearchDesktop', label: 'Search Desktop', color: '#2563eb' },
+          { key: 'googleMapsMobile', label: 'Maps Mobile', color: '#c084fc' },
+          { key: 'googleSearchMobile', label: 'Search Mobile', color: '#93c5fd' },
+        ],
+        40, y, W, 320, monthly as Record<string, any>[]);
+
+      // ─── Page 5: Search Daily Charts ───
+      doc.addPage();
+      y = 40;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Search Performance — Daily Grouped', 40, y);
+      doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(
+        `${last7[0]?.date} - ${last7[last7.length - 1]?.date}`, 40, y + 18);
+      y += 35;
       drawGroupedBarChart(doc,
         last7.map((d: any) => d.date),
         [
-          { key: 'googleMapsDesktop', label: 'Google Maps Desktop', color: '#9333ea' },
-          { key: 'googleSearchDesktop', label: 'Google Search Desktop', color: '#2563eb' },
-          { key: 'googleMapsMobile', label: 'Google Maps Mobile', color: '#c084fc' },
-          { key: 'googleSearchMobile', label: 'Google Search Mobile', color: '#93c5fd' },
+          { key: 'googleMapsDesktop', label: 'Maps Desktop', color: '#9333ea' },
+          { key: 'googleSearchDesktop', label: 'Search Desktop', color: '#2563eb' },
+          { key: 'googleMapsMobile', label: 'Maps Mobile', color: '#c084fc' },
+          { key: 'googleSearchMobile', label: 'Search Mobile', color: '#93c5fd' },
         ],
-        40, y, W, 240, last7 as Record<string, any>[]);
-      y += 248;
+        40, y, W, 200, last7 as Record<string, any>[]);
 
-      // Weekly table: Date | Maps Desktop | Search Desktop | Maps Mobile | Search Mobile | Total
-      doc.rect(40, y, W, 20).fill('#e2e8f0');
-      doc.fillColor(dark).fontSize(8).font('Helvetica-Bold');
-      doc.text('Date', 45, y + 6);
-      doc.text('Maps Desktop', 105, y + 6);
-      doc.text('Search Desktop', 175, y + 6);
-      doc.text('Maps Mobile', 245, y + 6);
-      doc.text('Search Mobile', 315, y + 6);
-      doc.text('Total', 385, y + 6);
-      y += 20;
-      for (let i = 0; i < last7.length; i++) {
-        const d = last7[i];
-        const wTotal = (d.googleMapsDesktop || 0) + (d.googleSearchDesktop || 0) + (d.googleMapsMobile || 0) + (d.googleSearchMobile || 0);
-        if (i % 2 === 0) doc.rect(40, y, W, 16).fill(lightBg);
-        doc.fillColor(dark).fontSize(8).font('Helvetica').text(d.date, 45, y + 4);
-        doc.text((d.googleMapsDesktop || 0).toLocaleString(), 105, y + 4);
-        doc.text((d.googleSearchDesktop || 0).toLocaleString(), 175, y + 4);
-        doc.text((d.googleMapsMobile || 0).toLocaleString(), 245, y + 4);
-        doc.text((d.googleSearchMobile || 0).toLocaleString(), 315, y + 4);
-        doc.text(wTotal.toLocaleString(), 385, y + 4);
-        y += 16;
-      }
+      y += 215;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Search Performance — Daily Stacked', 40, y);
+      doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(
+        `${last7[0]?.date} - ${last7[last7.length - 1]?.date}`, 40, y + 18);
+      y += 35;
+      drawStackedBarChart(doc,
+        last7.map((d: any) => d.date),
+        [
+          { key: 'googleMapsDesktop', label: 'Maps Desktop', color: '#9333ea' },
+          { key: 'googleSearchDesktop', label: 'Search Desktop', color: '#2563eb' },
+          { key: 'googleMapsMobile', label: 'Maps Mobile', color: '#c084fc' },
+          { key: 'googleSearchMobile', label: 'Search Mobile', color: '#93c5fd' },
+        ],
+        40, y, W, 200, last7 as Record<string, any>[]);
 
-      // ── Page 5: Actions Performance ──
+      // ─── Page 6: Actions Overview ───
       doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Actions Performance: ${startDateStr} - ${endDateStr}`, 40, 40);
-      y = 70;
+      y = 40;
+      doc.fillColor(dark).fontSize(16).font('Helvetica-Bold').text('Actions Performance Overview', 40, y);
+      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, y + 22);
+      y += 52;
 
-      // 3 KPI cards
       const actKpiW = (W - 20) / 3;
-      const actKpis = [
+      const actionsSeries = [
         { label: 'Directions', value: totalDirections, color: '#f97316' },
         { label: 'Phone Calls', value: totalCallClicks, color: '#ef4444' },
         { label: 'Website Clicks', value: totalWebsiteClicks, color: '#2563eb' },
       ];
-      for (let i = 0; i < actKpis.length; i++) {
-        const k = actKpis[i];
+      for (let i = 0; i < actionsSeries.length; i++) {
+        const k = actionsSeries[i];
         const kx = 40 + i * (actKpiW + 10);
-        doc.rect(kx, y, actKpiW, 60).fill(k.color);
+        doc.rect(kx, y, actKpiW, 70).fill(k.color);
         doc.fillColor('white').fontSize(9).font('Helvetica').text(k.label, kx + 8, y + 8, { width: actKpiW - 16 });
-        doc.fontSize(16).font('Helvetica-Bold').text(k.value.toLocaleString(), kx + 8, y + 28, { width: actKpiW - 16 });
+        doc.fontSize(18).font('Helvetica-Bold').text(k.value.toLocaleString(), kx + 8, y + 30, { width: actKpiW - 16 });
       }
-      y += 68;
+      y += 80;
 
-      // Monthly table: Date | Directions | Phone Calls | Website Clicks | Total | % Chg
-      doc.rect(40, y, W, 20).fill('#e2e8f0');
-      doc.fillColor(dark).fontSize(8).font('Helvetica-Bold');
-      doc.text('Date', 45, y + 6);
-      doc.text('Directions', 125, y + 6);
-      doc.text('Phone Calls', 210, y + 6);
-      doc.text('Website Clicks', 295, y + 6);
-      doc.text('Total', 390, y + 6);
-      doc.text('% Chg', 450, y + 6);
-      y += 20;
+      // Overall donut for actions
+      doc.fillColor(dark).fontSize(12).font('Helvetica-Bold').text('Actions — Total Share', 40, y);
+      y += 25;
+      drawDonutChart(doc, [
+        { label: 'Website Clicks', value: totalWebsiteClicks, color: '#2563eb' },
+        { label: 'Directions', value: totalDirections, color: '#f97316' },
+        { label: 'Phone Calls', value: totalCallClicks, color: '#ef4444' },
+      ], 40, y, 320);
 
-      for (let i = 0; i < months.length; i++) {
-        const m = months[i];
-        const md = monthlySearch[m];
-        const atotal = (md.directions || 0) + (md.callClicks || 0) + (md.websiteClicks || 0);
-        const prevMd = monthlySearch[months[i - 1]];
-        const prevAtotal = prevMd ? (prevMd.directions || 0) + (prevMd.callClicks || 0) + (prevMd.websiteClicks || 0) : 0;
-        const pctChange = prevAtotal > 0 ? Math.round(((atotal - prevAtotal) / prevAtotal) * 100) : 0;
-        if (i % 2 === 0) doc.rect(40, y, W, 16).fill(lightBg);
-        doc.fillColor(dark).fontSize(8).font('Helvetica').text(m, 45, y + 4);
-        doc.text((md.directions || 0).toLocaleString(), 125, y + 4);
-        doc.text((md.callClicks || 0).toLocaleString(), 210, y + 4);
-        doc.text((md.websiteClicks || 0).toLocaleString(), 295, y + 4);
-        doc.text(atotal.toLocaleString(), 390, y + 4);
-        doc.text(`${pctChange > 0 ? '+' : ''}${pctChange}%`, 450, y + 4);
-        y += 16;
+      const legX2 = 390;
+      doc.fillColor(dark).fontSize(9).font('Helvetica-Bold').text('Action', legX2, y);
+      doc.text('Total', legX2 + 100, y);
+      doc.text('% Share', legX2 + 160, y);
+      y += 18;
+      const totalActionsAll = totalDirections + totalCallClicks + totalWebsiteClicks;
+      const actDonutData = [
+        { label: 'Website Clicks', value: totalWebsiteClicks, color: '#2563eb' },
+        { label: 'Directions', value: totalDirections, color: '#f97316' },
+        { label: 'Phone Calls', value: totalCallClicks, color: '#ef4444' },
+      ];
+      for (const d of actDonutData) {
+        doc.rect(legX2 - 4, y - 3, 8, 8).fill(d.color);
+        doc.fillColor(dark).fontSize(9).font('Helvetica').text(d.label, legX2 + 8, y);
+        doc.text(d.value.toLocaleString(), legX2 + 100, y);
+        const pct = totalActionsAll > 0 ? Math.round((d.value / totalActionsAll) * 100) : 0;
+        doc.text(`${pct}%`, legX2 + 160, y);
+        y += 18;
       }
 
-      // Total row
-      const actGrandTotal = totalDirections + totalCallClicks + totalWebsiteClicks;
-      doc.rect(40, y, W, 16).fill('#e2e8f0');
-      doc.font('Helvetica-Bold').text('Total', 45, y + 4);
-      doc.text(totalDirections.toLocaleString(), 125, y + 4);
-      doc.text(totalCallClicks.toLocaleString(), 210, y + 4);
-      doc.text(totalWebsiteClicks.toLocaleString(), 295, y + 4);
-      doc.text(actGrandTotal.toLocaleString(), 390, y + 4);
-
-      // ── Page 6: Actions Performance Charts ──
+      // ─── Page 7: Actions Monthly Line + Grouped Bar ───
       doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Actions Performance', 40, 40);
-      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, 58);
-      y = 85;
+      y = 40;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Actions Performance — Monthly Trend', 40, y);
+      doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, y + 18);
+      y += 35;
       drawLineChart(doc,
-        dailyData.map((d: any) => d.date),
+        monthly.map((m: any) => m.month),
         [
           { key: 'directions', label: 'Directions', color: '#f97316' },
           { key: 'callClicks', label: 'Phone Calls', color: '#ef4444' },
           { key: 'websiteClicks', label: 'Website Clicks', color: '#2563eb' },
         ],
-        40, y, W, 240, dailyData as Record<string, any>[]);
-      y += 248;
+        40, y, W, 200, monthly as Record<string, any>[]);
 
-      // Weekly breakdown table: Date | Directions | Phone Calls | Website Clicks | Total
-      doc.rect(40, y, W, 20).fill('#e2e8f0');
-      doc.fillColor(dark).fontSize(8).font('Helvetica-Bold');
-      doc.text('Date', 45, y + 6);
-      doc.text('Directions', 125, y + 6);
-      doc.text('Phone Calls', 210, y + 6);
-      doc.text('Website Clicks', 295, y + 6);
-      doc.text('Total', 390, y + 6);
+      y += 215;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Actions Performance — Monthly Comparison', 40, y);
+      y += 22;
+      drawGroupedBarChart(doc,
+        monthly.map((m: any) => m.month),
+        [
+          { key: 'directions', label: 'Directions', color: '#f97316' },
+          { key: 'callClicks', label: 'Phone Calls', color: '#ef4444' },
+          { key: 'websiteClicks', label: 'Website Clicks', color: '#2563eb' },
+        ],
+        40, y, W, 200, monthly as Record<string, any>[]);
+
+      // ─── Page 8: Actions Monthly Stacked ───
+      doc.addPage();
+      y = 40;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Actions Performance — Monthly Stacked Total', 40, y);
+      doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, y + 18);
+      y += 35;
+      drawStackedBarChart(doc,
+        monthly.map((m: any) => m.month),
+        [
+          { key: 'directions', label: 'Directions', color: '#f97316' },
+          { key: 'callClicks', label: 'Phone Calls', color: '#ef4444' },
+          { key: 'websiteClicks', label: 'Website Clicks', color: '#2563eb' },
+        ],
+        40, y, W, 320, monthly as Record<string, any>[]);
+
+      // ─── Page 9: Actions Weekday Charts ───
+      doc.addPage();
+      y = 40;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Actions — By Day of Week (Grouped)', 40, y);
+      doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, y + 18);
+      y += 35;
+      drawGroupedBarChart(doc,
+        weekdayActions.map((d: any) => d.day),
+        [
+          { key: 'directions', label: 'Directions', color: '#f97316' },
+          { key: 'callClicks', label: 'Phone Calls', color: '#ef4444' },
+          { key: 'websiteClicks', label: 'Website Clicks', color: '#2563eb' },
+        ],
+        40, y, W, 200, weekdayActions as Record<string, any>[]);
+
+      y += 215;
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Actions — By Day of Week (Stacked)', 40, y);
+      doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, y + 18);
+      y += 35;
+      drawStackedBarChart(doc,
+        weekdayActions.map((d: any) => d.day),
+        [
+          { key: 'directions', label: 'Directions', color: '#f97316' },
+          { key: 'callClicks', label: 'Phone Calls', color: '#ef4444' },
+          { key: 'websiteClicks', label: 'Website Clicks', color: '#2563eb' },
+        ],
+        40, y, W, 200, weekdayActions as Record<string, any>[]);
+
+      // ─── Page 10: Summary ───
+      doc.addPage();
+      y = 40;
+      doc.fillColor(dark).fontSize(16).font('Helvetica-Bold').text('Summary & Key Insights', 40, y);
+      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${businessName} • ${startDateStr} - ${endDateStr}`, 40, y + 20);
+      y += 55;
+
+      const insights = [
+        `Total Search Impressions: ${(totalMapsDesktop + totalSearchDesktop + totalMapsMobile + totalSearchMobile).toLocaleString()}`,
+        `Total User Actions: ${(totalDirections + totalCallClicks + totalWebsiteClicks).toLocaleString()}`,
+        `Top Search Channel: ${totalMapsMobile >= totalSearchMobile && totalMapsMobile >= totalMapsDesktop && totalMapsMobile >= totalSearchMobile ? 'Google Maps (Mobile)' : 'Google Search (Mobile)'}`,
+        `Top Action Type: ${totalWebsiteClicks >= totalDirections ? 'Website Clicks' : 'Directions'}`,
+        `Days in Report: ${days}`,
+        `Data Points: ${daily.length} daily records, ${monthly.length} monthly aggregates`,
+      ];
+      doc.fontSize(11).font('Helvetica-Bold').fillColor(dark);
+      doc.text('Report Statistics', 40, y);
       y += 20;
-      for (let i = 0; i < last7.length; i++) {
-        const d = last7[i];
-        const wTotal = (d.directions || 0) + (d.callClicks || 0) + (d.websiteClicks || 0);
-        if (i % 2 === 0) doc.rect(40, y, W, 16).fill(lightBg);
-        doc.fillColor(dark).fontSize(8).font('Helvetica').text(d.date, 45, y + 4);
-        doc.text((d.directions || 0).toLocaleString(), 125, y + 4);
-        doc.text((d.callClicks || 0).toLocaleString(), 210, y + 4);
-        doc.text((d.websiteClicks || 0).toLocaleString(), 295, y + 4);
-        doc.text(wTotal.toLocaleString(), 390, y + 4);
-        y += 16;
+      doc.fontSize(10).font('Helvetica').fillColor('#475569');
+      for (const insight of insights) {
+        doc.text(`• ${insight}`, 50, y);
+        y += 18;
       }
+
+      y += 20;
+      doc.fontSize(11).font('Helvetica-Bold').fillColor(dark).text('About This Report', 40, y);
+      y += 20;
+      doc.fontSize(10).font('Helvetica').fillColor('#475569').text(
+        'This report was generated using data from Google Business Profile via EmbedSocial.', 50, y);
+      y += 18;
+      doc.text(
+        'Search performance shows how users discover your business on Google Maps and Google Search across desktop and mobile devices.',
+        50, y);
+      y += 18;
+      doc.text(
+        'Actions performance tracks direct user engagement: directions requests, phone calls, and website visits initiated from your GBP listing.',
+        50, y);
 
       doc.end();
     } catch (error: any) {
@@ -2463,6 +2552,58 @@ async function startServer() {
       doc.rect(legendX, y + height - 18, 10, 10).fill(s.color);
       doc.fillColor('#1e293b').text(s.label || s.key, legendX + 13, y + height - 16);
       legendX += 70;
+    }
+  }
+
+  // Draw a donut chart with labels and values
+  function drawDonutChart(doc: any, slices: { label: string; value: number; color: string }[], x: number, y: number, size: number) {
+    const cx = x + size / 2;
+    const cy = y + size / 2;
+    const outerR = size / 2 - 10;
+    const innerR = outerR * 0.6;
+
+    const total = slices.reduce((s: number, sl: any) => s + sl.value, 0);
+    if (total === 0) {
+      doc.rect(x, y, size, size).fill('#f8fafc').stroke('#e2e8f0');
+      doc.fillColor('#94a3b8').fontSize(10).font('Helvetica').text('No data', cx - 25, cy);
+      return;
+    }
+
+    let startAngle = -Math.PI / 2; // start at top
+    const labelRadius = (outerR + innerR) / 2;
+
+    for (const slice of slices) {
+      if (slice.value <= 0) continue;
+      const sweepAngle = (slice.value / total) * 2 * Math.PI;
+      const endAngle = startAngle + sweepAngle;
+
+      // Draw arc segment using path
+      const x1 = cx + outerR * Math.cos(startAngle);
+      const y1 = cy + outerR * Math.sin(startAngle);
+      const x2 = cx + outerR * Math.cos(endAngle);
+      const y2 = cy + outerR * Math.sin(endAngle);
+      const x3 = cx + innerR * Math.cos(endAngle);
+      const y3 = cy + innerR * Math.sin(endAngle);
+      const x4 = cx + innerR * Math.cos(startAngle);
+      const y4 = cy + innerR * Math.sin(startAngle);
+      const largeArc = sweepAngle > Math.PI ? 1 : 0;
+
+      let path = `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4} Z`;
+      doc.path(path).fill(slice.color);
+
+      // Draw label line and text
+      const midAngle = startAngle + sweepAngle / 2;
+      const labelX = cx + (labelRadius + 20) * Math.cos(midAngle);
+      const labelY = cy + (labelRadius + 20) * Math.sin(midAngle);
+
+      doc.fillColor('#1e293b').fontSize(9).font('Helvetica-Bold').text(
+        slice.label, labelX - 30, labelY - 10, { width: 80, align: 'center' }
+      );
+      doc.fontSize(8).font('Helvetica').fillColor('#64748b').text(
+        slice.value.toLocaleString(), labelX - 30, labelY + 2, { width: 80, align: 'center' }
+      );
+
+      startAngle = endAngle;
     }
   }
 
