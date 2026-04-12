@@ -16,7 +16,6 @@ import {
   CheckCircle,
   Cancel,
 } from '@mui/icons-material';
-import { motion } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend, ComposedChart, Line } from 'recharts';
 import { apiGet } from '../utils/api';
 
@@ -565,7 +564,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
     { icon: <CheckCircle className="w-4 h-4" />, label: 'Response %', value: `${embedMetrics.responsePercentage}%` },
   ];
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -575,12 +574,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="p-6 lg:p-8 max-w-[1600px] mx-auto"
-    >
+    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
       {/* Page Header with Filters */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
@@ -855,6 +849,6 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
