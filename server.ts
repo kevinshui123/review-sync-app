@@ -1821,6 +1821,13 @@ async function startServer() {
       }
 
       console.log(`[reviews] Total reviews fetched: ${allReviews.length}`);
+      
+      // Log sample review to see field structure
+      if (allReviews.length > 0) {
+        console.log('[reviews] Sample review fields:', Object.keys(allReviews[0]));
+        console.log('[reviews] Sample review:', JSON.stringify(allReviews[0]).slice(0, 500));
+      }
+      
       res.json(allReviews);
     } catch (error: any) {
       console.error('EmbedSocial reviews error:', error);
@@ -2406,31 +2413,40 @@ The review should sound natural, authentic, and written by a real customer. Keep
 
   app.post('/api/reviews/generate-reply', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const { reviewId } = req.body;
+      // Accept review data directly (reviews come from EmbedSocial, not local DB)
+      const { reviewId, reviewerName, rating, comment, businessName } = req.body;
+      
       if (!reviewId) return res.status(400).json({ error: 'Review ID is required' });
 
-      const review = await prisma.review.findUnique({
-        where: { id: reviewId },
-        include: { location: true },
-      });
-
-      if (!review) return res.status(404).json({ error: 'Review not found' });
-
+      // Get tenant settings for AI
       const tenant = await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
       const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+      if (!apiKey) return res.status(500).json({ error: 'AI API key not configured. Please add Gemini API key in Settings.' });
 
       const ai = new GoogleGenAI({ apiKey });
 
+      // Get business name from tenant listings if not provided
+      let business = businessName;
+      if (!business) {
+        const listings = await prisma.tenantListing.findFirst({
+          where: { tenantId: req.tenantId!, status: 'active' },
+        });
+        if (listings) {
+          business = listings.name;
+        } else {
+          business = 'our business';
+        }
+      }
+
       const prompt = `
-        You are a professional customer service representative for a local business named "${review.location.name}".
+        You are a professional customer service representative for a local business named "${business}".
         Please write a polite, professional, and empathetic reply to the following customer review.
 
-        Customer Name: ${review.reviewerName}
-        Rating: ${review.rating} out of 5 stars
-        Review Comment: "${review.comment || 'No comment provided.'}"
+        Customer Name: ${reviewerName || 'Customer'}
+        Rating: ${rating || 5} out of 5 stars
+        Review Comment: "${comment || 'No comment provided.'}"
 
         Guidelines:
         - Keep it concise (2-4 sentences).
@@ -2439,15 +2455,20 @@ The review should sound natural, authentic, and written by a real customer. Keep
         - Do not include any placeholders like [Your Name] or [Manager Name]. Just the reply text.
       `;
 
+      console.log('[generate-reply] Generating AI reply for review:', reviewId);
+
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash',
         contents: prompt,
       });
 
-      res.json({ replyText: response.text });
-    } catch (error) {
+      const replyText = response.text?.trim() || '';
+      console.log('[generate-reply] Generated reply:', replyText.slice(0, 100));
+
+      res.json({ replyText });
+    } catch (error: any) {
       console.error('Generate reply error:', error);
-      res.status(500).json({ error: 'Failed to generate AI reply' });
+      res.status(500).json({ error: 'Failed to generate AI reply: ' + (error.message || 'Unknown error') });
     }
   });
 

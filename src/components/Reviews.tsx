@@ -136,10 +136,25 @@ export function Reviews() {
     if (!selectedReview) return;
     setGenerating(true);
     try {
-      const res = await apiPost('/api/reviews/generate-reply', { reviewId: selectedReview.id });
+      // Pass review data directly since reviews come from EmbedSocial, not local DB
+      const res = await apiPost('/api/reviews/generate-reply', {
+        reviewId: selectedReview.id,
+        reviewerName: selectedReview.reviewerName || selectedReview.authorName,
+        rating: selectedReview.rating,
+        comment: selectedReview.captionText || selectedReview.text || selectedReview.message,
+        businessName: selectedReview.sourceName || selectedReview.location,
+      });
       if (res.ok) {
         const data = await res.json();
-        setReplyText(data.replyText || data.reply || '');
+        if (data.replyText) {
+          setReplyText(data.replyText);
+        } else if (data.error) {
+          console.error('AI reply error:', data.error);
+          alert('Failed to generate reply: ' + data.error);
+        }
+      } else {
+        const data = await res.json();
+        alert('Failed to generate reply: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Failed to generate AI reply:', error);
