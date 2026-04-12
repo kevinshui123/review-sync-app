@@ -81,6 +81,7 @@ export function Reviews() {
   const [showLocationMenu, setShowLocationMenu] = useState(false);
 
   const fetchReviews = async () => {
+    setLoading(true);
     try {
       // Fetch locations for filter
       const locationsRes = await apiGet('/api/embedsocial/locations');
@@ -104,9 +105,14 @@ export function Reviews() {
         if (embedReviews.length > 0 && !selectedReview) {
           setSelectedReview(embedReviews[0]);
         }
+      } else {
+        // API returned an error response
+        const data = await res.json().catch(() => ({}));
+        setSyncMessage({ type: 'error', text: data.error || 'Failed to load reviews.' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch reviews:', error);
+      setSyncMessage({ type: 'error', text: 'Failed to load reviews. Please check your connection.' });
     } finally {
       setLoading(false);
     }
@@ -120,7 +126,6 @@ export function Reviews() {
     setSyncing(true);
     setSyncMessage(null);
     try {
-      // Trigger sync via EmbedSocial API (already handled by the fetch above)
       const res = await apiGet('/api/embedsocial/reviews');
       const data = await res.json();
       if (res.ok) {
@@ -134,7 +139,7 @@ export function Reviews() {
         });
         setSyncMessage({ type: 'success', text: `Synced ${embedReviews.length} reviews successfully!` });
       } else {
-        setSyncMessage({ type: 'error', text: data.error || 'Failed to sync reviews' });
+        setSyncMessage({ type: 'error', text: (data && data.error) || 'Failed to sync reviews' });
       }
     } catch {
       setSyncMessage({ type: 'error', text: 'Network error. Please try again.' });
@@ -225,7 +230,7 @@ export function Reviews() {
   ];
 
   // Filter and sort reviews
-  const filteredAndSortedReviews = reviews
+  const filteredAndSortedReviews = (reviews || [])
     .filter(r => {
       // Filter by category
       if (activeFilter === 'waiting') {
