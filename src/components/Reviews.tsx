@@ -18,7 +18,6 @@ import {
   Image as ImageIcon,
   CheckCircle,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../utils/api';
 import { addActivityLog } from './EditsLog';
@@ -303,22 +302,17 @@ export function Reviews() {
       </div>
 
       {/* Sync Message */}
-      <AnimatePresence>
-        {syncMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={`mx-6 mt-4 px-4 py-3 rounded-xl text-sm font-medium ${
-              syncMessage.type === 'success'
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
-            }`}
-          >
-            {syncMessage.text}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {syncMessage && (
+        <div
+          className={`mx-6 mt-4 px-4 py-3 rounded-xl text-sm font-medium ${
+            syncMessage.type === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}
+        >
+          {syncMessage.text}
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Pane: Filter Categories */}
