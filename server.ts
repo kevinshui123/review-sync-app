@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { Response } from 'express';
 import authRoutes from './src/server/authRoutes';
 import oauthRoutes from './src/server/oauthRoutes';
 import { PrismaClient } from '@prisma/client';
@@ -521,18 +521,24 @@ async function startServer() {
   });
 
   // ==========================================
-  // Settings API Routes
+  // Settings API Routes (Auth Required)
   // ==========================================
-  app.get('/api/settings', async (req, res) => {
+  app.get('/api/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      let tenant = await prisma.tenant.findFirst();
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: req.tenantId! },
+      });
       if (!tenant) {
-        tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
+        return res.status(404).json({ error: 'Tenant not found' });
       }
+
       res.json({
-        ...tenant,
-        googleConnected: !!(tenant.googleAccessToken && tenant.googleRefreshToken),
-        embedSocialConnected: !!tenant.embedSocialApiKey,
+        yelpApiKey: tenant.yelpApiKey || '',
+        openaiApiKey: tenant.openaiApiKey || '',
+        geminiApiKey: tenant.geminiApiKey || '',
+        embedSocialApiKey: tenant.embedSocialApiKey || '',
+        embedSocialConnected: !!(tenant.embedSocialApiKey && tenant.embedSocialApiKey.trim()),
+        tenantName: tenant.name,
       });
     } catch (error) {
       console.error('Fetch settings error:', error);
@@ -540,29 +546,57 @@ async function startServer() {
     }
   });
 
-  app.post('/api/settings', async (req, res) => {
+  app.post('/api/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const { yelpApiKey, openaiApiKey, geminiApiKey, googlePlacesApiKey, embedSocialApiKey } = req.body;
-      let tenant = await prisma.tenant.findFirst();
-      if (!tenant) {
-        tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
-      }
+      const { yelpApiKey, openaiApiKey, geminiApiKey, embedSocialApiKey, tenantName } = req.body;
 
       const updated = await prisma.tenant.update({
-        where: { id: tenant.id },
+        where: { id: req.tenantId! },
         data: {
-          yelpApiKey,
-          openaiApiKey,
-          geminiApiKey,
-          googlePlacesApiKey,
-          embedSocialApiKey,
-          isConfigured: !!(yelpApiKey || openaiApiKey || geminiApiKey || googlePlacesApiKey || embedSocialApiKey),
+          yelpApiKey: yelpApiKey || null,
+          openaiApiKey: openaiApiKey || null,
+          geminiApiKey: geminiApiKey || null,
+          embedSocialApiKey: embedSocialApiKey || null,
+          isConfigured: !!(embedSocialApiKey?.trim()),
+          ...(tenantName && { name: tenantName }),
         },
       });
       res.json(updated);
     } catch (error) {
       console.error('Update settings error:', error);
       res.status(500).json({ error: 'Failed to update settings' });
+    }
+  });
+
+  // Test EmbedSocial connection
+  app.post('/api/settings/test-embedsocial', async (req, res) => {
+    try {
+      const { apiKey } = req.body;
+      if (!apiKey) {
+        return res.status(400).json({ error: 'API key is required' });
+      }
+
+      const base = 'https://embedsocial.com/app/api';
+      const response = await fetch(`${base}/rest/v1/listings`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+
+      if (!response.ok) {
+        return res.status(401).json({ error: 'Invalid API key or connection failed' });
+      }
+
+      const data = await response.json();
+      const listings = Array.isArray(data) ? data : (data.data || []);
+      const listingCount = listings.length;
+
+      res.json({
+        success: true,
+        listingCount,
+        message: `Connected! Found ${listingCount} listings.`,
+      });
+    } catch (error: any) {
+      console.error('Test EmbedSocial connection error:', error);
+      res.status(500).json({ error: 'Connection test failed', details: error.message });
     }
   });
 
@@ -835,9 +869,10 @@ async function startServer() {
   // Reviews API (REST API 直连 Google Business Profile)
   // ==========================================
 
-  app.get('/api/reviews', async (req, res) => {
+  app.get('/api/reviews', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const reviews = await prisma.review.findMany({
+        where: { location: { tenantId: req.tenantId! } },
         include: { location: true },
         orderBy: { createdAt: 'desc' },
       });
@@ -872,9 +907,9 @@ async function startServer() {
   });
 
   // Sync reviews from EmbedSocial
-  app.post('/api/reviews/sync', async (req, res) => {
+  app.post('/api/reviews/sync', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({
           error: 'EmbedSocial API key not configured. Please add it in Settings → EmbedSocial.',
@@ -1014,7 +1049,7 @@ async function startServer() {
   });
 
   // Reply to review via EmbedSocial
-  app.post('/api/reviews/:id/reply', async (req, res) => {
+  app.post('/api/reviews/:id/reply', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params;
       const { replyText } = req.body;
@@ -1067,13 +1102,13 @@ async function startServer() {
   });
 
   // ==========================================
-  // EmbedSocial API Endpoints
+  // EmbedSocial API Endpoints (Auth Required)
   // ==========================================
 
   // Verify EmbedSocial API key and list organizations
-  app.get('/api/embedsocial/organizations', async (req, res) => {
+  app.get('/api/embedsocial/organizations', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1086,9 +1121,9 @@ async function startServer() {
   });
 
   // List locations (sources) from EmbedSocial with full details
-  app.get('/api/embedsocial/locations', async (req, res) => {
+  app.get('/api/embedsocial/locations', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1128,9 +1163,9 @@ async function startServer() {
   });
 
   // Get listing metrics from EmbedSocial (formatted for dashboard)
-  app.get('/api/embedsocial/metrics', async (req, res) => {
+  app.get('/api/embedsocial/metrics', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1258,9 +1293,9 @@ async function startServer() {
   });
 
   // Get chart data (time series) from EmbedSocial
-  app.get('/api/embedsocial/chart-data', async (req, res) => {
+  app.get('/api/embedsocial/chart-data', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1459,9 +1494,9 @@ async function startServer() {
   });
 
   // Get review trends from EmbedSocial listing_item_metrics API
-  app.get('/api/embedsocial/review-trends', async (req, res) => {
+  app.get('/api/embedsocial/review-trends', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1627,9 +1662,9 @@ async function startServer() {
   });
 
   // Get reviews for a specific location from EmbedSocial
-  app.get('/api/embedsocial/reviews', async (req, res) => {
+  app.get('/api/embedsocial/reviews', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1701,13 +1736,13 @@ async function startServer() {
   });
 
   // Update a listing in EmbedSocial (for Edit Business Info)
-  app.put('/api/embedsocial/locations/:id', async (req, res) => {
+  app.put('/api/embedsocial/locations/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params;
       console.log(`[update-location] PUT /api/embedsocial/locations/${id}`);
       console.log(`[update-location] Body:`, JSON.stringify(req.body, null, 2));
       
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1732,10 +1767,10 @@ async function startServer() {
   });
 
   // Update a listing in EmbedSocial (bulk edit)
-  app.patch('/api/embedsocial/listings/:id', async (req, res) => {
+  app.patch('/api/embedsocial/listings/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params;
-      const apiKey = await getEmbedSocialApiKey();
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1816,19 +1851,17 @@ async function startServer() {
   });
 
   // ==========================================
-  // Locations API Routes
+  // Locations API Routes (Auth Required)
   // ==========================================
-  app.post('/api/locations', async (req, res) => {
+  app.post('/api/locations', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const { name, address, phone, googlePlaceId } = req.body;
-      let tenant = await prisma.tenant.findFirst();
-      if (!tenant) tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
 
       if (!name) return res.status(400).json({ error: 'Name is required' });
 
       const newLocation = await prisma.location.create({
         data: {
-          tenantId: tenant.id,
+          tenantId: req.tenantId!,
           name,
           address,
           phone,
@@ -1838,12 +1871,15 @@ async function startServer() {
       });
 
       if (googlePlaceId) {
-        const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
-        mappings[newLocation.id] = googlePlaceId;
-        await prisma.tenant.update({
-          where: { id: tenant.id },
-          data: { locationMappings: JSON.stringify(mappings) },
-        });
+        const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId! } });
+        if (tenant) {
+          const mappings: Record<string, string> = JSON.parse(tenant.locationMappings || '{}');
+          mappings[newLocation.id] = googlePlaceId;
+          await prisma.tenant.update({
+            where: { id: req.tenantId! },
+            data: { locationMappings: JSON.stringify(mappings) },
+          });
+        }
       }
 
       res.json(newLocation);
@@ -1853,9 +1889,12 @@ async function startServer() {
     }
   });
 
-  app.get('/api/locations', async (req, res) => {
+  app.get('/api/locations', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const locations = await prisma.location.findMany({ orderBy: { name: 'asc' } });
+      const locations = await prisma.location.findMany({
+        where: { tenantId: req.tenantId! },
+        orderBy: { name: 'asc' },
+      });
       res.json(locations);
     } catch (error) {
       console.error('Fetch locations error:', error);
@@ -2259,7 +2298,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
     }
   });
 
-  app.post('/api/reviews/generate-reply', async (req, res) => {
+  app.post('/api/reviews/generate-reply', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const { reviewId } = req.body;
       if (!reviewId) return res.status(400).json({ error: 'Review ID is required' });

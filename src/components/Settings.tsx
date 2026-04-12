@@ -19,6 +19,7 @@ export function Settings() {
   });
 
   const [embedSocialConnected, setEmbedSocialConnected] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
 
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -105,6 +106,30 @@ export function Settings() {
       console.error('Failed to add member:', error);
     } finally {
       setIsAddingMember(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!formData.embedSocialApiKey) return;
+    setTestingConnection(true);
+    try {
+      const res = await fetch('/api/settings/test-embedsocial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: formData.embedSocialApiKey }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSaveMessage({ type: 'success', text: `Connected! Found ${data.listingCount} listings.` });
+        setEmbedSocialConnected(true);
+      } else {
+        const error = await res.json();
+        setSaveMessage({ type: 'error', text: error.message || 'Connection failed' });
+      }
+    } catch (error) {
+      setSaveMessage({ type: 'error', text: 'Failed to test connection' });
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -216,6 +241,16 @@ export function Settings() {
                     <p className="text-xs text-outline leading-relaxed">
                       Find your API key in EmbedSocial → Settings → API & Webhooks.
                     </p>
+                    <div className="flex gap-3 mt-3">
+                      <button
+                        type="button"
+                        onClick={handleTestConnection}
+                        disabled={!formData.embedSocialApiKey || testingConnection}
+                        className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      >
+                        {testingConnection ? 'Testing...' : 'Test Connection'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
