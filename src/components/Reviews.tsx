@@ -552,7 +552,7 @@ export function Reviews() {
               {(selectedReview.replyText || selectedReview.replies?.length) && (
                 <div className="bg-slate-50 rounded-2xl p-6 mb-8 border-l-4 border-primary">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-primary mb-4">Your Reply</h4>
-                  <p className="text-sm text-slate-700">{selectedReview.replyText || selectedReview.replies?.[0]}</p>
+                  <p className="text-sm text-slate-700">{selectedReview.replyText || (typeof selectedReview.replies?.[0] === 'string' ? selectedReview.replies?.[0] : selectedReview.replies?.[0]?.text)}</p>
                 </div>
               )}
 
