@@ -29,6 +29,7 @@ export function Settings() {
   const [tenantListings, setTenantListings] = useState<TenantListing[]>([]);
   const [loadingListings, setLoadingListings] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   // EmbedSocial invite link (fixed - your account)
   const EMBEDSOCIAL_INVITE_LINK = 'https://embedsocial.com/app/public/grant_listing_access?token=esb7ebfffb58b61f1e223b7dabf36a48';
@@ -169,7 +170,6 @@ export function Settings() {
   };
 
   const refreshListings = async () => {
-    setLoadingListings(true);
     try {
       const res = await fetch('/api/tenant/listings');
       if (res.ok) {
@@ -178,6 +178,25 @@ export function Settings() {
       }
     } catch (error) {
       console.error('Failed to fetch listings:', error);
+    }
+  };
+
+  const handleSyncListings = async () => {
+    setLoadingListings(true);
+    setSyncMessage(null);
+    try {
+      const res = await fetch('/api/embedsocial/listings/sync', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setSyncMessage({ type: 'success', text: `Synced! Found ${data.totalFound} listings, added ${data.newlyAdded} new.` });
+        // Refresh the list from our database
+        await refreshListings();
+      } else {
+        setSyncMessage({ type: 'error', text: data.error || 'Sync failed' });
+      }
+    } catch (error) {
+      console.error('Failed to sync listings:', error);
+      setSyncMessage({ type: 'error', text: 'Sync failed. Please try again.' });
     } finally {
       setLoadingListings(false);
     }
@@ -264,14 +283,25 @@ export function Settings() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-semibold text-slate-700">My Connected Listings ({tenantListings.length})</h4>
-                  <button
-                    onClick={refreshListings}
-                    className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                    title="Refresh"
-                  >
-                    <RotateCw className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSyncListings}
+                      disabled={loadingListings}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                    >
+                      {loadingListings ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
+                      Sync from EmbedSocial
+                    </button>
+                  </div>
                 </div>
+
+                {syncMessage && (
+                  <div className={`mb-3 px-4 py-2 rounded-lg text-xs font-medium ${
+                    syncMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                  }`}>
+                    {syncMessage.text}
+                  </div>
+                )}
 
                 {loadingListings ? (
                   <div className="flex items-center justify-center py-8">

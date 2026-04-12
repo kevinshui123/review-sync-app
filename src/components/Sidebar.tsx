@@ -13,7 +13,6 @@ import {
   Bolt,
   AutoAwesome,
   Logout,
-  AddBusiness,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -28,7 +27,6 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: Dashboard },
   { id: 'listings', labelKey: 'nav.listings', icon: PushPin },
-  { id: 'connect-business', labelKey: 'nav.connectBusiness', icon: AddBusiness, badge: 'New' },
   { id: 'reviews', labelKey: 'nav.reviews', icon: RateReview },
   { id: 'bulk-edits', labelKey: 'nav.bulkEdits', icon: Edit },
   { id: 'edits-log', labelKey: 'nav.editsLog', icon: History },

@@ -1176,6 +1176,106 @@ async function startServer() {
     }
   });
 
+  // Sync listings from EmbedSocial - fetches all listings from API and saves to TenantListing
+  app.post('/api/embedsocial/listings/sync', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const apiKey = await getEmbedSocialApiKey(req.tenantId);
+      if (!apiKey) {
+        return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
+      }
+
+      console.log('[sync-listings] Starting sync for tenant:', req.tenantId);
+
+      // Fetch all listings from EmbedSocial
+      const allListings: any[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        try {
+          const data = await embedSocialFetchWithKey(apiKey, `/rest/v1/listings?page=${page}&pageSize=50`);
+          const listings: any[] = Array.isArray(data) ? data : (data.data || []);
+          if (listings.length === 0) break;
+          allListings.push(...listings);
+          hasMore = listings.length === 50;
+          page++;
+        } catch (e) {
+          console.error('[sync-listings] Error fetching page:', e);
+          break;
+        }
+      }
+
+      console.log(`[sync-listings] Found ${allListings.length} listings from EmbedSocial`);
+
+      if (allListings.length === 0) {
+        return res.json({ message: 'No listings found in EmbedSocial', synced: 0 });
+      }
+
+      // Get existing tenant listings
+      const existingListings = await prisma.tenantListing.findMany({
+        where: { tenantId: req.tenantId! },
+        select: { embedSocialListingId: true, name: true },
+      });
+      const existingIds = new Set(existingListings.map(l => l.embedSocialListingId));
+
+      // Add new listings (only those not already connected)
+      let synced = 0;
+      for (const listing of allListings) {
+        if (!existingIds.has(listing.id)) {
+          await prisma.tenantListing.create({
+            data: {
+              tenantId: req.tenantId!,
+              embedSocialListingId: listing.id,
+              name: listing.name || 'Unknown',
+              address: listing.address || '',
+              phoneNumber: listing.phoneNumber || '',
+              websiteUrl: listing.websiteUrl || '',
+              googleId: listing.googleId || '',
+              totalReviews: listing.totalReviews || 0,
+              averageRating: listing.averageRating || 0,
+              status: 'active',
+            },
+          });
+          synced++;
+          console.log(`[sync-listings] Added listing: ${listing.name} (${listing.id})`);
+        }
+      }
+
+      // Update existing listings with latest data
+      for (const listing of allListings) {
+        if (existingIds.has(listing.id)) {
+          await prisma.tenantListing.updateMany({
+            where: {
+              tenantId: req.tenantId!,
+              embedSocialListingId: listing.id,
+            },
+            data: {
+              name: listing.name || 'Unknown',
+              address: listing.address || listing.address || '',
+              phoneNumber: listing.phoneNumber || '',
+              websiteUrl: listing.websiteUrl || '',
+              totalReviews: listing.totalReviews || 0,
+              averageRating: listing.averageRating || 0,
+              status: 'active',
+            },
+          });
+        }
+      }
+
+      console.log(`[sync-listings] Synced ${synced} new listings`);
+
+      res.json({
+        message: `Successfully synced listings`,
+        totalFound: allListings.length,
+        newlyAdded: synced,
+        existingUpdated: allListings.length - synced,
+      });
+    } catch (error: any) {
+      console.error('Sync listings error:', error);
+      res.status(500).json({ error: 'Failed to sync listings', details: error.message });
+    }
+  });
+
   // Get listing metrics from EmbedSocial (formatted for dashboard)
   app.get('/api/embedsocial/metrics', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
