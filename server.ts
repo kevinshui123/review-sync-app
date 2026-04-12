@@ -1724,11 +1724,13 @@ async function startServer() {
       const dateStr = date.toISOString().split('T')[0];
       dailyData[dateStr] = {
         date: dateStr,
-        searchViews: 0,
-        mapViews: 0,
+        googleMapsDesktop: 0,
+        googleSearchDesktop: 0,
+        googleMapsMobile: 0,
+        googleSearchMobile: 0,
+        directions: 0,
+        callClicks: 0,
         websiteClicks: 0,
-        directionRequests: 0,
-        phoneCalls: 0,
       };
     }
 
@@ -1751,11 +1753,13 @@ async function startServer() {
             const m = dailyRes.listings[0];
             const dateStr = date.toISOString().split('T')[0];
             if (dailyData[dateStr]) {
-              dailyData[dateStr].searchViews += (m.googleSearchDesktop || 0) + (m.googleSearchMobile || 0);
-              dailyData[dateStr].mapViews += (m.googleMapsDesktop || 0) + (m.googleMapsMobile || 0);
+              dailyData[dateStr].googleMapsDesktop += m.googleMapsDesktop || 0;
+              dailyData[dateStr].googleSearchDesktop += m.googleSearchDesktop || 0;
+              dailyData[dateStr].googleMapsMobile += m.googleMapsMobile || 0;
+              dailyData[dateStr].googleSearchMobile += m.googleSearchMobile || 0;
+              dailyData[dateStr].directions += m.directions || 0;
+              dailyData[dateStr].callClicks += m.callClicks || 0;
               dailyData[dateStr].websiteClicks += m.websiteClicks || 0;
-              dailyData[dateStr].directionRequests += m.directions || 0;
-              dailyData[dateStr].phoneCalls += m.callClicks || 0;
             }
           }
         } catch (_) { /* ignore individual day errors */ }
@@ -1787,37 +1791,54 @@ async function startServer() {
       // Get daily data
       const dailyData = await getReportChartData(req.tenantId!, apiKey, days);
 
-      // Compute monthly aggregates for search
+      // Compute monthly aggregates for search (4 separate metrics)
       const monthlySearch: Record<string, any> = {};
       for (const d of dailyData) {
-        const month = d.date.substring(0, 7); // "2026-03"
-        if (!monthlySearch[month]) monthlySearch[month] = { searchViews: 0, mapViews: 0, websiteClicks: 0, directionRequests: 0, phoneCalls: 0 };
-        monthlySearch[month].searchViews += d.searchViews;
-        monthlySearch[month].mapViews += d.mapViews;
-        monthlySearch[month].websiteClicks += d.websiteClicks;
-        monthlySearch[month].directionRequests += d.directionRequests;
-        monthlySearch[month].phoneCalls += d.phoneCalls;
+        const month = d.date.substring(0, 7);
+        if (!monthlySearch[month]) monthlySearch[month] = {
+          googleMapsDesktop: 0, googleSearchDesktop: 0,
+          googleMapsMobile: 0, googleSearchMobile: 0,
+          directions: 0, callClicks: 0, websiteClicks: 0,
+        };
+        monthlySearch[month].googleMapsDesktop += d.googleMapsDesktop || 0;
+        monthlySearch[month].googleSearchDesktop += d.googleSearchDesktop || 0;
+        monthlySearch[month].googleMapsMobile += d.googleMapsMobile || 0;
+        monthlySearch[month].googleSearchMobile += d.googleSearchMobile || 0;
+        monthlySearch[month].directions += d.directions || 0;
+        monthlySearch[month].callClicks += d.callClicks || 0;
+        monthlySearch[month].websiteClicks += d.websiteClicks || 0;
       }
 
       const months = Object.keys(monthlySearch).sort();
-      const totalSearchViews = months.reduce((s, m) => s + monthlySearch[m].searchViews, 0);
-      const totalMapViews = months.reduce((s, m) => s + monthlySearch[m].mapViews, 0);
-      const totalActions = months.reduce((s, m) => s + monthlySearch[m].directionRequests + monthlySearch[m].phoneCalls, 0);
 
-      // Compute summarized data (total vs previous month)
+      // Compute summarized totals for KPI cards
+      const totalMapsDesktop = months.reduce((s, m) => s + (monthlySearch[m].googleMapsDesktop || 0), 0);
+      const totalSearchDesktop = months.reduce((s, m) => s + (monthlySearch[m].googleSearchDesktop || 0), 0);
+      const totalMapsMobile = months.reduce((s, m) => s + (monthlySearch[m].googleMapsMobile || 0), 0);
+      const totalSearchMobile = months.reduce((s, m) => s + (monthlySearch[m].googleSearchMobile || 0), 0);
+      const totalDirections = months.reduce((s, m) => s + (monthlySearch[m].directions || 0), 0);
+      const totalCallClicks = months.reduce((s, m) => s + (monthlySearch[m].callClicks || 0), 0);
+      const totalWebsiteClicks = months.reduce((s, m) => s + (monthlySearch[m].websiteClicks || 0), 0);
+
+      // Period-over-period change for search (all 4 combined)
       const currentMonth = months[months.length - 1];
       const prevMonth = months[months.length - 2];
-      const curSearch = monthlySearch[currentMonth]?.searchViews || 0;
-      const prevSearch = monthlySearch[prevMonth]?.searchViews || 0;
-      const searchChange = prevSearch > 0 ? Math.round(((curSearch - prevSearch) / prevSearch) * 100) : 0;
-      const curActions = (monthlySearch[currentMonth]?.directionRequests || 0) + (monthlySearch[currentMonth]?.phoneCalls || 0);
-      const prevActions = (monthlySearch[prevMonth]?.directionRequests || 0) + (monthlySearch[prevMonth]?.phoneCalls || 0);
-      const actionsChange = prevActions > 0 ? Math.round(((curActions - prevActions) / prevActions) * 100) : 0;
+      const curTotal = (months.reduce((s, m) => {
+        if (m === currentMonth) return s +
+          (monthlySearch[m].googleMapsDesktop || 0) + (monthlySearch[m].googleSearchDesktop || 0) +
+          (monthlySearch[m].googleMapsMobile || 0) + (monthlySearch[m].googleSearchMobile || 0);
+        return s;
+      }, 0));
+      const prevTotal = (months.reduce((s, m) => {
+        if (m === prevMonth) return s +
+          (monthlySearch[m].googleMapsDesktop || 0) + (monthlySearch[m].googleSearchDesktop || 0) +
+          (monthlySearch[m].googleMapsMobile || 0) + (monthlySearch[m].googleSearchMobile || 0);
+        return s;
+      }, 0));
+      const periodChange = prevTotal > 0 ? Math.round(((curTotal - prevTotal) / prevTotal) * 100) : 0;
 
-      // Compute weekly aggregates (last 7 days)
-      const last7days = dailyData.slice(-7);
-      const weeklySearch = last7days.map(d => ({ date: d.date, views: d.searchViews }));
-      const weeklyActions = last7days.map(d => ({ date: d.date, actions: (d.directionRequests || 0) + (d.phoneCalls || 0) }));
+      // Last 7 days
+      const last7 = dailyData.slice(-7);
 
       // Build PDF
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -1826,218 +1847,447 @@ async function startServer() {
       doc.pipe(res);
 
       const W = doc.page.width - 80;
-      const gray = '#64748b', dark = '#1e293b', primary = '#2563eb', lightBg = '#f8fafc';
+      const dark = '#1e293b', lightBg = '#f8fafc';
 
-      // Page 1: Title
+      // ── Page 1: Title ──
       doc.rect(0, 0, doc.page.width, 120).fill('#2563eb');
       doc.fillColor('white').fontSize(24).font('Helvetica-Bold').text('GMB Insights Report', 40, 40);
       doc.fontSize(11).font('Helvetica').text(`${businessName}`, 40, 75);
       doc.text(`Selected Date Range: ${startDateStr} - ${endDateStr}`, 40, 92);
 
-      // Page 2: Search Performance table
+      // ── Page 2: Search Performance Overview ──
       doc.addPage();
       doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Search Performance: ${startDateStr} - ${endDateStr}`, 40, 40);
       let y = 70;
-      // Table header
+
+      // 4 KPI cards in a row
+      const kpiW = (W - 30) / 4;
+      const kpis = [
+        { label: 'Google Maps Desktop', value: totalMapsDesktop, color: '#9333ea' },
+        { label: 'Google Search Desktop', value: totalSearchDesktop, color: '#2563eb' },
+        { label: 'Google Maps Mobile', value: totalMapsMobile, color: '#c084fc' },
+        { label: 'Google Search Mobile', value: totalSearchMobile, color: '#93c5fd' },
+      ];
+      for (let i = 0; i < kpis.length; i++) {
+        const k = kpis[i];
+        const kx = 40 + i * (kpiW + 10);
+        doc.rect(kx, y, kpiW, 60).fill(k.color);
+        doc.fillColor('white').fontSize(9).font('Helvetica').text(k.label, kx + 8, y + 8, { width: kpiW - 16 });
+        doc.fontSize(16).font('Helvetica-Bold').text(k.value.toLocaleString(), kx + 8, y + 28, { width: kpiW - 16 });
+      }
+      y += 68;
+
+      // Period change banner
+      const changeColor = periodChange >= 0 ? '#16a34a' : '#dc2626';
+      doc.rect(40, y, W, 22).fill(changeColor);
+      doc.fillColor('white').fontSize(10).font('Helvetica-Bold')
+        .text(`Period Change: ${periodChange >= 0 ? '+' : ''}${periodChange}% vs Previous Period`, 50, y + 5);
+      y += 30;
+
+      // Monthly table: Date | Maps Desktop | Search Desktop | Maps Mobile | Search Mobile | Total | % Chg
       doc.rect(40, y, W, 20).fill('#e2e8f0');
-      doc.fillColor(dark).fontSize(9).font('Helvetica-Bold');
-      doc.text('Date', 45, y + 5); doc.text('Search Views', 150, y + 5); doc.text('Map Views', 260, y + 5); doc.text('% Change', 370, y + 5);
+      doc.fillColor(dark).fontSize(8).font('Helvetica-Bold');
+      doc.text('Date', 45, y + 6);
+      doc.text('Maps Desktop', 105, y + 6);
+      doc.text('Search Desktop', 175, y + 6);
+      doc.text('Maps Mobile', 245, y + 6);
+      doc.text('Search Mobile', 315, y + 6);
+      doc.text('Total', 385, y + 6);
+      doc.text('% Chg', 440, y + 6);
       y += 20;
+
       for (let i = 0; i < months.length; i++) {
         const m = months[i];
-        const mData = monthlySearch[m];
-        const prevMData = monthlySearch[months[i - 1]];
-        const pctChange = prevMData ? Math.round(((mData.searchViews - prevMData.searchViews) / (prevMData.searchViews || 1)) * 100) : 0;
+        const md = monthlySearch[m];
+        const rowTotal = (md.googleMapsDesktop || 0) + (md.googleSearchDesktop || 0) + (md.googleMapsMobile || 0) + (md.googleSearchMobile || 0);
+        const prevMd = monthlySearch[months[i - 1]];
+        const prevRowTotal = prevMd ? (prevMd.googleMapsDesktop || 0) + (prevMd.googleSearchDesktop || 0) + (prevMd.googleMapsMobile || 0) + (prevMd.googleSearchMobile || 0) : 0;
+        const pctChange = prevRowTotal > 0 ? Math.round(((rowTotal - prevRowTotal) / prevRowTotal) * 100) : 0;
         if (i % 2 === 0) doc.rect(40, y, W, 16).fill(lightBg);
-        doc.fillColor(dark).fontSize(9).font('Helvetica').text(m, 45, y + 3);
-        doc.text(mData.searchViews.toLocaleString(), 150, y + 3);
-        doc.text(mData.mapViews.toLocaleString(), 260, y + 3);
-        doc.text(`${pctChange > 0 ? '+' : ''}${pctChange}%`, 370, y + 3);
+        doc.fillColor(dark).fontSize(8).font('Helvetica').text(m, 45, y + 4);
+        doc.text((md.googleMapsDesktop || 0).toLocaleString(), 105, y + 4);
+        doc.text((md.googleSearchDesktop || 0).toLocaleString(), 175, y + 4);
+        doc.text((md.googleMapsMobile || 0).toLocaleString(), 245, y + 4);
+        doc.text((md.googleSearchMobile || 0).toLocaleString(), 315, y + 4);
+        doc.text(rowTotal.toLocaleString(), 385, y + 4);
+        doc.text(`${pctChange > 0 ? '+' : ''}${pctChange}%`, 440, y + 4);
         y += 16;
       }
+
       // Total row
+      const grandTotal = (totalMapsDesktop + totalSearchDesktop + totalMapsMobile + totalSearchMobile);
       doc.rect(40, y, W, 16).fill('#e2e8f0');
-      doc.font('Helvetica-Bold').text('Total', 45, y + 3);
-      doc.text(totalSearchViews.toLocaleString(), 150, y + 3);
-      doc.text(totalMapViews.toLocaleString(), 260, y + 3);
-      y += 30;
+      doc.font('Helvetica-Bold').text('Total', 45, y + 4);
+      doc.text(totalMapsDesktop.toLocaleString(), 105, y + 4);
+      doc.text(totalSearchDesktop.toLocaleString(), 175, y + 4);
+      doc.text(totalMapsMobile.toLocaleString(), 245, y + 4);
+      doc.text(totalSearchMobile.toLocaleString(), 315, y + 4);
+      doc.text(grandTotal.toLocaleString(), 385, y + 4);
 
-      // Page 3: Search Performance line chart
+      // ── Page 3: Search Performance Chart (stacked bar) ──
       doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Search Performance: ${startDateStr} - ${endDateStr}`, 40, 40);
-      y = 70;
-      drawLineChart(doc, dailyData.map((d: any) => d.date), [{ key: 'searchViews', label: 'Search Views', color: '#2563eb' }, { key: 'mapViews', label: 'Map Views', color: '#9333ea' }], 40, y, W, 200);
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Search Performance', 40, 40);
+      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, 58);
+      y = 85;
+      drawStackedBarChart(doc,
+        dailyData.map((d: any) => d.date),
+        [
+          { key: 'googleMapsDesktop', label: 'Google Maps Desktop', color: '#9333ea' },
+          { key: 'googleSearchDesktop', label: 'Google Search Desktop', color: '#2563eb' },
+          { key: 'googleMapsMobile', label: 'Google Maps Mobile', color: '#c084fc' },
+          { key: 'googleSearchMobile', label: 'Google Search Mobile', color: '#93c5fd' },
+        ],
+        40, y, W, 240, dailyData as Record<string, any>[]);
 
-      // Page 4: Summarized Search Performance
+      // ── Page 4: Weekly Search Performance ──
       doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Summarized Search Performance: ${startDateStr} - ${endDateStr}`, 40, 40);
-      y = 70;
-      doc.rect(40, y, W, 100).fill('#f8fafc').stroke('#e2e8f0');
-      doc.fontSize(9).font('Helvetica');
-      doc.text(`Total Search Views: ${totalSearchViews.toLocaleString()}`, 50, y + 15);
-      doc.text(`Total Map Views: ${totalMapViews.toLocaleString()}`, 50, y + 35);
-      doc.text(`Change vs Previous Period: ${searchChange > 0 ? '+' : ''}${searchChange}%`, 50, y + 55);
-      doc.text(`Data Period: ${startDateStr} – ${endDateStr}`, 50, y + 75);
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Weekly Search Performance', 40, 40);
+      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${last7[0]?.date} - ${last7[last7.length - 1]?.date}`, 40, 58);
+      y = 85;
+      drawGroupedBarChart(doc,
+        last7.map((d: any) => d.date),
+        [
+          { key: 'googleMapsDesktop', label: 'Google Maps Desktop', color: '#9333ea' },
+          { key: 'googleSearchDesktop', label: 'Google Search Desktop', color: '#2563eb' },
+          { key: 'googleMapsMobile', label: 'Google Maps Mobile', color: '#c084fc' },
+          { key: 'googleSearchMobile', label: 'Google Search Mobile', color: '#93c5fd' },
+        ],
+        40, y, W, 240, last7 as Record<string, any>[]);
+      y += 248;
 
-      // Pie chart for search vs map
-      drawPieChart(doc, [{ label: 'Search Views', value: totalSearchViews, color: '#2563eb' }, { label: 'Map Views', value: totalMapViews, color: '#9333ea' }], 200, y + 20, 200);
-
-      // Page 5: Weekly Search Performance
-      doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Weekly Search Performance: ${weeklySearch[0]?.date} - ${weeklySearch[weeklySearch.length - 1]?.date}`, 40, 40);
-      y = 70;
-      drawBarChart(doc, weeklySearch.map(d => d.date), [{ key: 'views', label: 'Search Views', color: '#2563eb' }], 40, y, W, 200);
-
-      // Page 6: Weekly Search Performance table
-      doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Weekly Search Performance: ${weeklySearch[0]?.date} - ${weeklySearch[weeklySearch.length - 1]?.date}`, 40, 40);
-      y = 70;
+      // Weekly table: Date | Maps Desktop | Search Desktop | Maps Mobile | Search Mobile | Total
       doc.rect(40, y, W, 20).fill('#e2e8f0');
-      doc.fillColor(dark).fontSize(9).font('Helvetica-Bold');
-      doc.text('Date', 45, y + 5); doc.text('Search Views', 200, y + 5);
+      doc.fillColor(dark).fontSize(8).font('Helvetica-Bold');
+      doc.text('Date', 45, y + 6);
+      doc.text('Maps Desktop', 105, y + 6);
+      doc.text('Search Desktop', 175, y + 6);
+      doc.text('Maps Mobile', 245, y + 6);
+      doc.text('Search Mobile', 315, y + 6);
+      doc.text('Total', 385, y + 6);
       y += 20;
-      for (let i = 0; i < weeklySearch.length; i++) {
-        const d = weeklySearch[i];
+      for (let i = 0; i < last7.length; i++) {
+        const d = last7[i];
+        const wTotal = (d.googleMapsDesktop || 0) + (d.googleSearchDesktop || 0) + (d.googleMapsMobile || 0) + (d.googleSearchMobile || 0);
         if (i % 2 === 0) doc.rect(40, y, W, 16).fill(lightBg);
-        doc.fillColor(dark).fontSize(9).font('Helvetica').text(d.date, 45, y + 3);
-        doc.text(d.views.toLocaleString(), 200, y + 3);
+        doc.fillColor(dark).fontSize(8).font('Helvetica').text(d.date, 45, y + 4);
+        doc.text((d.googleMapsDesktop || 0).toLocaleString(), 105, y + 4);
+        doc.text((d.googleSearchDesktop || 0).toLocaleString(), 175, y + 4);
+        doc.text((d.googleMapsMobile || 0).toLocaleString(), 245, y + 4);
+        doc.text((d.googleSearchMobile || 0).toLocaleString(), 315, y + 4);
+        doc.text(wTotal.toLocaleString(), 385, y + 4);
         y += 16;
       }
 
-      // Pages 7-9: Actions Performance
+      // ── Page 5: Actions Performance ──
       doc.addPage();
       doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Actions Performance: ${startDateStr} - ${endDateStr}`, 40, 40);
       y = 70;
+
+      // 3 KPI cards
+      const actKpiW = (W - 20) / 3;
+      const actKpis = [
+        { label: 'Directions', value: totalDirections, color: '#f97316' },
+        { label: 'Phone Calls', value: totalCallClicks, color: '#ef4444' },
+        { label: 'Website Clicks', value: totalWebsiteClicks, color: '#2563eb' },
+      ];
+      for (let i = 0; i < actKpis.length; i++) {
+        const k = actKpis[i];
+        const kx = 40 + i * (actKpiW + 10);
+        doc.rect(kx, y, actKpiW, 60).fill(k.color);
+        doc.fillColor('white').fontSize(9).font('Helvetica').text(k.label, kx + 8, y + 8, { width: actKpiW - 16 });
+        doc.fontSize(16).font('Helvetica-Bold').text(k.value.toLocaleString(), kx + 8, y + 28, { width: actKpiW - 16 });
+      }
+      y += 68;
+
+      // Monthly table: Date | Directions | Phone Calls | Website Clicks | Total | % Chg
       doc.rect(40, y, W, 20).fill('#e2e8f0');
-      doc.fillColor(dark).fontSize(9).font('Helvetica-Bold');
-      doc.text('Date', 45, y + 5); doc.text('Direction Requests', 150, y + 5); doc.text('Phone Calls', 280, y + 5); doc.text('Total', 380, y + 5);
+      doc.fillColor(dark).fontSize(8).font('Helvetica-Bold');
+      doc.text('Date', 45, y + 6);
+      doc.text('Directions', 125, y + 6);
+      doc.text('Phone Calls', 210, y + 6);
+      doc.text('Website Clicks', 295, y + 6);
+      doc.text('Total', 390, y + 6);
+      doc.text('% Chg', 450, y + 6);
       y += 20;
+
       for (let i = 0; i < months.length; i++) {
         const m = months[i];
-        const mData = monthlySearch[m];
-        const total = (mData.directionRequests || 0) + (mData.phoneCalls || 0);
-        const prevMData = monthlySearch[months[i - 1]];
-        const prevTotal = prevMData ? (prevMData.directionRequests || 0) + (prevMData.phoneCalls || 0) : 0;
-        const pctChange = prevTotal > 0 ? Math.round(((total - prevTotal) / prevTotal) * 100) : 0;
+        const md = monthlySearch[m];
+        const atotal = (md.directions || 0) + (md.callClicks || 0) + (md.websiteClicks || 0);
+        const prevMd = monthlySearch[months[i - 1]];
+        const prevAtotal = prevMd ? (prevMd.directions || 0) + (prevMd.callClicks || 0) + (prevMd.websiteClicks || 0) : 0;
+        const pctChange = prevAtotal > 0 ? Math.round(((atotal - prevAtotal) / prevAtotal) * 100) : 0;
         if (i % 2 === 0) doc.rect(40, y, W, 16).fill(lightBg);
-        doc.fillColor(dark).fontSize(9).font('Helvetica').text(m, 45, y + 3);
-        doc.text((mData.directionRequests || 0).toLocaleString(), 150, y + 3);
-        doc.text((mData.phoneCalls || 0).toLocaleString(), 280, y + 3);
-        doc.text(total.toLocaleString(), 380, y + 3);
+        doc.fillColor(dark).fontSize(8).font('Helvetica').text(m, 45, y + 4);
+        doc.text((md.directions || 0).toLocaleString(), 125, y + 4);
+        doc.text((md.callClicks || 0).toLocaleString(), 210, y + 4);
+        doc.text((md.websiteClicks || 0).toLocaleString(), 295, y + 4);
+        doc.text(atotal.toLocaleString(), 390, y + 4);
+        doc.text(`${pctChange > 0 ? '+' : ''}${pctChange}%`, 450, y + 4);
         y += 16;
       }
-      const totalDirections = months.reduce((s, m) => s + (monthlySearch[m].directionRequests || 0), 0);
-      const totalCalls = months.reduce((s, m) => s + (monthlySearch[m].phoneCalls || 0), 0);
+
+      // Total row
+      const actGrandTotal = totalDirections + totalCallClicks + totalWebsiteClicks;
       doc.rect(40, y, W, 16).fill('#e2e8f0');
-      doc.font('Helvetica-Bold').text('Total', 45, y + 3);
-      doc.text(totalDirections.toLocaleString(), 150, y + 3);
-      doc.text(totalCalls.toLocaleString(), 280, y + 3);
-      doc.text(totalDirections.toLocaleString(), 380, y + 3);
-      y += 30;
+      doc.font('Helvetica-Bold').text('Total', 45, y + 4);
+      doc.text(totalDirections.toLocaleString(), 125, y + 4);
+      doc.text(totalCallClicks.toLocaleString(), 210, y + 4);
+      doc.text(totalWebsiteClicks.toLocaleString(), 295, y + 4);
+      doc.text(actGrandTotal.toLocaleString(), 390, y + 4);
 
-      // Page 8: Actions line chart
+      // ── Page 6: Actions Performance Charts ──
       doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Actions Performance: ${startDateStr} - ${endDateStr}`, 40, 40);
-      y = 70;
-      drawLineChart(doc, dailyData.map((d: any) => d.date), [{ key: 'directionRequests', label: 'Direction Requests', color: '#f97316' }, { key: 'phoneCalls', label: 'Phone Calls', color: '#ef4444' }], 40, y, W, 200);
+      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text('Actions Performance', 40, 40);
+      doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${startDateStr} - ${endDateStr}`, 40, 58);
+      y = 85;
+      drawLineChart(doc,
+        dailyData.map((d: any) => d.date),
+        [
+          { key: 'directions', label: 'Directions', color: '#f97316' },
+          { key: 'callClicks', label: 'Phone Calls', color: '#ef4444' },
+          { key: 'websiteClicks', label: 'Website Clicks', color: '#2563eb' },
+        ],
+        40, y, W, 240, dailyData as Record<string, any>[]);
+      y += 248;
 
-      // Page 9: Summarized Actions
-      doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Summarized Actions Performance: ${startDateStr} - ${endDateStr}`, 40, 40);
-      y = 70;
-      doc.rect(40, y, W, 100).fill('#f8fafc').stroke('#e2e8f0');
-      doc.fontSize(9).font('Helvetica');
-      doc.text(`Total Direction Requests: ${totalDirections.toLocaleString()}`, 50, y + 15);
-      doc.text(`Total Phone Calls: ${totalCalls.toLocaleString()}`, 50, y + 35);
-      doc.text(`Change vs Previous Period: ${actionsChange > 0 ? '+' : ''}${actionsChange}%`, 50, y + 55);
-      doc.text(`Data Period: ${startDateStr} – ${endDateStr}`, 50, y + 75);
-      drawPieChart(doc, [{ label: 'Direction Requests', value: totalDirections, color: '#f97316' }, { label: 'Phone Calls', value: totalCalls, color: '#ef4444' }], 200, y + 20, 200);
-
-      // Page 10: Weekly Actions Performance
-      doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Weekly Actions Performance: ${weeklyActions[0]?.date} - ${weeklyActions[weeklyActions.length - 1]?.date}`, 40, 40);
-      y = 70;
-      drawBarChart(doc, weeklyActions.map(d => d.date), [{ key: 'actions', label: 'Actions', color: '#f97316' }], 40, y, W, 200);
-
-      // Page 11: Weekly Actions table
-      doc.addPage();
-      doc.fillColor(dark).fontSize(14).font('Helvetica-Bold').text(`Weekly Actions Performance: ${weeklyActions[0]?.date} - ${weeklyActions[weeklyActions.length - 1]?.date}`, 40, 40);
-      y = 70;
+      // Weekly breakdown table: Date | Directions | Phone Calls | Website Clicks | Total
       doc.rect(40, y, W, 20).fill('#e2e8f0');
-      doc.fillColor(dark).fontSize(9).font('Helvetica-Bold');
-      doc.text('Date', 45, y + 5); doc.text('Actions', 200, y + 5);
+      doc.fillColor(dark).fontSize(8).font('Helvetica-Bold');
+      doc.text('Date', 45, y + 6);
+      doc.text('Directions', 125, y + 6);
+      doc.text('Phone Calls', 210, y + 6);
+      doc.text('Website Clicks', 295, y + 6);
+      doc.text('Total', 390, y + 6);
       y += 20;
-      for (let i = 0; i < weeklyActions.length; i++) {
-        const d = weeklyActions[i];
+      for (let i = 0; i < last7.length; i++) {
+        const d = last7[i];
+        const wTotal = (d.directions || 0) + (d.callClicks || 0) + (d.websiteClicks || 0);
         if (i % 2 === 0) doc.rect(40, y, W, 16).fill(lightBg);
-        doc.fillColor(dark).fontSize(9).font('Helvetica').text(d.date, 45, y + 3);
-        doc.text(d.actions.toLocaleString(), 200, y + 3);
+        doc.fillColor(dark).fontSize(8).font('Helvetica').text(d.date, 45, y + 4);
+        doc.text((d.directions || 0).toLocaleString(), 125, y + 4);
+        doc.text((d.callClicks || 0).toLocaleString(), 210, y + 4);
+        doc.text((d.websiteClicks || 0).toLocaleString(), 295, y + 4);
+        doc.text(wTotal.toLocaleString(), 390, y + 4);
         y += 16;
       }
 
       doc.end();
     } catch (error: any) {
       console.error('PDF generation error:', error);
-      // Guard against write-after-end when the stream has already started
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to generate PDF', details: error.message });
       } else {
-        // Stream already started — try to end it cleanly
         try { res.end(); } catch {}
       }
     }
   });
 
   // PDF chart drawing helpers
-  function drawLineChart(doc: any, labels: string[], series: { key: string; label: string; color: string }[], x: number, y: number, width: number, height: number) {
-    const data = [] as any[];
-    // we already have data in the outer scope via closure — re-derive from dailyData won't work here
-    // Instead, let's skip inline chart drawing and just show a placeholder table
-    // The chart rendering is handled via Recharts in the frontend PDF preview
+  function drawLineChart(doc: any, labels: string[], series: { key: string; label: string; color: string }[], x: number, y: number, width: number, height: number, data: Record<string, any>[]) {
+    // Chart area bounds
+    const chartX = x + 50;
+    const chartY = y + 10;
+    const chartW = width - 60;
+    const chartH = height - 30;
+
     doc.rect(x, y, width, height).fill('#f8fafc').stroke('#e2e8f0');
-    doc.fillColor('#94a3b8').fontSize(10).font('Helvetica').text('← Line chart rendered in browser preview →', x + 20, y + height / 2 - 5);
-  }
 
-  function drawPieChart(doc: any, slices: { label: string; value: number; color: string }[], cx: number, cy: number, radius: number) {
-    const total = slices.reduce((s: number, sl: any) => s + sl.value, 0) || 1;
+    if (!data || data.length === 0) {
+      doc.fillColor('#94a3b8').fontSize(10).font('Helvetica').text('No data', x + chartW / 2 - 20, y + chartH / 2);
+      return;
+    }
 
-    // Draw each slice as a thick stroked circle arc using path.arc
-    let startAngle = -Math.PI / 2;
-    for (const sl of slices) {
-      const sliceAngle = (sl.value / total) * 2 * Math.PI;
-      const endAngle = startAngle + sliceAngle;
-
-      // Draw arc using path API
-      doc.path(`M ${cx} ${cy} L ${cx + radius * Math.cos(startAngle)} ${cy + radius * Math.sin(startAngle)} A ${radius} ${radius} 0 ${sliceAngle > Math.PI ? 1 : 0} 1 ${cx + radius * Math.cos(endAngle)} ${cy + radius * Math.sin(endAngle)} Z`)
-        .fillAndStroke(sl.color, 'white');
-
-      // Percentage label
-      const midAngle = startAngle + sliceAngle / 2;
-      const labelR = radius * 0.65;
-      doc.fillColor('white').fontSize(8).font('Helvetica-Bold');
-      const lx = cx + labelR * Math.cos(midAngle);
-      const ly = cy + labelR * Math.sin(midAngle);
-      if (sliceAngle > 0.3) {
-        doc.text(Math.round((sl.value / total) * 100) + '%', lx - 10, ly - 4, { width: 20, align: 'center' });
+    // Collect all values across all series to compute scale
+    let maxVal = 0;
+    for (const d of data) {
+      for (const s of series) {
+        const v = d[s.key] || 0;
+        if (v > maxVal) maxVal = v;
       }
-      startAngle = endAngle;
+    }
+    if (maxVal === 0) maxVal = 1;
+
+    // Y-axis grid lines (5 lines)
+    doc.font('Helvetica').fontSize(7).fillColor('#94a3b8');
+    for (let i = 0; i <= 4; i++) {
+      const gy = chartY + chartH - (i / 4) * chartH;
+      const gVal = Math.round((i / 4) * maxVal);
+      doc.moveTo(chartX, gy).lineTo(chartX + chartW, gy).stroke('#e2e8f0');
+      doc.text(gVal.toLocaleString(), x + 2, gy - 4, { width: 45, align: 'right' });
+    }
+
+    // X-axis labels (show every Nth label to avoid crowding)
+    const step = Math.max(1, Math.ceil(labels.length / 8));
+    doc.fillColor('#64748b').fontSize(7);
+    for (let i = 0; i < labels.length; i += step) {
+      const gx = chartX + (i / (data.length - 1 || 1)) * chartW;
+      doc.moveTo(gx, chartY + chartH).lineTo(gx, chartY + chartH + 4).stroke('#cbd5e1');
+      doc.text(labels[i], gx - 10, chartY + chartH + 5, { width: 60 });
+    }
+
+    // Draw lines for each series
+    for (const s of series) {
+      const pts: [number, number][] = [];
+      for (let i = 0; i < data.length; i++) {
+        const v = data[i][s.key] || 0;
+        const px = chartX + (i / (data.length - 1 || 1)) * chartW;
+        const py = chartY + chartH - (v / maxVal) * chartH;
+        pts.push([px, py]);
+      }
+      // Line path
+      let pathStr = `M ${pts[0][0]} ${pts[0][1]}`;
+      for (let i = 1; i < pts.length; i++) pathStr += ` L ${pts[i][0]} ${pts[i][1]}`;
+      doc.path(pathStr).stroke(s.color);
+
+      // Dots
+      for (const [px, py] of pts) {
+        doc.circle(px, py, 2.5).fill(s.color);
+      }
     }
 
     // Legend
-    let legendY = cy + radius + 15;
-    let legendX = cx - (slices.length * 80) / 2;
-    doc.fillColor('#1e293b').fontSize(9).font('Helvetica');
-    for (const sl of slices) {
-      doc.rect(legendX, legendY, 12, 12).fill(sl.color);
-      doc.text(sl.label, legendX + 16, legendY + 2);
-      legendX += 80;
+    const legendBoxW = (series.length * 70);
+    let legendX = x + (width - legendBoxW) / 2;
+    doc.fontSize(8).font('Helvetica');
+    for (const s of series) {
+      doc.rect(legendX, y + height - 18, 10, 10).fill(s.color);
+      doc.fillColor('#1e293b').text(s.label || s.key, legendX + 13, y + height - 16);
+      legendX += 70;
     }
   }
 
-  function drawBarChart(doc: any, labels: string[], series: { key: string; label: string; color: string }[], x: number, y: number, width: number, height: number) {
-    const data = [] as any[];
+  function drawGroupedBarChart(doc: any, labels: string[], series: { key: string; label: string; color: string }[], x: number, y: number, width: number, height: number, data: Record<string, any>[]) {
+    const chartX = x + 50;
+    const chartY = y + 10;
+    const chartW = width - 60;
+    const chartH = height - 30;
+
     doc.rect(x, y, width, height).fill('#f8fafc').stroke('#e2e8f0');
-    doc.fillColor('#94a3b8').fontSize(10).font('Helvetica').text('← Bar chart rendered in browser preview →', x + 20, y + height / 2 - 5);
+
+    if (!data || data.length === 0) {
+      doc.fillColor('#94a3b8').fontSize(10).font('Helvetica').text('No data', x + chartW / 2 - 20, y + chartH / 2);
+      return;
+    }
+
+    let maxVal = 0;
+    for (const d of data) {
+      for (const s of series) {
+        const v = d[s.key] || 0;
+        if (v > maxVal) maxVal = v;
+      }
+    }
+    if (maxVal === 0) maxVal = 1;
+
+    // Y-axis grid
+    doc.font('Helvetica').fontSize(7).fillColor('#94a3b8');
+    for (let i = 0; i <= 4; i++) {
+      const gy = chartY + chartH - (i / 4) * chartH;
+      const gVal = Math.round((i / 4) * maxVal);
+      doc.moveTo(chartX, gy).lineTo(chartX + chartW, gy).stroke('#e2e8f0');
+      doc.text(gVal.toLocaleString(), x + 2, gy - 4, { width: 45, align: 'right' });
+    }
+
+    const n = series.length;
+    const groupW = chartW / (data.length || 1);
+    const barW = Math.min(groupW * 0.7 / n, 20);
+    const gap = (groupW - barW * n) / 2;
+
+    for (let gi = 0; gi < data.length; gi++) {
+      const d = data[gi];
+      const groupX = chartX + gi * groupW;
+      for (let si = 0; si < series.length; si++) {
+        const v = d[series[si].key] || 0;
+        const barH = (v / maxVal) * chartH;
+        const barX = groupX + gap + si * barW;
+        const barY = chartY + chartH - barH;
+        doc.rect(barX, barY, barW - 1, barH).fill(series[si].color);
+      }
+    }
+
+    // X-axis labels
+    const step = Math.max(1, Math.ceil(labels.length / 8));
+    doc.fillColor('#64748b').fontSize(7);
+    for (let i = 0; i < labels.length; i += step) {
+      const gx = chartX + i * groupW + groupW / 2;
+      doc.text(labels[i], gx - 15, chartY + chartH + 5, { width: 60 });
+    }
+
+    // Legend
+    const legendBoxW = (series.length * 70);
+    let legendX = x + (width - legendBoxW) / 2;
+    doc.fontSize(8).font('Helvetica');
+    for (const s of series) {
+      doc.rect(legendX, y + height - 18, 10, 10).fill(s.color);
+      doc.fillColor('#1e293b').text(s.label || s.key, legendX + 13, y + height - 16);
+      legendX += 70;
+    }
+  }
+
+  function drawStackedBarChart(doc: any, labels: string[], series: { key: string; label: string; color: string }[], x: number, y: number, width: number, height: number, data: Record<string, any>[]) {
+    const chartX = x + 50;
+    const chartY = y + 10;
+    const chartW = width - 60;
+    const chartH = height - 30;
+
+    doc.rect(x, y, width, height).fill('#f8fafc').stroke('#e2e8f0');
+
+    if (!data || data.length === 0) {
+      doc.fillColor('#94a3b8').fontSize(10).font('Helvetica').text('No data', x + chartW / 2 - 20, y + chartH / 2);
+      return;
+    }
+
+    let maxVal = 0;
+    for (const d of data) {
+      let rowSum = 0;
+      for (const s of series) rowSum += d[s.key] || 0;
+      if (rowSum > maxVal) maxVal = rowSum;
+    }
+    if (maxVal === 0) maxVal = 1;
+
+    // Y-axis grid
+    doc.font('Helvetica').fontSize(7).fillColor('#94a3b8');
+    for (let i = 0; i <= 4; i++) {
+      const gy = chartY + chartH - (i / 4) * chartH;
+      const gVal = Math.round((i / 4) * maxVal);
+      doc.moveTo(chartX, gy).lineTo(chartX + chartW, gy).stroke('#e2e8f0');
+      doc.text(gVal.toLocaleString(), x + 2, gy - 4, { width: 45, align: 'right' });
+    }
+
+    const barW = Math.min(chartW / (data.length || 1) * 0.7, 30);
+    const groupW = chartW / (data.length || 1);
+    const gap = (groupW - barW) / 2;
+
+    for (let gi = 0; gi < data.length; gi++) {
+      const d = data[gi];
+      const groupX = chartX + gi * groupW;
+      let stackY = chartY + chartH;
+      for (const s of series) {
+        const v = d[s.key] || 0;
+        const segH = (v / maxVal) * chartH;
+        const barY = stackY - segH;
+        doc.rect(groupX + gap, barY, barW, segH).fill(s.color);
+        stackY = barY;
+      }
+    }
+
+    // X-axis labels
+    const step = Math.max(1, Math.ceil(labels.length / 8));
+    doc.fillColor('#64748b').fontSize(7);
+    for (let i = 0; i < labels.length; i += step) {
+      const gx = chartX + i * groupW + groupW / 2;
+      doc.text(labels[i], gx - 15, chartY + chartH + 5, { width: 60 });
+    }
+
+    // Legend
+    const legendBoxW = (series.length * 70);
+    let legendX = x + (width - legendBoxW) / 2;
+    doc.fontSize(8).font('Helvetica');
+    for (const s of series) {
+      doc.rect(legendX, y + height - 18, 10, 10).fill(s.color);
+      doc.fillColor('#1e293b').text(s.label || s.key, legendX + 13, y + height - 16);
+      legendX += 70;
+    }
   }
 
   // Get review trends from EmbedSocial listing_item_metrics API
