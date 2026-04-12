@@ -2537,6 +2537,10 @@ Return ONLY valid JSON like this, nothing else:
       console.log('[generate-reply] Generating 3 AI replies for review:', reviewId);
 
       // Use REST API directly
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
       const geminiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
@@ -2551,8 +2555,11 @@ Return ONLY valid JSON like this, nothing else:
               maxOutputTokens: 1024,
             },
           }),
+          signal: controller.signal,
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!geminiResponse.ok) {
         const errorText = await geminiResponse.text();

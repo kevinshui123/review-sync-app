@@ -145,7 +145,7 @@ export function Reviews() {
     if (!selectedReview) return;
     setGenerating(true);
     setAiReplyOptions(null);
-    setSelectedAiReply(null);
+    setSelectedTone(null);
     try {
       const res = await apiPost('/api/reviews/generate-reply', {
         reviewId: selectedReview.id,
@@ -169,8 +169,9 @@ export function Reviews() {
         const data = await res.json();
         alert('Failed to generate reply: ' + (data.error || 'Unknown error'));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate AI reply:', error);
+      alert('Network error. Please try again: ' + (error.message || 'Unknown error'));
     } finally {
       setGenerating(false);
     }
