@@ -24,6 +24,43 @@ const SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ];
 
+// Helper function to extract replies from text when JSON parsing fails
+function extractRepliesFromText(text: string): { professional: string; friendly: string; empathetic: string } {
+  // Try to split by tone labels
+  const sections: Record<string, string> = {};
+  
+  const tonePatterns = [
+    { key: 'professional', patterns: [/professional[:\s]*["']?([^"'\n]+)/gi, /"professional"[:\s]*["']([^"']+)["']/gi] },
+    { key: 'friendly', patterns: [/friendly[:\s]*["']?([^"'\n]+)/gi, /"friendly"[:\s]*["']([^"']+)["']/gi] },
+    { key: 'empathetic', patterns: [/empathetic[:\s]*["']?([^"'\n]+)/gi, /"empathetic"[:\s]*["']([^"']+)["']/gi] },
+  ];
+
+  for (const { key, patterns } of tonePatterns) {
+    for (const pattern of patterns) {
+      const match = pattern.exec(text);
+      if (match && match[1]) {
+        sections[key] = match[1].trim();
+        break;
+      }
+    }
+  }
+
+  // If we found all three, return them
+  if (sections.professional && sections.friendly && sections.empathetic) {
+    return sections as { professional: string; friendly: string; empathetic: string };
+  }
+
+  // Fallback: split text into 3 parts
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const third = Math.ceil(sentences.length / 3);
+  
+  return {
+    professional: sentences.slice(0, third).join('. ').trim() + '.',
+    friendly: sentences.slice(third, third * 2).join('. ').trim() + '.',
+    empathetic: sentences.slice(third * 2).join('. ').trim() + '.',
+  };
+}
+
 // ==========================================
 // Google API 统一调用函数（REST API 直连）
 // ==========================================
@@ -2524,36 +2561,50 @@ Return ONLY valid JSON like this, nothing else:
       }
 
       const geminiData = await geminiResponse.json();
-      let replyText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      let replyText = (geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
       
-      // Try to parse as JSON
-      let replies = null;
+      // Parse JSON response robustly
+      let replies: { professional: string; friendly: string; empathetic: string } | null = null;
+      
+      // Clean up the response - remove markdown code blocks
+      replyText = replyText.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+      
+      // Try direct JSON parse first
       try {
-        // Remove markdown code blocks if present
-        replyText = replyText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        replies = JSON.parse(replyText);
+        const parsed = JSON.parse(replyText);
+        if (typeof parsed === 'object' && parsed !== null) {
+          replies = {
+            professional: String(parsed.professional || '').trim(),
+            friendly: String(parsed.friendly || '').trim(),
+            empathetic: String(parsed.empathetic || '').trim(),
+          };
+        }
       } catch {
-        console.log('[generate-reply] JSON parse failed, raw response:', replyText);
-        replies = {
-          professional: replyText,
-          friendly: replyText,
-          empathetic: replyText,
-        };
+        // Try to extract JSON from text using regex
+        const jsonMatch = replyText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[0]);
+            replies = {
+              professional: String(parsed.professional || '').trim(),
+              friendly: String(parsed.friendly || '').trim(),
+              empathetic: String(parsed.empathetic || '').trim(),
+            };
+          } catch {
+            // Fallback - try to split by tone labels
+            replies = extractRepliesFromText(replyText);
+          }
+        } else {
+          replies = extractRepliesFromText(replyText);
+        }
       }
 
-      console.log('[generate-reply] Generated replies successfully');
-      res.json({ replies });
-      try {
-        // Remove markdown code blocks if present
-        replyText = replyText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        replies = JSON.parse(replyText);
-      } catch {
-        // If JSON parsing fails, try to extract replies from text
-        console.log('[generate-reply] JSON parse failed, raw response:', replyText);
+      // Validate and ensure all fields exist
+      if (!replies || !replies.professional || !replies.friendly || !replies.empathetic) {
         replies = {
-          professional: replyText,
-          friendly: replyText,
-          empathetic: replyText,
+          professional: replies?.professional || 'Thank you for your feedback! We appreciate your kind words.',
+          friendly: replies?.friendly || 'Thanks so much for the review! We love hearing from you.',
+          empathetic: replies?.empathetic || 'We truly appreciate you taking the time to share your experience.',
         };
       }
 
