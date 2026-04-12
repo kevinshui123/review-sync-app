@@ -1,6 +1,7 @@
 import React from 'react';
-import { Menu, Search, Notifications, History, Person, Translate } from '@mui/icons-material';
+import { Menu, Search, Notifications, History, Person, Translate, Logout } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   title: string;
@@ -11,6 +12,7 @@ interface HeaderProps {
 
 export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderProps) {
   const { t, language, setLanguage } = useLanguage();
+  const { user, logout } = useAuth();
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'zh' : 'en');
@@ -72,12 +74,23 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderPr
         {/* User Avatar */}
         <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
           <div className="hidden sm:block text-right">
-            <p className="text-sm font-bold text-on-surface">Editorial Intel</p>
-            <p className="text-[10px] text-slate-500">Admin Access</p>
+            <p className="text-sm font-bold text-on-surface">{user?.name || user?.email}</p>
+            <p className="text-[10px] text-slate-500">User</p>
           </div>
-          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-slate-300">
-            <Person className="w-full h-full p-2 text-slate-500" />
-          </div>
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user.name || 'User'} className="w-10 h-10 rounded-full" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+              {(user?.name || user?.email || 'U')[0].toUpperCase()}
+            </div>
+          )}
+          <button
+            onClick={logout}
+            className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
+            title="Logout"
+          >
+            <Logout className="w-5 h-5" />
+          </button>
         </div>
       </div>
     </header>

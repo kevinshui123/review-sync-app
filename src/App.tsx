@@ -15,8 +15,11 @@ import { EditBusinessPage } from './components/EditBusinessPage';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './contexts/LanguageContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthPage from './pages/AuthPage';
 
-export default function App() {
+function AppContent() {
+  const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [listingsSubTab, setListingsSubTab] = useState<string | null>(null);
   const [editLocationData, setEditLocationData] = useState<any>(null);
@@ -66,6 +69,22 @@ export default function App() {
     }
   };
 
+  // Auth loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-surface gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-slate-500">Loading...</p>
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  // Not configured
   if (isConfigured === null) {
     return (
       <div className="flex items-center justify-center h-screen bg-surface">
@@ -161,5 +180,13 @@ export default function App() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

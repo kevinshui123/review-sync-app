@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import express from 'express';
+import authRoutes from './src/server/authRoutes';
+import oauthRoutes from './src/server/oauthRoutes';
 import { PrismaClient } from '@prisma/client';
+import { authMiddleware, AuthRequest } from './src/server/auth';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { Auth } from 'googleapis';
@@ -2302,6 +2305,10 @@ The review should sound natural, authentic, and written by a real customer. Keep
       res.status(500).json({ error: 'Failed to generate AI reply' });
     }
   });
+
+  // Auth routes
+  app.use('/api/auth', authRoutes);
+  app.use('/api/auth', oauthRoutes);
 
   // ==========================================
   // Vite Middleware (For Frontend Integration)

@@ -10,9 +10,16 @@ datasource db {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
-  passwordHash String
+  passwordHash String?
+  name         String?
+  avatar       String?
+
+  // OAuth fields
+  oauthProvider String?  // 'google', 'github', etc.
+  oauthId      String?
+
   createdAt    DateTime @default(now())
-  
+
   // A User can belong to multiple Tenants
   tenants      Tenant[] @relation("UserTenants")
 }

@@ -122,8 +122,9 @@ export function Settings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex flex-col items-center justify-center h-full gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-slate-500">Loading settings...</p>
       </div>
     );
   }

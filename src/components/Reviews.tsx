@@ -176,8 +176,9 @@ export function Reviews() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm text-slate-500">Loading reviews...</p>
       </div>
     );
   }
