@@ -7,7 +7,6 @@ import { authMiddleware, generateToken, AuthRequest } from './src/server/auth.js
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { Auth } from 'googleapis';
-import { GoogleGenAI } from '@google/genai';
 
 // Instantiate the Prisma Client
 const prisma = new PrismaClient();
@@ -2178,7 +2177,6 @@ async function startServer() {
       const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
 
-      const ai = new GoogleGenAI({ apiKey });
       const langInstruction = language === 'zh' ? '请用简体中文撰写。' : 'Please write the review in English.';
 
       const prompt = `Write a Google Maps review for a business.
@@ -2186,12 +2184,32 @@ Keywords/Context: ${keywords}
 ${langInstruction}
 The review should sound natural, authentic, and written by a real customer. Keep it concise (2-4 sentences).`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-      });
+      // Use REST API directly
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.8,
+              maxOutputTokens: 256,
+            },
+          }),
+        }
+      );
 
-      res.json({ content: response.text });
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        console.error('[generate-comment] Gemini API error:', errorText);
+        throw new Error('Gemini API request failed');
+      }
+
+      const geminiData = await geminiResponse.json();
+      const content = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      res.json({ content });
     } catch (error) {
       console.error('Generate comment error:', error);
       res.status(500).json({ error: 'Failed to generate comment' });
@@ -2378,8 +2396,6 @@ The review should sound natural, authentic, and written by a real customer. Keep
       const apiKey = tenant?.geminiApiKey || process.env.GEMINI_API_KEY;
       if (!apiKey) return res.status(400).json({ error: 'Gemini API Key not configured' });
 
-      const ai = new GoogleGenAI({ apiKey });
-
       const validRanks = gridPoints.filter((p: any) => p.rank !== undefined && p.rank <= 20);
       const avgRank = validRanks.length > 0
         ? (validRanks.reduce((a: any, b: any) => a + b.rank, 0) / validRanks.length).toFixed(1)
@@ -2399,12 +2415,32 @@ The review should sound natural, authentic, and written by a real customer. Keep
         Format your response in Markdown. Include 3 to 4 specific, actionable steps.
       `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-      });
+      // Use REST API directly
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024,
+            },
+          }),
+        }
+      );
 
-      res.json({ insight: response.text });
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        console.error('[insight] Gemini API error:', errorText);
+        throw new Error('Gemini API request failed');
+      }
+
+      const geminiData = await geminiResponse.json();
+      const insight = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      res.json({ insight });
     } catch (error) {
       console.error('Insight generation error:', error);
       res.status(500).json({ error: 'Failed to generate insight' });
@@ -2424,8 +2460,6 @@ The review should sound natural, authentic, and written by a real customer. Keep
 
       const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: 'AI API key not configured. Please add Gemini API key in Settings.' });
-
-      const ai = new GoogleGenAI({ apiKey });
 
       // Get business name from tenant listings if not provided
       let business = businessName;
@@ -2465,15 +2499,50 @@ Return ONLY valid JSON like this, nothing else:
 
       console.log('[generate-reply] Generating 3 AI replies for review:', reviewId);
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: prompt,
-      });
+      // Use REST API directly
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.9,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1024,
+            },
+          }),
+        }
+      );
 
-      let replyText = response.text?.trim() || '';
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        console.error('[generate-reply] Gemini API error:', errorText);
+        throw new Error('Gemini API request failed: ' + errorText);
+      }
+
+      const geminiData = await geminiResponse.json();
+      let replyText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
       
       // Try to parse as JSON
       let replies = null;
+      try {
+        // Remove markdown code blocks if present
+        replyText = replyText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        replies = JSON.parse(replyText);
+      } catch {
+        console.log('[generate-reply] JSON parse failed, raw response:', replyText);
+        replies = {
+          professional: replyText,
+          friendly: replyText,
+          empathetic: replyText,
+        };
+      }
+
+      console.log('[generate-reply] Generated replies successfully');
+      res.json({ replies });
       try {
         // Remove markdown code blocks if present
         replyText = replyText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
