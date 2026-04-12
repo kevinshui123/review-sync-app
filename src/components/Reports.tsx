@@ -1,16 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Download,
   CalendarToday,
   LocationOn,
   Refresh,
   BarChart,
+  AutoAwesome,
+  Lightbulb,
+  TrendingUp,
+  Speed,
+  OpenInNew,
+  CheckCircle,
+  Warning,
+  Error as ErrorIcon,
+  ArrowForward,
+  Edit,
+  Star,
+  Description,
+  PhotoLibrary,
+  RateReview,
+  Hub,
+  ContentCopy,
+  LocalFireDepartment,
 } from '@mui/icons-material';
 import {
   AreaChart, Area, BarChart as ReBarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts';
-import { apiGet } from '../utils/api';
+import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DailyData {
@@ -29,11 +47,48 @@ interface Location {
   address: string;
 }
 
+interface SeoInsight {
+  type: string;
+  priority: 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  currentValue?: string;
+  suggestedValue?: string;
+  actionType: 'editable' | 'citation' | 'content' | 'review';
+  actionLabel: string;
+  potentialImpact?: string;
+}
+
+interface CompetitiveInsight {
+  title: string;
+  description: string;
+  actionSteps: string[];
+  priority: 'high' | 'medium' | 'low';
+}
+
+interface QuickWin {
+  action: string;
+  impact: 'high' | 'medium' | 'low';
+  effort: 'low' | 'medium' | 'high';
+  actionType: string;
+}
+
+interface SeoReport {
+  overallScore: number;
+  overallSummary: string;
+  insights: SeoInsight[];
+  competitiveInsights: CompetitiveInsight[];
+  quickWins: QuickWin[];
+}
+
 interface ReportsProps {
   setActiveTab: (tab: string) => void;
 }
 
 const PIE_COLORS = ['#2563eb', '#9333ea'];
+const PRIORITY_COLORS = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' };
+const IMPACT_COLORS = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' };
+const EFFORT_COLORS = { low: '#22c55e', medium: '#f59e0b', high: '#ef4444' };
 
 function formatDate(d: Date) {
   return d.toISOString().split('T')[0];
@@ -51,8 +106,26 @@ function calcChange(curr: number, prev: number) {
   return Math.round(((curr - prev) / prev) * 100);
 }
 
+function getScoreColor(score: number) {
+  if (score >= 80) return { color: '#22c55e', label: 'Excellent', bg: 'bg-green-50', border: 'border-green-200' };
+  if (score >= 60) return { color: '#f59e0b', label: 'Good', bg: 'bg-amber-50', border: 'border-amber-200' };
+  if (score >= 40) return { color: '#f97316', label: 'Fair', bg: 'bg-orange-50', border: 'border-orange-200' };
+  return { color: '#ef4444', label: 'Needs Work', bg: 'bg-red-50', border: 'border-red-200' };
+}
+
+function getInsightIcon(type: string) {
+  switch (type) {
+    case 'categories': return <Hub className="w-4 h-4" />;
+    case 'description': return <Description className="w-4 h-4" />;
+    case 'photos': return <PhotoLibrary className="w-4 h-4" />;
+    case 'reviews': return <RateReview className="w-4 h-4" />;
+    case 'hours': return <Lightbulb className="w-4 h-4" />;
+    default: return <Lightbulb className="w-4 h-4" />;
+  }
+}
+
 export function Reports({ setActiveTab }: ReportsProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const today = new Date();
   const defaultEnd = formatDate(today);
   const defaultStart = formatDate(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000));
@@ -64,6 +137,11 @@ export function Reports({ setActiveTab }: ReportsProps) {
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+
+  // SEO Report state
+  const [seoReport, setSeoReport] = useState<SeoReport | null>(null);
+  const [seoLoading, setSeoLoading] = useState(false);
+  const [seoError, setSeoError] = useState<string | null>(null);
 
   useEffect(() => {
     apiGet('/api/embedsocial/locations').then(r => r.ok ? r.json() : []).then((data: any[]) => {
@@ -89,6 +167,25 @@ export function Reports({ setActiveTab }: ReportsProps) {
     };
     fetchData();
   }, []);
+
+  const generateSeoReport = useCallback(async () => {
+    setSeoLoading(true);
+    setSeoError(null);
+    try {
+      const res = await apiPost('/api/reports/seo-optimization', { lang: language });
+      if (res.ok) {
+        const data = await res.json();
+        setSeoReport(data);
+      } else {
+        const err = await res.json();
+        setSeoError(err.error || 'Failed to generate report');
+      }
+    } catch (e: any) {
+      setSeoError(e.message || 'Network error');
+    } finally {
+      setSeoLoading(false);
+    }
+  }, [language]);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -120,6 +217,29 @@ export function Reports({ setActiveTab }: ReportsProps) {
       alert(t('reports.downloadFailed') + ': ' + (e.message || 'Please try again.'));
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleInsightAction = (insight: SeoInsight) => {
+    switch (insight.actionType) {
+      case 'editable':
+        if (insight.type === 'categories') {
+          setActiveTab('listings');
+        } else if (insight.type === 'description') {
+          setActiveTab('listings');
+        } else {
+          setActiveTab('listings');
+        }
+        break;
+      case 'review':
+        setActiveTab('reviews');
+        break;
+      case 'citation':
+        setActiveTab('seo');
+        break;
+      case 'content':
+        setActiveTab('publishing');
+        break;
     }
   };
 
@@ -169,8 +289,10 @@ export function Reports({ setActiveTab }: ReportsProps) {
   const dateLabel = `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`;
   const weeklyRange = `${last7[0]?.date} – ${last7[last7.length - 1]?.date}`;
 
+  const scoreInfo = seoReport ? getScoreColor(seoReport.overallScore) : null;
+
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <h2 className="text-2xl font-extrabold font-headline tracking-tight mb-1">{t('reports.title')}</h2>
@@ -229,6 +351,320 @@ export function Reports({ setActiveTab }: ReportsProps) {
             {downloading ? t('reports.generating') : t('reports.downloadPdf')}
           </button>
         </div>
+      </div>
+
+      {/* ====================================================== */}
+      {/* SEO OPTIMIZATION REPORT SECTION */}
+      {/* ====================================================== */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+              <AutoAwesome className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">SEO Optimization Report</h3>
+              <p className="text-xs text-slate-500">{t('reports.generateOptReport')}</p>
+            </div>
+          </div>
+          <button
+            onClick={generateSeoReport}
+            disabled={seoLoading}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
+          >
+            {seoLoading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                <span className="animate-pulse">Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <AutoAwesome className="w-4 h-4" />
+                {t('reports.generateReport')}
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Error State */}
+        {seoError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 flex items-center gap-3">
+            <ErrorIcon className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-700">{seoError}</p>
+              <p className="text-xs text-red-500 mt-0.5">Make sure your Gemini API key is configured in Settings.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {seoLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 animate-pulse">
+                <div className="h-4 bg-slate-200 rounded w-1/3 mb-4" />
+                <div className="h-3 bg-slate-100 rounded w-full mb-2" />
+                <div className="h-3 bg-slate-100 rounded w-5/6 mb-2" />
+                <div className="h-3 bg-slate-100 rounded w-4/6" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Report Content */}
+        {seoReport && !seoLoading && (
+          <div className="space-y-4">
+            {/* Top Row: Score + Quick Wins */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* SEO Health Score Card */}
+              <div className={`rounded-2xl p-6 shadow-sm border ${scoreInfo?.border} ${scoreInfo?.bg}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Speed className={`w-5 h-5`} style={{ color: scoreInfo?.color }} />
+                    <h4 className="font-bold text-slate-800">SEO Health Score</h4>
+                  </div>
+                  <span className="text-xs font-bold px-2 py-1 rounded-full" style={{
+                    backgroundColor: `${scoreInfo?.color}20`,
+                    color: scoreInfo?.color,
+                  }}>
+                    {scoreInfo?.label}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-center mb-4">
+                  {/* Circular Score Gauge */}
+                  <div className="relative w-32 h-32">
+                    <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                      <circle
+                        cx="60" cy="60" r="50" fill="none"
+                        stroke={scoreInfo?.color}
+                        strokeWidth="10"
+                        strokeLinecap="round"
+                        strokeDasharray={`${(seoReport.overallScore / 100) * 314} 314`}
+                        style={{ transition: 'stroke-dasharray 1s ease-out' }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-3xl font-extrabold" style={{ color: scoreInfo?.color }}>
+                        {seoReport.overallScore}
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium">/ 100</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-600 text-center leading-relaxed">
+                  {seoReport.overallSummary}
+                </p>
+              </div>
+
+              {/* Quick Wins Card */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 md:col-span-2">
+                <div className="flex items-center gap-2 mb-4">
+                  <LocalFireDepartment className="w-5 h-5 text-orange-500" />
+                  <h4 className="font-bold text-slate-800">Quick Wins</h4>
+                  <span className="text-xs bg-orange-100 text-orange-600 font-bold px-2 py-0.5 rounded-full ml-auto">
+                    {seoReport.quickWins?.length || 0} items
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {(seoReport.quickWins || []).map((win, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white border-2 flex items-center justify-center mt-0.5"
+                        style={{ borderColor: EFFORT_COLORS[win.effort] }}>
+                        <span className="text-xs font-bold" style={{ color: EFFORT_COLORS[win.effort] }}>{i + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 leading-snug">{win.action}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                            style={{ backgroundColor: `${IMPACT_COLORS[win.impact]}15`, color: IMPACT_COLORS[win.impact] }}>
+                            {win.impact} impact
+                          </span>
+                          <span className="text-xs text-slate-400 font-medium">
+                            effort: {win.effort}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (win.actionType === 'editable') setActiveTab('listings');
+                          else if (win.actionType === 'review') setActiveTab('reviews');
+                          else if (win.actionType === 'citation') setActiveTab('seo');
+                          else setActiveTab('publishing');
+                        }}
+                        className="flex-shrink-0 w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center hover:border-purple-400 hover:bg-purple-50 transition-all"
+                      >
+                        <ArrowForward className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Key Insights Row */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+              <div className="flex items-center gap-2 mb-5">
+                <Lightbulb className="w-5 h-5 text-amber-500" />
+                <h4 className="font-bold text-slate-800">Key Optimization Insights</h4>
+                <span className="text-xs bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full ml-auto">
+                  {seoReport.insights?.length || 0} recommendations
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(seoReport.insights || []).map((insight, i) => (
+                  <div key={i} className="rounded-xl border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all group">
+                    <div className="p-4">
+                      {/* Header */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                          insight.priority === 'high' ? 'bg-red-50 text-red-500' :
+                          insight.priority === 'medium' ? 'bg-amber-50 text-amber-500' :
+                          'bg-green-50 text-green-500'
+                        }`}>
+                          {getInsightIcon(insight.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h5 className="font-bold text-slate-800 text-sm leading-tight">{insight.title}</h5>
+                          </div>
+                          <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                            style={{
+                              backgroundColor: `${PRIORITY_COLORS[insight.priority]}15`,
+                              color: PRIORITY_COLORS[insight.priority],
+                            }}>
+                            {insight.priority} priority
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-xs text-slate-500 leading-relaxed mb-3 line-clamp-3">
+                        {insight.description}
+                      </p>
+
+                      {/* Current vs Suggested */}
+                      {insight.currentValue && (
+                        <div className="bg-slate-50 rounded-lg p-2.5 mb-3 text-xs">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CheckCircle className="w-3 h-3 text-slate-400" />
+                            <span className="text-slate-400 font-semibold">Current:</span>
+                            <span className="text-slate-600 font-medium ml-auto truncate max-w-[120px]">{insight.currentValue}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ArrowForward className="w-3 h-3 text-purple-400" />
+                            <span className="text-slate-400 font-semibold">Suggested:</span>
+                            <span className="text-purple-600 font-medium ml-auto truncate max-w-[120px]">{insight.suggestedValue}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Impact */}
+                      {insight.potentialImpact && (
+                        <p className="text-xs text-slate-400 mb-3 italic">
+                          <TrendingUp className="w-3 h-3 inline mr-1" />
+                          {insight.potentialImpact}
+                        </p>
+                      )}
+
+                      {/* Action Button */}
+                      <button
+                        onClick={() => handleInsightAction(insight)}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all
+                          bg-purple-50 text-purple-600 hover:bg-purple-100
+                          border border-purple-200 hover:border-purple-400"
+                      >
+                        {getInsightIcon(insight.type)}
+                        {insight.actionLabel}
+                        <OpenInNew className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Competitive Opportunities */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+              <div className="flex items-center gap-2 mb-5">
+                <TrendingUp className="w-5 h-5 text-indigo-500" />
+                <h4 className="font-bold text-slate-800">Competitive Opportunities</h4>
+                <span className="text-xs bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-full ml-auto">
+                  {seoReport.competitiveInsights?.length || 0} insights
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(seoReport.competitiveInsights || []).map((comp, i) => (
+                  <div key={i} className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/50 p-5 border border-slate-200">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                        comp.priority === 'high' ? 'bg-red-50' : comp.priority === 'medium' ? 'bg-amber-50' : 'bg-green-50'
+                      }`}>
+                        <Star className={`w-4 h-4 ${
+                          comp.priority === 'high' ? 'text-red-500' :
+                          comp.priority === 'medium' ? 'text-amber-500' :
+                          'text-green-500'
+                        }`} />
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-slate-800 text-sm mb-1">{comp.title}</h5>
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                          style={{
+                            backgroundColor: `${PRIORITY_COLORS[comp.priority]}15`,
+                            color: PRIORITY_COLORS[comp.priority],
+                          }}>
+                          {comp.priority} priority
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed mb-3">{comp.description}</p>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Steps:</p>
+                      {comp.actionSteps.map((step, j) => (
+                        <div key={j} className="flex items-start gap-2">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center mt-0.5">
+                            {j + 1}
+                          </span>
+                          <p className="text-xs text-slate-600 leading-snug">{step}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State (no report yet) */}
+        {!seoReport && !seoLoading && !seoError && (
+          <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-12 border border-slate-200 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
+              <AutoAwesome className="w-8 h-8 text-purple-500" />
+            </div>
+            <h4 className="text-lg font-bold text-slate-800 mb-2">Generate Your SEO Optimization Report</h4>
+            <p className="text-sm text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
+              Click the button above to analyze your business listings with AI. Get personalized recommendations for categories, descriptions, review response, and more.
+            </p>
+            <button
+              onClick={generateSeoReport}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
+            >
+              <AutoAwesome className="w-4 h-4" />
+              {t('reports.generateReport')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ====================================================== */}
+      {/* GBP PERFORMANCE CHARTS (existing section) */}
+      {/* ====================================================== */}
+      <div className="mb-4 flex items-center gap-2">
+        <BarChart className="w-5 h-5 text-slate-400" />
+        <h3 className="text-base font-bold text-slate-700">GBP Performance Data</h3>
       </div>
 
       {loading ? (

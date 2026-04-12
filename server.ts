@@ -1978,7 +1978,13 @@ async function startServer() {
       doc.end();
     } catch (error: any) {
       console.error('PDF generation error:', error);
-      res.status(500).json({ error: 'Failed to generate PDF', details: error.message });
+      // Guard against write-after-end when the stream has already started
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to generate PDF', details: error.message });
+      } else {
+        // Stream already started — try to end it cleanly
+        try { res.end(); } catch {}
+      }
     }
   });
 
@@ -1993,19 +1999,30 @@ async function startServer() {
   }
 
   function drawPieChart(doc: any, slices: { label: string; value: number; color: string }[], cx: number, cy: number, radius: number) {
-    const total = slices.reduce((s, sl) => s + sl.value, 0) || 1;
-    let angle = -Math.PI / 2;
+    const total = slices.reduce((s: number, sl: any) => s + sl.value, 0) || 1;
+
+    // Draw each slice as a thick stroked circle arc using path.arc
+    let startAngle = -Math.PI / 2;
     for (const sl of slices) {
       const sliceAngle = (sl.value / total) * 2 * Math.PI;
-      doc.moveTo(cx, cy).lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
-      doc.arcTo(cx + radius * Math.cos(angle + sliceAngle), cy + radius * Math.sin(angle + sliceAngle), cx, cy, radius);
-      doc.lineTo(cx, cy).closePath().fillAndStroke(sl.color, 'white');
-      doc.fillColor('white').fontSize(8).font('Helvetica-Bold');
-      const midAngle = angle + sliceAngle / 2;
+      const endAngle = startAngle + sliceAngle;
+
+      // Draw arc using path API
+      doc.path(`M ${cx} ${cy} L ${cx + radius * Math.cos(startAngle)} ${cy + radius * Math.sin(startAngle)} A ${radius} ${radius} 0 ${sliceAngle > Math.PI ? 1 : 0} 1 ${cx + radius * Math.cos(endAngle)} ${cy + radius * Math.sin(endAngle)} Z`)
+        .fillAndStroke(sl.color, 'white');
+
+      // Percentage label
+      const midAngle = startAngle + sliceAngle / 2;
       const labelR = radius * 0.65;
-      doc.text(Math.round((sl.value / total) * 100) + '%', cx + labelR * Math.cos(midAngle) - 8, cy + labelR * Math.sin(midAngle) - 4);
-      angle += sliceAngle;
+      doc.fillColor('white').fontSize(8).font('Helvetica-Bold');
+      const lx = cx + labelR * Math.cos(midAngle);
+      const ly = cy + labelR * Math.sin(midAngle);
+      if (sliceAngle > 0.3) {
+        doc.text(Math.round((sl.value / total) * 100) + '%', lx - 10, ly - 4, { width: 20, align: 'center' });
+      }
+      startAngle = endAngle;
     }
+
     // Legend
     let legendY = cy + radius + 15;
     let legendX = cx - (slices.length * 80) / 2;
@@ -3317,6 +3334,186 @@ Return ONLY valid JSON like this, nothing else:
     } catch (error: any) {
       console.error('[disconnect-listing] Error:', error);
       res.status(500).json({ error: 'Failed to disconnect listing', details: error.message });
+    }
+  });
+
+  // ==========================================
+  // SEO Optimization Report — Gemini AI Analysis
+  // ==========================================
+
+  app.post('/api/reports/seo-optimization', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId! } });
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'AI API key not configured. Please add Gemini API key in Settings.' });
+
+      const embedSocialKey = tenant.embedSocialApiKey || process.env.EMBEDSOCIAL_API_KEY;
+      if (!embedSocialKey) return res.status(500).json({ error: 'EmbedSocial API key not configured.' });
+
+      const lang = req.body?.lang || 'en';
+
+      // --- Fetch all real data from EmbedSocial ---
+      let listingsData: any[] = [];
+      let listingMetrics: any[] = [];
+      let reviewMetrics: any[] = [];
+      let recentReviews: any[] = [];
+
+      try {
+        const listingsRes = await embedSocialFetchWithKey(embedSocialKey, '/rest/v1/listings');
+        listingsData = Array.isArray(listingsRes) ? listingsRes : (listingsRes.data || []);
+      } catch (e) { console.error('[seo-report] listings error:', (e as any).message); }
+
+      try {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const startStr = `${String(thirtyDaysAgo.getDate()).padStart(2,'0')}-${String(thirtyDaysAgo.getMonth()+1).padStart(2,'0')}-${thirtyDaysAgo.getFullYear()}`;
+        const endStr = `${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}`;
+        const metricsRes = await embedSocialFetchWithKey(embedSocialKey, `/rest/v1/listing_metrics?startDate=${startStr}&endDate=${endStr}&pageSize=100`);
+        listingMetrics = metricsRes?.listings || [];
+      } catch (e) { console.error('[seo-report] listing_metrics error:', (e as any).message); }
+
+      try {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const startStr = `${String(thirtyDaysAgo.getDate()).padStart(2,'0')}-${String(thirtyDaysAgo.getMonth()+1).padStart(2,'0')}-${thirtyDaysAgo.getFullYear()}`;
+        const endStr = `${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}`;
+        const reviewMetricsRes = await embedSocialFetchWithKey(embedSocialKey, `/rest/v1/listing_item_metrics?startDate=${startStr}&endDate=${endStr}&pageSize=100`);
+        reviewMetrics = reviewMetricsRes?.listings || [];
+      } catch (e) { console.error('[seo-report] listing_item_metrics error:', (e as any).message); }
+
+      try {
+        const reviewsRes = await embedSocialFetchWithKey(embedSocialKey, '/rest/v1/items?pageSize=20');
+        recentReviews = Array.isArray(reviewsRes) ? reviewsRes : (reviewsRes.data || reviewsRes.items || []);
+      } catch (e) { console.error('[seo-report] items error:', (e as any).message); }
+
+      const langInstruction = lang === 'zh'
+        ? '请用简体中文撰写所有分析和建议。'
+        : 'Please write all analysis and recommendations in English.';
+
+      const prompt = `You are a Google Business Profile (Local SEO) expert analyst. Analyze the following business data and generate a comprehensive SEO optimization report.
+
+${langInstruction}
+
+--- BUSINESS LISTINGS DATA ---
+${JSON.stringify(listingsData.slice(0, 10), null, 2)}
+
+--- LISTING METRICS (Search Visibility - Last 30 Days) ---
+${JSON.stringify(listingMetrics, null, 2)}
+
+--- REVIEW METRICS (Review Performance - Last 30 Days) ---
+${JSON.stringify(reviewMetrics, null, 2)}
+
+--- RECENT REVIEWS (Latest 20) ---
+${JSON.stringify(recentReviews.slice(0, 10).map((r: any) => ({
+  rating: r.rating,
+  text: r.captionText,
+  source: r.sourceName,
+  date: r.originalCreatedOn,
+  hasReply: Array.isArray(r.replies) && r.replies.length > 0,
+})), null, 2)}
+
+---
+
+Generate a detailed SEO optimization report in the following EXACT JSON format. Do NOT add any text outside the JSON:
+
+{
+  "overallScore": <number 0-100>,
+  "overallSummary": "<2-3 sentence summary of the business's current local SEO health>",
+  "insights": [
+    {
+      "type": "categories",
+      "priority": "high|medium|low",
+      "title": "<Insight title>",
+      "description": "<Detailed explanation of why this matters>",
+      "currentValue": "<What they currently have>",
+      "suggestedValue": "<Specific recommendations>",
+      "actionType": "editable|citation|content|review",
+      "actionLabel": "<Short label for the action button>",
+      "potentialImpact": "<Expected outcome if fixed>"
+    },
+    ...more insights
+  ],
+  "competitiveInsights": [
+    {
+      "title": "<Opportunity title>",
+      "description": "<Detailed description>",
+      "actionSteps": ["<step 1>", "<step 2>", ...],
+      "priority": "high|medium|low"
+    }
+  ],
+  "quickWins": [
+    {
+      "action": "<Action description>",
+      "impact": "high|medium|low",
+      "effort": "low|medium|high",
+      "actionType": "editable|citation|content|review"
+    }
+  ]
+}
+
+IMPORTANT RULES:
+1. Return ONLY the JSON object, no markdown, no code blocks, no explanations outside the JSON
+2. For "categories" type insights, set actionType to "editable" and actionLabel to "Update Categories"
+3. For "description" type insights, set actionType to "editable" and actionLabel to "Update Description"
+4. For "reviews" type insights (negative reviews needing replies), set actionType to "review"
+5. For citation-related insights, set actionType to "citation"
+6. Each insight should reference SPECIFIC data from the provided data above when possible
+7. Generate at least 3 "insights" items covering: categories, description, photos, review response rate, and any unique opportunities
+8. Generate at least 2 "competitiveInsights" with actionable steps
+9. Generate at least 3 "quickWins"
+10. If no real data is available for a section, use your expertise to provide general recommendations based on common local SEO best practices
+11. "overallScore" should reflect the business's local SEO health based on available data`;
+
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+          }),
+        }
+      );
+
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        console.error('[seo-optimization] Gemini API error:', errorText);
+        return res.status(500).json({ error: 'AI analysis failed', details: errorText });
+      }
+
+      const geminiData = await geminiResponse.json();
+      let aiText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      aiText = aiText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+      let report;
+      try {
+        report = JSON.parse(aiText);
+      } catch {
+        const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try { report = JSON.parse(jsonMatch[0]); }
+          catch {
+            return res.status(500).json({ error: 'Failed to parse AI response', raw: aiText.slice(0, 500) });
+          }
+        } else {
+          return res.status(500).json({ error: 'Failed to parse AI response', raw: aiText.slice(0, 500) });
+        }
+      }
+
+      report._raw = {
+        listingsCount: listingsData.length,
+        metricsAvailable: listingMetrics.length > 0,
+        reviewMetricsAvailable: reviewMetrics.length > 0,
+        reviewsAvailable: recentReviews.length,
+      };
+
+      res.json(report);
+    } catch (error: any) {
+      console.error('[seo-optimization] Error:', error);
+      res.status(500).json({ error: 'Failed to generate SEO optimization report', details: error.message });
     }
   });
 
