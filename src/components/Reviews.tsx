@@ -15,6 +15,7 @@ import {
   Star,
   Sync,
   Refresh,
+  Image as ImageIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -22,20 +23,24 @@ import { apiGet, apiPost } from '../utils/api';
 
 interface Review {
   id: string;
+  reviewerName?: string;
+  reviewerPhotoUrl?: string;
   authorName?: string;
-  author?: string;
+  authorPhotoUrl?: string;
   rating?: number;
   location?: string;
+  sourceName?: string;
   captionText?: string;
   text?: string;
-  sourceName?: string;
+  message?: string;
   sourceId?: string;
   originalCreatedOn?: string;
-  replies?: string[];
+  createdAt?: string;
+  date?: string;
+  replies?: any[];
   replied?: boolean;
   hasReply?: boolean;
   replyText?: string;
-  date?: string;
 }
 
 interface ReviewFilters {
@@ -45,24 +50,38 @@ interface ReviewFilters {
   ai: number;
 }
 
+type SortOption = 'newest' | 'oldest' | 'highest' | 'lowest';
+
 export function Reviews() {
   const { t } = useLanguage();
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [filters, setFilters] = useState<ReviewFilters>({ all: 0, waiting: 0, replied: 0, ai: 0 });
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [replyText, setReplyText] = useState('');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showLocationMenu, setShowLocationMenu] = useState(false);
 
   const fetchReviews = async () => {
     try {
+      // Fetch locations for filter
+      const locationsRes = await apiGet('/api/embedsocial/locations');
+      if (locationsRes.ok) {
+        const locationsData = await locationsRes.json();
+        const locs = Array.isArray(locationsData) ? locationsData : (locationsData.data || []);
+        setLocations(locs.map((l: any) => ({ id: l.id, name: l.name })));
+      }
+
       const res = await apiGet('/api/embedsocial/reviews');
       if (res.ok) {
         const data = await res.json();
-        // Reviews from EmbedSocial API
         const embedReviews = Array.isArray(data) ? data : [];
         setReviews(embedReviews);
         setFilters({
@@ -159,13 +178,50 @@ export function Reviews() {
     { id: 'ai', label: 'AI replies', icon: SmartToy, count: filters.ai },
   ];
 
-  const filteredReviews = reviews.filter(r => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'waiting') return !r.replied;
-    if (activeFilter === 'replied') return r.replied;
-    if (activeFilter === 'ai') return r.hasReply;
-    return true;
-  });
+  // Filter and sort reviews
+  const filteredAndSortedReviews = reviews
+    .filter(r => {
+      // Filter by category
+      if (activeFilter === 'waiting') {
+        const hasReplied = r.replied || (r.replies && r.replies.length > 0);
+        return !hasReplied;
+      }
+      if (activeFilter === 'replied') {
+        const hasReplied = r.replied || (r.replies && r.replies.length > 0);
+        return hasReplied;
+      }
+      if (activeFilter === 'ai' && r.hasReply) {
+        return true;
+      }
+      return true;
+    })
+    .filter(r => {
+      // Filter by location
+      if (selectedLocation !== 'all') {
+        return r.sourceId === selectedLocation || r.location === selectedLocation;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // Sort
+      const dateA = new Date(a.originalCreatedOn || a.createdAt || a.date || 0).getTime();
+      const dateB = new Date(b.originalCreatedOn || b.createdAt || b.date || 0).getTime();
+      const ratingA = a.rating || 0;
+      const ratingB = b.rating || 0;
+
+      switch (sortBy) {
+        case 'newest':
+          return dateB - dateA;
+        case 'oldest':
+          return dateA - dateB;
+        case 'highest':
+          return ratingB - ratingA;
+        case 'lowest':
+          return ratingA - ratingB;
+        default:
+          return dateB - dateA;
+      }
+    });
 
   if (loading) {
     return (
@@ -255,13 +311,62 @@ export function Reviews() {
           <div className="p-6 bg-white/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-100">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-headline text-xl font-bold">All reviews</h2>
-              <div className="flex gap-2">
-                <button className="flex items-center gap-1 px-3 py-1.5 bg-white text-xs font-semibold rounded-full shadow-sm hover:bg-slate-50 transition-colors">
-                  <Sort className="w-4 h-4" /> Sort
-                </button>
-                <button className="flex items-center gap-1 px-3 py-1.5 bg-white text-xs font-semibold rounded-full shadow-sm hover:bg-slate-50 transition-colors">
-                  <LocationOn className="w-4 h-4" /> Location
-                </button>
+              <div className="flex gap-2 relative">
+                {/* Sort Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => { setShowSortMenu(!showSortMenu); setShowLocationMenu(false); }}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white text-xs font-semibold rounded-full shadow-sm hover:bg-slate-50 transition-colors"
+                  >
+                    <Sort className="w-4 h-4" /> Sort
+                  </button>
+                  {showSortMenu && (
+                    <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 min-w-[120px]">
+                      {[
+                        { id: 'newest', label: 'Newest first' },
+                        { id: 'oldest', label: 'Oldest first' },
+                        { id: 'highest', label: 'Highest rating' },
+                        { id: 'lowest', label: 'Lowest rating' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.id}
+                          onClick={() => { setSortBy(opt.id as SortOption); setShowSortMenu(false); }}
+                          className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 ${sortBy === opt.id ? 'text-primary font-bold' : 'text-slate-600'}`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Location Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => { setShowLocationMenu(!showLocationMenu); setShowSortMenu(false); }}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white text-xs font-semibold rounded-full shadow-sm hover:bg-slate-50 transition-colors"
+                  >
+                    <LocationOn className="w-4 h-4" /> Location
+                  </button>
+                  {showLocationMenu && (
+                    <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 min-w-[160px]">
+                      <button
+                        onClick={() => { setSelectedLocation('all'); setShowLocationMenu(false); }}
+                        className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 ${selectedLocation === 'all' ? 'text-primary font-bold' : 'text-slate-600'}`}
+                      >
+                        All Locations
+                      </button>
+                      {locations.map((loc) => (
+                        <button
+                          key={loc.id}
+                          onClick={() => { setSelectedLocation(loc.id); setShowLocationMenu(false); }}
+                          className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 ${selectedLocation === loc.id ? 'text-primary font-bold' : 'text-slate-600'}`}
+                        >
+                          {loc.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="relative">
@@ -275,7 +380,7 @@ export function Reviews() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 space-y-3 pb-8">
-            {filteredReviews.map((review) => (
+            {filteredAndSortedReviews.length > 0 ? filteredAndSortedReviews.map((review) => (
               <div
                 key={review.id}
                 onClick={() => setSelectedReview(review)}
@@ -287,13 +392,24 @@ export function Reviews() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full border-2 ${
-                      selectedReview?.id === review.id ? 'border-white/20' : 'border-slate-200'
-                    } bg-slate-200 flex items-center justify-center font-bold text-sm`}>
-                      {(review.authorName || review.author || 'A').charAt(0)}
-                    </div>
+                    {/* Reviewer Avatar */}
+                    {review.reviewerPhotoUrl || review.authorPhotoUrl ? (
+                      <img
+                        src={review.reviewerPhotoUrl || review.authorPhotoUrl}
+                        alt=""
+                        className={`w-10 h-10 rounded-full border-2 object-cover ${
+                          selectedReview?.id === review.id ? 'border-white/20' : 'border-slate-200'
+                        }`}
+                      />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold text-sm ${
+                        selectedReview?.id === review.id ? 'border-white/20 bg-white/20' : 'border-slate-200 bg-slate-200'
+                      }`}>
+                        {(review.reviewerName || review.authorName || 'A').charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
-                      <h4 className="text-sm font-bold leading-tight">{review.authorName || review.author}</h4>
+                      <h4 className="text-sm font-bold leading-tight">{review.reviewerName || review.authorName}</h4>
                       <div className="flex text-amber-400">
                         {Array.from({ length: 5 }).map((_, i) => (
                           <Star
@@ -308,16 +424,14 @@ export function Reviews() {
                     </div>
                   </div>
                   <span className={`text-[10px] ${selectedReview?.id === review.id ? 'text-white/70' : 'text-slate-400'}`}>
-                    {review.originalCreatedOn || review.date}
+                    {review.originalCreatedOn || review.createdAt || review.date}
                   </span>
                 </div>
                 <p className={`text-xs line-clamp-2 ${selectedReview?.id === review.id ? 'text-white/90' : 'text-slate-500'}`}>
-                  {review.captionText || review.text}
+                  {review.captionText || review.text || review.message}
                 </p>
               </div>
-            ))}
-
-            {filteredReviews.length === 0 && (
+            )) : (
               <div className="py-16 text-center">
                 <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
                   <AllInbox className="w-8 h-8 text-slate-400" />
@@ -334,11 +448,20 @@ export function Reviews() {
             <div className="p-8 overflow-y-auto flex-1">
               <header className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 rounded-full border-4 border-slate-100 bg-slate-200 flex items-center justify-center text-2xl font-bold">
-                    {(selectedReview.authorName || selectedReview.author || 'A').charAt(0)}
-                  </div>
+                  {/* Reviewer Avatar */}
+                  {selectedReview.reviewerPhotoUrl || selectedReview.authorPhotoUrl ? (
+                    <img
+                      src={selectedReview.reviewerPhotoUrl || selectedReview.authorPhotoUrl}
+                      alt=""
+                      className="w-16 h-16 rounded-full border-4 border-slate-100 object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full border-4 border-slate-100 bg-slate-200 flex items-center justify-center text-2xl font-bold">
+                      {(selectedReview.reviewerName || selectedReview.authorName || 'A').charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
-                    <h2 className="text-2xl font-extrabold font-headline">{selectedReview.authorName || selectedReview.author}</h2>
+                    <h2 className="text-2xl font-extrabold font-headline">{selectedReview.reviewerName || selectedReview.authorName}</h2>
                     <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
                       <div className="flex text-amber-400">
                         {Array.from({ length: 5 }).map((_, i) => (
@@ -350,7 +473,7 @@ export function Reviews() {
                         ))}
                       </div>
                       <span>•</span>
-                      <span>{selectedReview.originalCreatedOn || selectedReview.date}</span>
+                      <span>{selectedReview.originalCreatedOn || selectedReview.createdAt || selectedReview.date}</span>
                       <span>•</span>
                       <span className="flex items-center gap-1">
                         <LocationOn className="w-3 h-3" /> {selectedReview.sourceName || selectedReview.location}
@@ -370,7 +493,7 @@ export function Reviews() {
 
               <article className="mb-8">
                 <p className="text-base leading-relaxed text-slate-700">
-                  {selectedReview.captionText || selectedReview.text}
+                  {selectedReview.captionText || selectedReview.text || selectedReview.message}
                 </p>
               </article>
 

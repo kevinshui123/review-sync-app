@@ -87,11 +87,12 @@ export function Settings() {
       }
     };
 
-    // Check EmbedSocial connection status
+    // Check if API is working by fetching locations (returns empty array if no listings, 401 if no API key)
     const checkEmbedSocialStatus = async () => {
       try {
-        const res = await apiGet('/api/embedsocial/organizations');
-        setEmbedSocialConnected(res.ok);
+        const res = await apiGet('/api/embedsocial/locations');
+        // 200 = connected (even if empty array), 401 = no API key configured
+        setEmbedSocialConnected(res.status === 200);
       } catch {
         setEmbedSocialConnected(false);
       }
@@ -252,7 +253,7 @@ export function Settings() {
               <div>
                 <h3 className="text-xl font-bold text-on-surface">Google Business Listings</h3>
                 <p className="text-sm text-on-surface-variant mt-1">
-                  Connect your Google Business Profile listings to sync reviews and manage your business. Your listings are managed through EmbedSocial.
+                  Connect your Google Business Profile listings to sync reviews and manage your business.
                 </p>
               </div>
 
