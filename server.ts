@@ -728,19 +728,19 @@ async function startServer() {
   // ==========================================
   app.get('/api/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: req.tenantId! },
-      });
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
       if (!tenant) {
         return res.status(404).json({ error: 'Tenant not found' });
       }
 
       res.json({
-        yelpApiKey: tenant.yelpApiKey || '',
-        openaiApiKey: tenant.openaiApiKey || '',
-        geminiApiKey: tenant.geminiApiKey || '',
-        embedSocialApiKey: tenant.embedSocialApiKey || '',
-        embedSocialConnected: !!(tenant.embedSocialApiKey && tenant.embedSocialApiKey.trim()),
+        yelpApiKey: tenant.yelpApiKey || process.env.YELP_API_KEY || '',
+        openaiApiKey: tenant.openaiApiKey || process.env.OPENAI_API_KEY || '',
+        geminiApiKey: tenant.geminiApiKey || process.env.GEMINI_API_KEY || '',
+        embedSocialApiKey: tenant.embedSocialApiKey || process.env.EMBEDSOCIAL_API_KEY || '',
+        embedSocialConnected: !!(tenant.embedSocialApiKey?.trim() || process.env.EMBEDSOCIAL_API_KEY?.trim()),
         tenantName: tenant.name,
       });
     } catch (error) {
@@ -753,8 +753,14 @@ async function startServer() {
     try {
       const { yelpApiKey, openaiApiKey, geminiApiKey, embedSocialApiKey, tenantName } = req.body;
 
+      const targetId = req.tenantId
+        ? req.tenantId
+        : (await prisma.tenant.findFirst())?.id;
+
+      if (!targetId) return res.status(404).json({ error: 'Tenant not found' });
+
       const updated = await prisma.tenant.update({
-        where: { id: req.tenantId! },
+        where: { id: targetId },
         data: {
           yelpApiKey: yelpApiKey || null,
           openaiApiKey: openaiApiKey || null,
@@ -3915,10 +3921,11 @@ Return ONLY valid JSON like this, nothing else:
         : await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
-      const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;
+      // Priority: Railway env vars first (survive DB wipe on redeploy), then DB
+      const apiKey = process.env.GEMINI_API_KEY || tenant.geminiApiKey;
       if (!apiKey) return res.status(500).json({ error: 'AI API key not configured. Please add Gemini API key in Settings.' });
 
-      const embedSocialKey = tenant.embedSocialApiKey || process.env.EMBEDSOCIAL_API_KEY;
+      const embedSocialKey = process.env.EMBEDSOCIAL_API_KEY || tenant.embedSocialApiKey;
       if (!embedSocialKey) return res.status(500).json({ error: 'EmbedSocial API key not configured.' });
 
       const lang = req.body?.lang || 'en';

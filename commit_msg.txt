@@ -1,10 +1,8 @@
-fix: use Google OAuth (GBP API) for coordinates instead of Places API
+fix: SEO optimization API key priority and settings fallback
 
-- Add getValidAuthForTenant(tenantId) helper to get valid OAuth for a specific tenant
-- Add fetchGbpLocationsWithCoordinates() to fetch lat/lng from Google Business
-  Profile API (uses existing OAuth connection, no extra API key needed)
-- Update sync-listings to:
-  1. First try GBP API coordinates (via placeId match)
-  2. Fall back to Google Places API if GBP fails
-- GBP coordinates are stored in DB and returned via /api/embedsocial/locations
-- Users no longer need a separate Google Places API key
+- SEO optimization endpoint: prioritize Railway env vars over DB
+  (process.env.GEMINI_API_KEY || tenant.geminiApiKey) since DB is wiped
+  on every Railway redeploy while env vars persist
+- /api/settings GET: add safe fallback (findFirst()) when req.tenantId
+  is undefined, and merge env vars into response for resilience
+- /api/settings POST: use safe tenant lookup when req.tenantId missing
