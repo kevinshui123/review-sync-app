@@ -167,6 +167,51 @@ async function fetchV4LocationReviews(auth: Auth.OAuth2Client, locationParent: s
   return out;
 }
 
+/**
+ * Fetch all GBP locations with coordinates using existing Google OAuth connection.
+ * Returns a map of placeId -> { lat, lng }.
+ */
+async function fetchGbpLocationsWithCoordinates(auth: Auth.OAuth2Client): Promise<Map<string, { lat: number; lng: number }>> {
+  const coords = new Map<string, { lat: number; lng: number }>();
+
+  try {
+    // Step 1: List all accounts
+    const accountsData = await googleApiRequestGet(auth, 'https://mybusinessaccountmanagement.googleapis.com/v1/accounts');
+    const accounts: any[] = accountsData.accounts || [];
+
+    for (const account of accounts) {
+      const accountName = account.name; // e.g. "accounts/123456"
+      let pageToken: string | undefined;
+
+      // Step 2: List all locations under each account
+      do {
+        const params = new URLSearchParams({ pageSize: '100' });
+        if (pageToken) params.set('pageToken', pageToken);
+        const locsUrl = `https://mybusiness.googleapis.com/v4/${accountName}/locations?${params}`;
+        const locsData = await googleApiRequestGet(auth, locsUrl);
+        const locations: any[] = locsData.locations || [];
+
+        for (const l of locations) {
+          const placeId = l.locationKey?.placeId || null;
+          const latLng = l.latLng;
+          if (placeId && latLng?.latitude && latLng?.longitude) {
+            coords.set(placeId, {
+              lat: latLng.latitude,
+              lng: latLng.longitude,
+            });
+          }
+        }
+
+        pageToken = locsData.nextPageToken;
+      } while (pageToken);
+    }
+  } catch (e) {
+    console.warn('[fetchGbpLocations] Failed to fetch GBP locations:', (e as any).message);
+  }
+
+  return coords;
+}
+
 // Auto-refresh token callback
 function setupTokenRefresh(auth: Auth.OAuth2Client, tenantId: string) {
   auth.on('tokens', async (tokens) => {
@@ -273,6 +318,59 @@ async function getValidAuth(): Promise<{ auth: Auth.OAuth2Client; tenantId: stri
     }
   } catch {
     // network error — proceed with stored token; let it fail naturally if really invalid
+  }
+
+  setupTokenRefresh(oauth2Client, tenant.id);
+  return { auth: oauth2Client, tenantId: tenant.id };
+}
+
+/** Like getValidAuth but accepts a specific tenantId instead of finding first tenant. */
+async function getValidAuthForTenant(tenantId: string): Promise<{ auth: Auth.OAuth2Client; tenantId: string } | null> {
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant?.googleAccessToken || !tenant?.googleRefreshToken) {
+    return null;
+  }
+
+  const { OAuth2Client } = Auth;
+  const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, `${APP_URL}/api/auth/google/callback`);
+  oauth2Client.setCredentials({
+    access_token: tenant.googleAccessToken,
+    refresh_token: tenant.googleRefreshToken,
+    expiry_date: tenant.googleTokenExpiry ? new Date(tenant.googleTokenExpiry).getTime() : undefined,
+  });
+
+  const isAboutToExpire =
+    tenant.googleTokenExpiry &&
+    new Date(tenant.googleTokenExpiry).getTime() - Date.now() < 2 * 60 * 1000;
+
+  if (isAboutToExpire) {
+    const refreshed = await refreshAndSaveToken(tenant.id, tenant.googleRefreshToken);
+    if (refreshed) {
+      return { auth: refreshed, tenantId: tenant.id };
+    }
+  }
+
+  try {
+    const probe = await fetch(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search?pageSize=1`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tenant.googleAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: 'probe' }),
+      },
+    );
+    if (probe.status === 401) {
+      const refreshed = await refreshAndSaveToken(tenant.id, tenant.googleRefreshToken);
+      if (refreshed) {
+        return { auth: refreshed, tenantId: tenant.id };
+      }
+      return null;
+    }
+  } catch {
+    // network error — proceed with stored token
   }
 
   setupTokenRefresh(oauth2Client, tenant.id);
@@ -1371,7 +1469,18 @@ async function startServer() {
         return res.json({ message: 'No listings found in EmbedSocial', synced: 0 });
       }
 
-      // Get Google Places API key for coordinate lookup
+      // Get coordinates: prefer GBP API (via OAuth), fall back to Places API
+      let gbpCoords = new Map<string, { lat: number; lng: number }>();
+      try {
+        const gbpAuth = await getValidAuthForTenant(req.tenantId!);
+        if (gbpAuth) {
+          gbpCoords = await fetchGbpLocationsWithCoordinates(gbpAuth.auth);
+          console.log(`[sync-listings] Got ${gbpCoords.size} GBP coordinates`);
+        }
+      } catch (e) {
+        console.warn('[sync-listings] GBP coordinates not available:', (e as any).message);
+      }
+
       const placesApiKey = await getGooglePlacesApiKey(req.tenantId);
 
       // Get existing tenant listings
@@ -1385,15 +1494,17 @@ async function startServer() {
       let synced = 0;
       for (const listing of allListings) {
         if (!existingIds.has(listing.id)) {
-          // Try to get coordinates from Google Places API
+          // Priority 1: GBP API coordinates (via OAuth, uses placeId)
           let lat: number | undefined;
           let lng: number | undefined;
-          if (placesApiKey && listing.address) {
+          if (gbpCoords.size > 0 && listing.googleId) {
+            const gbp = gbpCoords.get(listing.googleId);
+            if (gbp) { lat = gbp.lat; lng = gbp.lng; }
+          }
+          // Priority 2: Google Places API (via address search)
+          if ((lat === undefined || lng === undefined) && placesApiKey && listing.address) {
             const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
-            if (coords) {
-              lat = coords.lat;
-              lng = coords.lng;
-            }
+            if (coords) { lat = coords.lat; lng = coords.lng; }
           }
           await prisma.tenantListing.create({
             data: {
@@ -1420,12 +1531,18 @@ async function startServer() {
       for (const listing of allListings) {
         if (existingIds.has(listing.id)) {
           const existing = existingListings.find(l => l.embedSocialListingId === listing.id);
-          // Fill in coordinates if missing
+          // Fill in coordinates if missing: prefer GBP API, then Places API
           let lat: number | null = existing?.latitude ?? null;
           let lng: number | null = existing?.longitude ?? null;
-          if ((lat === null || lng === null) && placesApiKey && listing.address) {
-            const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
-            if (coords) { lat = coords.lat; lng = coords.lng; }
+          if (lat === null || lng === null) {
+            if (gbpCoords.size > 0 && listing.googleId) {
+              const gbp = gbpCoords.get(listing.googleId);
+              if (gbp) { lat = gbp.lat; lng = gbp.lng; }
+            }
+            if ((lat === null || lng === null) && placesApiKey && listing.address) {
+              const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
+              if (coords) { lat = coords.lat; lng = coords.lng; }
+            }
           }
           await prisma.tenantListing.updateMany({
             where: {
