@@ -349,7 +349,7 @@ export function Settings() {
               <div>
                 <h3 className="text-xl font-bold text-on-surface">AI Models API</h3>
                 <p className="text-sm text-on-surface-variant mt-1">
-                  Configure API keys for AI providers to power intelligent review replies and listing optimizations.
+                  Configure AI provider to power intelligent review reply generation. Enter your API key below.
                 </p>
               </div>
 

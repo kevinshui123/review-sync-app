@@ -52,6 +52,12 @@ interface ReviewFilters {
 
 type SortOption = 'newest' | 'oldest' | 'highest' | 'lowest';
 
+interface AIReplyOptions {
+  professional: string;
+  friendly: string;
+  empathetic: string;
+}
+
 export function Reviews() {
   const { t } = useLanguage();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -62,6 +68,8 @@ export function Reviews() {
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [replyText, setReplyText] = useState('');
+  const [aiReplyOptions, setAiReplyOptions] = useState<AIReplyOptions | null>(null);
+  const [selectedAiReply, setSelectedAiReply] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -135,8 +143,9 @@ export function Reviews() {
   const generateAIReply = async () => {
     if (!selectedReview) return;
     setGenerating(true);
+    setAiReplyOptions(null);
+    setSelectedAiReply(null);
     try {
-      // Pass review data directly since reviews come from EmbedSocial, not local DB
       const res = await apiPost('/api/reviews/generate-reply', {
         reviewId: selectedReview.id,
         reviewerName: selectedReview.reviewerName || selectedReview.authorName,
@@ -146,8 +155,11 @@ export function Reviews() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.replyText) {
-          setReplyText(data.replyText);
+        if (data.replies) {
+          setAiReplyOptions(data.replies);
+          // Auto-select the first option
+          setSelectedAiReply(data.replies.professional);
+          setReplyText(data.replies.professional);
         } else if (data.error) {
           console.error('AI reply error:', data.error);
           alert('Failed to generate reply: ' + data.error);
@@ -553,17 +565,52 @@ export function Reviews() {
                   {generating ? 'Generating...' : 'Generate AI reply'}
                 </button>
               </div>
+
+              {/* AI Reply Options */}
+              {aiReplyOptions && (
+                <div className="mb-4 space-y-2">
+                  <p className="text-xs font-semibold text-slate-500 mb-2">Choose a tone:</p>
+                  {[
+                    { key: 'professional', label: 'Professional', icon: '👔', desc: 'Formal & business-like' },
+                    { key: 'friendly', label: 'Friendly', icon: '😊', desc: 'Warm & casual' },
+                    { key: 'empathetic', label: 'Empathetic', icon: '💙', desc: 'Compassionate & caring' },
+                  ].map((tone) => (
+                    <button
+                      key={tone.key}
+                      onClick={() => {
+                        setSelectedAiReply(aiReplyOptions[tone.key as keyof AIReplyOptions]);
+                        setReplyText(aiReplyOptions[tone.key as keyof AIReplyOptions]);
+                      }}
+                      className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
+                        selectedAiReply === aiReplyOptions[tone.key as keyof AIReplyOptions]
+                          ? 'border-primary bg-primary/5'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">{tone.icon}</span>
+                        <span className="font-bold text-sm">{tone.label}</span>
+                        <span className="text-xs text-slate-400">- {tone.desc}</span>
+                      </div>
+                      <p className={`text-xs line-clamp-2 ${selectedAiReply === aiReplyOptions[tone.key as keyof AIReplyOptions] ? 'text-primary/80' : 'text-slate-500'}`}>
+                        "{aiReplyOptions[tone.key as keyof AIReplyOptions]}"
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="relative">
                 <textarea
-                  className="w-full min-h-[120px] bg-slate-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary focus:bg-white transition-all resize-none"
-                  placeholder={`Type your response to ${selectedReview.authorName || selectedReview.author}...`}
+                  className="w-full min-h-[120px] bg-slate-50 border-2 border-transparent rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary focus:bg-white transition-all resize-none"
+                  placeholder={`Type your response to ${selectedReview.reviewerName || selectedReview.authorName}...`}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                 />
               </div>
               <div className="mt-4 flex items-center justify-end gap-3">
                 <button
-                  onClick={() => setReplyText('')}
+                  onClick={() => { setReplyText(''); setAiReplyOptions(null); setSelectedAiReply(null); }}
                   className="px-5 py-2.5 text-sm font-bold text-slate-400 hover:bg-slate-100 rounded-full transition-colors"
                 >
                   Discard

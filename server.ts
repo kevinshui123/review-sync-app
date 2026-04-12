@@ -2413,10 +2413,10 @@ The review should sound natural, authentic, and written by a real customer. Keep
 
   app.post('/api/reviews/generate-reply', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      // Accept review data directly (reviews come from EmbedSocial, not local DB)
       const { reviewId, reviewerName, rating, comment, businessName } = req.body;
       
       if (!reviewId) return res.status(400).json({ error: 'Review ID is required' });
+      if (!comment) return res.status(400).json({ error: 'Review comment is required' });
 
       // Get tenant settings for AI
       const tenant = await prisma.tenant.findFirst();
@@ -2441,31 +2441,55 @@ The review should sound natural, authentic, and written by a real customer. Keep
       }
 
       const prompt = `
-        You are a professional customer service representative for a local business named "${business}".
-        Please write a polite, professional, and empathetic reply to the following customer review.
+You are a professional customer service AI assistant for a local business named "${business}".
+Generate exactly 3 different reply options for the following customer review.
 
-        Customer Name: ${reviewerName || 'Customer'}
-        Rating: ${rating || 5} out of 5 stars
-        Review Comment: "${comment || 'No comment provided.'}"
+Customer Name: ${reviewerName || 'Customer'}
+Rating: ${rating || 5} out of 5 stars
+Review Comment: "${comment}"
 
-        Guidelines:
-        - Keep it concise (2-4 sentences).
-        - If the rating is positive (4-5 stars), express gratitude and invite them back.
-        - If the rating is negative (1-3 stars), apologize for their experience, address their specific concern if mentioned, and offer a way to make it right.
-        - Do not include any placeholders like [Your Name] or [Manager Name]. Just the reply text.
-      `;
+Generate 3 replies in JSON format with these exact keys: "professional", "friendly", "empathetic"
+Each reply should be 2-4 sentences. Do not include any placeholders.
 
-      console.log('[generate-reply] Generating AI reply for review:', reviewId);
+- "professional": Formal, business-like tone. Suitable for corporate or upscale businesses.
+- "friendly": Casual, warm tone. Shows genuine enthusiasm and approachability.
+- "empathetic": Compassionate, understanding tone. Great for acknowledging concerns and showing care.
+
+Return ONLY valid JSON like this, nothing else:
+{
+  "professional": "Reply text here...",
+  "friendly": "Reply text here...",
+  "empathetic": "Reply text here..."
+}
+`;
+
+      console.log('[generate-reply] Generating 3 AI replies for review:', reviewId);
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
         contents: prompt,
       });
 
-      const replyText = response.text?.trim() || '';
-      console.log('[generate-reply] Generated reply:', replyText.slice(0, 100));
+      let replyText = response.text?.trim() || '';
+      
+      // Try to parse as JSON
+      let replies = null;
+      try {
+        // Remove markdown code blocks if present
+        replyText = replyText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        replies = JSON.parse(replyText);
+      } catch {
+        // If JSON parsing fails, try to extract replies from text
+        console.log('[generate-reply] JSON parse failed, raw response:', replyText);
+        replies = {
+          professional: replyText,
+          friendly: replyText,
+          empathetic: replyText,
+        };
+      }
 
-      res.json({ replyText });
+      console.log('[generate-reply] Generated replies successfully');
+      res.json({ replies });
     } catch (error: any) {
       console.error('Generate reply error:', error);
       res.status(500).json({ error: 'Failed to generate AI reply: ' + (error.message || 'Unknown error') });
