@@ -1,4 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ReactNode } from 'react';
+
+interface ErrorBoundaryProps { children: ReactNode; fallback?: ReactNode; }
+interface ErrorBoundaryState { hasError: boolean; error?: Error; }
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="flex flex-col items-center justify-center h-screen bg-surface gap-4">
+          <p className="text-red-500 font-bold">Something went wrong.</p>
+          <button className="px-4 py-2 bg-primary text-white rounded-lg" onClick={() => this.setState({ hasError: false })}>
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
@@ -20,6 +46,7 @@ import { apiGet } from './utils/api';
 
 function AppContent() {
   const { user, isLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [listingsSubTab, setListingsSubTab] = useState<string | null>(null);
   const [editLocationData, setEditLocationData] = useState<any>(null);
@@ -27,6 +54,10 @@ function AppContent() {
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { t } = useLanguage();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const checkConfig = async () => {
@@ -67,6 +98,16 @@ function AppContent() {
       default: return t('nav.dashboard');
     }
   };
+
+  // Wait for client-side hydration to complete
+  if (!mounted) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-surface gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-slate-500">Loading...</p>
+      </div>
+    );
+  }
 
   // Auth loading state
   if (isLoading) {
@@ -126,8 +167,9 @@ function AppContent() {
         )}
 
         <main className="flex-1 flex flex-col min-h-0 overflow-y-auto relative bg-white">
-          <div className="flex-1 flex flex-col min-h-0">
-            {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
+          <ErrorBoundary>
+            <div className="flex-1 flex flex-col min-h-0">
+              {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
               {activeTab === 'listings' && (
                 listingsSubTab === 'edit' ? (
                   <EditBusinessPage
@@ -166,7 +208,8 @@ function AppContent() {
               {activeTab === 'seo' && <SEO setActiveTab={setActiveTab} />}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
-          </div>
+            </div>
+          </ErrorBoundary>
         </main>
       </div>
     </div>
