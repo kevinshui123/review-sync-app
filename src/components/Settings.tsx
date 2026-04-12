@@ -29,8 +29,8 @@ export function Settings() {
   // Merchant management
   const [tenantListings, setTenantListings] = useState<TenantListing[]>([]);
   const [loadingListings, setLoadingListings] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [embedSocialConnected, setEmbedSocialConnected] = useState(false);
 
   // EmbedSocial invite link (fixed - your account)
   const EMBEDSOCIAL_INVITE_LINK = 'https://embedsocial.com/app/public/grant_listing_access?token=esb7ebfffb58b61f1e223b7dabf36a48';
@@ -75,6 +75,10 @@ export function Settings() {
         if (res.ok) {
           const data = await res.json();
           setTenantListings(data);
+          // Auto-sync if no listings connected
+          if (data.length === 0) {
+            handleSyncListings();
+          }
         }
       } catch (error) {
         console.error('Failed to fetch listings:', error);
@@ -83,7 +87,17 @@ export function Settings() {
       }
     };
 
-    Promise.all([fetchSettings(), fetchTeam(), fetchListings()]).finally(() => {
+    // Check EmbedSocial connection status
+    const checkEmbedSocialStatus = async () => {
+      try {
+        const res = await apiGet('/api/embedsocial/organizations');
+        setEmbedSocialConnected(res.ok);
+      } catch {
+        setEmbedSocialConnected(false);
+      }
+    };
+
+    Promise.all([fetchSettings(), fetchTeam(), fetchListings(), checkEmbedSocialStatus()]).finally(() => {
       setIsLoading(false);
     });
   }, []);
@@ -150,12 +164,6 @@ export function Settings() {
     } catch (error) {
       console.error('Failed to disconnect listing:', error);
     }
-  };
-
-  const handleCopyInviteLink = () => {
-    navigator.clipboard.writeText(EMBEDSOCIAL_INVITE_LINK);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleOpenInviteLink = () => {
@@ -250,42 +258,29 @@ export function Settings() {
 
               {/* Invite Link Section */}
               <div className="p-4 bg-blue-50 rounded-xl">
-                <h4 className="text-sm font-semibold text-blue-900 mb-2">Connect a New Listing</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-blue-900">Connect a New Listing</h4>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${embedSocialConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
+                    <span className="text-xs text-blue-700">{embedSocialConnected ? 'Connected' : 'Checking...'}</span>
+                  </div>
+                </div>
                 <p className="text-xs text-blue-700 mb-3">
                   Click the button below to connect a new Google Business Profile listing. You will be redirected to EmbedSocial to securely connect your Google account.
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleOpenInviteLink}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Connect New Listing
-                  </button>
-                  <button
-                    onClick={handleCopyInviteLink}
-                    className="px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors flex items-center gap-1"
-                  >
-                    {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Copied!' : 'Copy Link'}
-                  </button>
-                </div>
+                <button
+                  onClick={handleOpenInviteLink}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Connect New Listing
+                </button>
               </div>
 
               {/* Connected Listings */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-semibold text-slate-700">My Connected Listings ({tenantListings.length})</h4>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleSyncListings}
-                      disabled={loadingListings}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
-                    >
-                      {loadingListings ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3 h-3" />}
-                      Sync from EmbedSocial
-                    </button>
-                  </div>
                 </div>
 
                 {syncMessage && (
