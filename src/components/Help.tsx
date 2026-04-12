@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   HelpOutline,
   Settings,
@@ -14,33 +14,35 @@ import {
   AutoAwesome,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export function Help() {
+  const { t } = useLanguage();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   const faqs = [
     {
-      question: 'How do I get started?',
-      answer: 'Sign in with your Google account or create a new account with email and password. After signing in, go to Settings to connect your business listings.',
+      question: t('help.faq1'),
+      answer: t('help.faq1Ans'),
     },
     {
-      question: 'How do I connect my business listings?',
+      question: t('help.faq2'),
       answer: 'Go to Settings > Google Business Listings, then click "Connect New Listing". You will be redirected to authorize access to your Google Business Profile through our secure partner (EmbedSocial). After authorization, your listings will be automatically synced.',
     },
     {
-      question: 'Why are my reviews not showing?',
-      answer: 'Make sure you have connected your listings in Settings first. Reviews are synced automatically after connecting. If you still do not see reviews, click the refresh button on the Reviews page.',
+      question: t('help.faq3'),
+      answer: t('help.faq3Ans'),
     },
     {
-      question: 'How does AI reply generation work?',
+      question: t('help.faq4'),
       answer: 'The app uses Gemini AI to generate professional replies to customer reviews. Make sure you have configured a Gemini API key in Settings > AI Models API. Click "Generate AI reply" when viewing a review to create a suggested response.',
     },
     {
-      question: 'Can I bulk edit multiple locations?',
-      answer: 'Yes! Go to Bulk Edits and select the locations you want to update. Choose which fields to modify (phone, address, website), review the changes, and apply them to all selected locations at once.',
+      question: t('help.faq5'),
+      answer: t('help.faq5Ans'),
     },
     {
-      question: 'How do I publish posts to Google?',
+      question: t('help.faq6'),
       answer: 'Go to Publishing and click "Create New Post". Write your content, select a location, optionally schedule a date/time, and save.',
     },
   ];
@@ -48,9 +50,9 @@ export function Help() {
   const setupGuides = [
     {
       icon: <Store className="w-5 h-5" />,
-      title: 'Step 1: Connect Your Listings',
+      title: t('help.step1'),
       steps: [
-        'Go to Settings page',
+        t('help.step1Desc'),
         'Find "Google Business Listings" section',
         'Click "Connect New Listing" button',
         'Authorize access in the popup window',
@@ -59,7 +61,7 @@ export function Help() {
     },
     {
       icon: <RateReview className="w-5 h-5" />,
-      title: 'Step 2: Manage Reviews',
+      title: t('help.step2'),
       steps: [
         'Go to Reviews page',
         'View all reviews from your listings',
@@ -70,7 +72,7 @@ export function Help() {
     },
     {
       icon: <SmartToy className="w-5 h-5" />,
-      title: 'Step 3: Set Up AI Replies',
+      title: t('help.step3'),
       steps: [
         'Go to Settings > AI Models API',
         'Enter your Gemini API key',
@@ -81,7 +83,7 @@ export function Help() {
     },
     {
       icon: <Public className="w-5 h-5" />,
-      title: 'Step 4: Edit Listings',
+      title: t('help.step4'),
       steps: [
         'Go to Listings page',
         'Click on a listing to edit',
@@ -94,22 +96,22 @@ export function Help() {
   const features = [
     {
       icon: <RateReview className="w-6 h-6" />,
-      title: 'Review Management',
+      title: t('help.feature1'),
       description: 'View and manage Google reviews from all your business locations in one place.',
     },
     {
       icon: <SmartToy className="w-6 h-6" />,
-      title: 'AI-Powered Replies',
+      title: t('help.feature2'),
       description: 'Generate professional responses to customer reviews using Gemini AI.',
     },
     {
       icon: <AutoAwesome className="w-6 h-6" />,
-      title: 'Smart Sync',
+      title: t('help.feature3'),
       description: 'Automatically sync your business listings and reviews from Google Business Profile.',
     },
     {
       icon: <Settings className="w-6 h-6" />,
-      title: 'Publishing',
+      title: t('help.feature4'),
       description: 'Schedule and manage posts to your Google Business profiles.',
     },
   ];

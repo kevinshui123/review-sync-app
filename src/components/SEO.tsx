@@ -18,6 +18,7 @@ import {
   Refresh,
 } from '@mui/icons-material';
 import { apiGet, apiPost } from '../utils/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SEOProps {
   setActiveTab: (tab: string) => void;
@@ -81,6 +82,7 @@ interface LocalSearchGridResult {
 }
 
 export function SEO({ setActiveTab }: SEOProps) {
+  const { t } = useLanguage();
   const [activeSection, setActiveSection] = useState('citations');
   const [citations, setCitations] = useState<Citation[]>([]);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
@@ -172,16 +174,16 @@ export function SEO({ setActiveTab }: SEOProps) {
   }, []);
 
   const sections = [
-    { id: 'grid', label: 'Local search grid', icon: Map },
-    { id: 'citations', label: 'Local citations', icon: Description, badge: 'BETA' },
-    { id: 'optimization', label: 'Optimization', icon: LocalOffer },
+            { id: 'grid', label: t('seo.localSearchGrid'), icon: Map },
+            { id: 'citations', label: t('seo.localCitations'), icon: Description, badge: 'BETA' },
+            { id: 'optimization', label: t('seo.optimization'), icon: LocalOffer },
   ];
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm text-slate-500">Loading SEO data...</p>
+        <p className="text-sm text-slate-500">{t('seo.loading')}</p>
       </div>
     );
   }
@@ -207,7 +209,7 @@ export function SEO({ setActiveTab }: SEOProps) {
         {/* Keywords Section */}
         <div className="space-y-1">
           <div className="px-2 py-2">
-            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Keywords</h3>
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('seo.keywords')}</h3>
           </div>
           <nav className="space-y-1">
             {sections.map((section) => {
@@ -243,13 +245,13 @@ export function SEO({ setActiveTab }: SEOProps) {
         {activeSection === 'citations' && (
           <div className="space-y-8">
             {/* Header */}
-            <h1 className="text-2xl font-bold">
-              Local citation: <span className="font-normal text-slate-500">{businessInfo?.name}</span>
-            </h1>
+              <h1 className="text-2xl font-bold">
+                {t('seo.localCitation')} <span className="font-normal text-slate-500">{businessInfo?.name}</span>
+              </h1>
 
             {/* Baseline Info Card */}
             <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-bold mb-6">Baseline information (Google)</h2>
+              <h2 className="text-lg font-bold mb-6">{t('seo.baselineInfo')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Contact Info */}
                 <div className="space-y-4">
@@ -285,7 +287,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                 <div className="space-y-1">
                   <div className="flex items-center gap-3 mb-4">
                     <Schedule className="w-5 h-5 text-slate-400" />
-                    <span className="text-sm font-semibold">Business Hours</span>
+                    <span className="text-sm font-semibold">{t('seo.businessHours')}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm text-slate-600">
                     {Object.entries(businessInfo?.hours || {}).map(([day, time]) => (
@@ -304,11 +306,11 @@ export function SEO({ setActiveTab }: SEOProps) {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Address</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Hours</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('seo.name')}</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('seo.status')}</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">{t('seo.address')}</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('seo.hours')}</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('seo.phone')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -322,8 +324,8 @@ export function SEO({ setActiveTab }: SEOProps) {
                           <div>
                             <p className="text-sm font-bold">{citation.name}</p>
                             <p className="text-xs text-slate-500">
-                              Last update: {citation.lastUpdate} •{' '}
-                              <a className="text-primary underline" href="#">Not your business?</a>
+                              {t('seo.lastUpdate')} {citation.lastUpdate} •{' '}
+                              <a className="text-primary underline" href="#">{t('seo.notYourBusiness')}</a>
                             </p>
                           </div>
                         </div>
@@ -334,7 +336,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                             ? 'bg-green-100 text-green-700'
                             : 'bg-yellow-100 text-yellow-700'
                         }`}>
-                          {citation.status === 'matched' ? 'Matched' : 'Mismatch'}
+                          {citation.status === 'matched' ? t('seo.matched') : t('seo.mismatch')}
                         </span>
                       </td>
                       <td className="px-6 py-8">
@@ -348,7 +350,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                       </td>
                       <td className="px-6 py-8">
                         {citation.hours === 'Matched' ? (
-                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">Matched</span>
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">{t('seo.matched')}</span>
                         ) : (
                           <div className="space-y-1">
                             <span className="block bg-yellow-100 text-slate-700 px-2 py-0.5 rounded text-[11px]">
@@ -378,9 +380,9 @@ export function SEO({ setActiveTab }: SEOProps) {
         {activeSection === 'grid' && (
           <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold">Location search grid</h1>
+              <h1 className="text-2xl font-bold">{t('reports.localSearchGrid')}</h1>
               <button className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50">
-                Report settings
+                {t('reports.reportSettings') || 'Report settings'}
               </button>
             </div>
 
@@ -389,13 +391,13 @@ export function SEO({ setActiveTab }: SEOProps) {
               <div className="flex gap-3 flex-wrap">
                 <div className="flex-1 min-w-[300px]">
                   <label className="block text-xs font-semibold text-slate-500 mb-1">
-                    <Search className="w-3 h-3 inline mr-1" />Keyword / Query
+                    <Search className="w-3 h-3 inline mr-1" />{t('reports.keywordQuery')}
                   </label>
                   <input
                     type="text"
                     value={gridKeyword}
                     onChange={e => setGridKeyword(e.target.value)}
-                    placeholder='e.g. "mini bowl" or "restaurant near me"'
+                    placeholder={t('reports.keywordPlaceholder')}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none"
                     onKeyDown={e => e.key === 'Enter' && businessInfo?.lat && businessInfo?.lng && handleCreateReport()}
                   />
@@ -409,12 +411,12 @@ export function SEO({ setActiveTab }: SEOProps) {
                     {gridLoading ? (
                       <>
                         <Refresh className="w-4 h-4 animate-spin" />
-                        Scanning...
+                        {t('reports.scanning')}
                       </>
                     ) : (
                       <>
                         <Search className="w-4 h-4" />
-                        Create report
+                        {t('reports.createReport')}
                       </>
                     )}
                   </button>
@@ -423,7 +425,7 @@ export function SEO({ setActiveTab }: SEOProps) {
               {(!businessInfo?.lat || !businessInfo?.lng) && (
                 <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
                   <LocalOffer className="w-3 h-3" />
-                  No location coordinates found. Please connect a Google Business Profile listing with coordinates.
+                  {t('reports.noCoords')}
                 </p>
               )}
             </div>
@@ -441,32 +443,32 @@ export function SEO({ setActiveTab }: SEOProps) {
                 {/* Summary KPI row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                    <div className="text-xs text-slate-400 font-semibold mb-1">Average Rank</div>
+                    <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.avgRank')}</div>
                     <div className="text-2xl font-extrabold font-headline text-primary">
                       {gridResult.summary.averageRank ?? '20+'}
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">across {gridResult.summary.totalPoints} points</div>
+                    <div className="text-[10px] text-slate-400 mt-1">{t('reports.across')} {gridResult.summary.totalPoints} {t('reports.points')}</div>
                   </div>
                   <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                    <div className="text-xs text-slate-400 font-semibold mb-1">Top 3 Positions</div>
+                    <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.top3Positions')}</div>
                     <div className="text-2xl font-extrabold font-headline text-green-600">
                       {gridResult.summary.top3Percent}%
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">of all grid points</div>
+                    <div className="text-[10px] text-slate-400 mt-1">{t('reports.ofAllPoints')}</div>
                   </div>
                   <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                    <div className="text-xs text-slate-400 font-semibold mb-1">Top 10 Positions</div>
+                    <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.top10Positions')}</div>
                     <div className="text-2xl font-extrabold font-headline text-blue-600">
                       {gridResult.summary.top10Percent}%
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">of all grid points</div>
+                    <div className="text-[10px] text-slate-400 mt-1">{t('reports.ofAllPoints')}</div>
                   </div>
                   <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                    <div className="text-xs text-slate-400 font-semibold mb-1">Points Scanned</div>
+                    <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.pointsScanned')}</div>
                     <div className="text-2xl font-extrabold font-headline text-slate-700">
                       {gridResult.summary.pointsWithData}
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">of {gridResult.summary.totalPoints} grid points</div>
+                    <div className="text-[10px] text-slate-400 mt-1">{t('reports.across')} {gridResult.summary.totalPoints} {t('reports.gridPoints')}</div>
                   </div>
                 </div>
 
@@ -474,23 +476,23 @@ export function SEO({ setActiveTab }: SEOProps) {
                 <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-base font-bold">Search Grid Map</h3>
+                      <h3 className="text-base font-bold">{t('reports.searchGridMap')}</h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Keyword: <span className="font-semibold text-slate-600">"{gridResult.keyword}"</span> — {gridResult.gridSize} grid points around {businessInfo?.name}
+                        {t('reports.keyword')}: <span className="font-semibold text-slate-600">"{gridResult.keyword}"</span> — {gridResult.gridSize} {t('reports.gridPointsAround')} {businessInfo?.name}
                       </p>
                     </div>
                     <div className="flex items-center gap-4 text-xs">
                       <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded bg-green-500 inline-block" /> Rank 1-3
+                        <span className="w-3 h-3 rounded bg-green-500 inline-block" /> {t('reports.rank1to3')}
                       </span>
                       <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded bg-yellow-400 inline-block" /> Rank 4-10
+                        <span className="w-3 h-3 rounded bg-yellow-400 inline-block" /> {t('reports.rank4to10')}
                       </span>
                       <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded bg-red-400 inline-block" /> Rank 11+
+                        <span className="w-3 h-3 rounded bg-red-400 inline-block" /> {t('reports.rank11plus')}
                       </span>
                       <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded bg-slate-200 inline-block" /> No data
+                        <span className="w-3 h-3 rounded bg-slate-200 inline-block" /> {t('reports.noData2')}
                       </span>
                     </div>
                   </div>
@@ -523,7 +525,7 @@ export function SEO({ setActiveTab }: SEOProps) {
 
                           let bgColor = '#f1f5f9';
                           let textColor = '#94a3b8';
-                          let rankLabel = '—';
+                          let rankLabel = t('reports.notFound');
 
                           if (point.businessRank !== null) {
                             if (point.businessRank <= 3) { bgColor = '#22c55e'; textColor = 'white'; }
@@ -564,8 +566,8 @@ export function SEO({ setActiveTab }: SEOProps) {
                                 opacity="0.8"
                               >
                                 {point.businessRank !== null
-                                  ? `${point.totalResults} results`
-                                  : 'No data'
+                                  ? `${point.totalResults} ${t('reports.results')}`
+                                  : t('reports.noData2')
                                 }
                               </text>
                               {isSelected && (
@@ -588,24 +590,24 @@ export function SEO({ setActiveTab }: SEOProps) {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Selected point detail */}
                     <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-                      <h3 className="text-base font-bold mb-4">Grid Point #{selectedPoint.idx + 1} Details</h3>
+                      <h3 className="text-base font-bold mb-4">{t('reports.gridPointDetails')} #{selectedPoint.idx + 1}</h3>
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Your rank here</span>
+                          <span className="text-slate-500">{t('reports.yourRankHere')}</span>
                           <span className={`font-bold ${selectedPoint.businessRank !== null ? (selectedPoint.businessRank <= 3 ? 'text-green-600' : selectedPoint.businessRank <= 10 ? 'text-yellow-600' : 'text-red-600') : 'text-slate-400'}`}>
-                            {selectedPoint.businessRank !== null ? `#${selectedPoint.businessRank}` : 'Not found'}
+                            {selectedPoint.businessRank !== null ? `#${selectedPoint.businessRank}` : t('reports.notFound')}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Total results</span>
+                          <span className="text-slate-500">{t('reports.totalResults')}</span>
                           <span className="font-semibold">{selectedPoint.totalResults}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Coordinates</span>
+                          <span className="text-slate-500">{t('reports.coordinates')}</span>
                           <span className="font-mono text-xs">{selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Competitors visible</span>
+                          <span className="text-slate-500">{t('reports.competitorsVisible')}</span>
                           <span className="font-semibold">{selectedPoint.competitors.length}</span>
                         </div>
                       </div>
@@ -613,7 +615,7 @@ export function SEO({ setActiveTab }: SEOProps) {
 
                     {/* Competitors at this point */}
                     <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-                      <h3 className="text-base font-bold mb-4">Top Competitors at This Point</h3>
+                      <h3 className="text-base font-bold mb-4">{t('reports.topCompetitors')}</h3>
                       <div className="space-y-2">
                         {selectedPoint.competitors.length > 0 ? (
                           selectedPoint.competitors.slice(0, 5).map(comp => (
@@ -625,7 +627,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className={`text-sm font-bold truncate ${comp.isTarget ? 'text-primary' : 'text-slate-700'}`}>
-                                  {comp.name} {comp.isTarget && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1">You</span>}
+                                  {comp.name} {comp.isTarget && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1">{t('reports.you')}</span>}
                                 </div>
                                 <div className="text-xs text-slate-400 truncate">{comp.address}</div>
                               </div>
@@ -641,7 +643,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                             </div>
                           ))
                         ) : (
-                          <p className="text-sm text-slate-400 text-center py-4">No competitor data for this point.</p>
+                          <p className="text-sm text-slate-400 text-center py-4">{t('reports.noCompetitorData')}</p>
                         )}
                       </div>
                     </div>
@@ -651,17 +653,17 @@ export function SEO({ setActiveTab }: SEOProps) {
                 {/* All Points Overview Table */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100">
-                    <h3 className="text-base font-bold">All Grid Points</h3>
+                    <h3 className="text-base font-bold">{t('reports.allGridPoints')}</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
                       <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Point</th>
-                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Your Rank</th>
-                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Results</th>
-                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Top Competitor</th>
-                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Coordinates</th>
+                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">{t('reports.point')}</th>
+                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">{t('reports.yourRank')}</th>
+                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">{t('reports.results2')}</th>
+                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">{t('reports.topCompetitor')}</th>
+                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">{t('reports.coordinates')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -688,7 +690,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                                   {point.businessRank <= 3 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                                 </span>
                               ) : (
-                                <span className="text-slate-400 text-sm">Not ranked</span>
+                                <span className="text-slate-400 text-sm">{t('reports.notRanked')}</span>
                               )}
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-600">{point.totalResults}</td>
@@ -698,7 +700,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                                   <div className="text-sm font-semibold text-slate-700 truncate max-w-[200px]">{point.competitors[0].name}</div>
                                   <div className="text-xs text-slate-400 flex items-center gap-1">
                                     <Star className="w-3 h-3 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
-                                    {point.competitors[0].rating} ({point.competitors[0].reviews} reviews)
+                                    {point.competitors[0].rating} ({point.competitors[0].reviews} {t('reports.reviews')})
                                   </div>
                                 </div>
                               ) : (
@@ -725,9 +727,9 @@ export function SEO({ setActiveTab }: SEOProps) {
                     <div className="mb-4 inline-flex items-center justify-center p-3 bg-slate-100 rounded-full border border-slate-200">
                       <Public className="w-6 h-6 text-slate-500" />
                     </div>
-                    <h2 className="text-2xl font-bold mb-3">Local Search Grid</h2>
+                    <h2 className="text-2xl font-bold mb-3">{t('reports.localSearchGrid')}</h2>
                     <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                      Visualize rankings on a geographical map to identify local opportunities and track competitor performance.
+                      {t('reports.localSearchGridDesc')}
                     </p>
                     <button
                       onClick={handleCreateReport}
@@ -740,15 +742,15 @@ export function SEO({ setActiveTab }: SEOProps) {
                 </section>
 
                 <section className="border-t border-slate-200 pt-10">
-                  <h2 className="text-lg font-bold mb-2">Ranking competitors</h2>
-                  <p className="text-sm text-slate-500 mb-8">Top-performing search competitors, based on the Grid Points for this keyword</p>
+                  <h2 className="text-lg font-bold mb-2">{t('reports.rankingCompetitors')}</h2>
+                  <p className="text-sm text-slate-500 mb-8">{t('reports.rankingCompetitorsDesc')}</p>
                   <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-16 flex flex-col items-center justify-center text-center">
                     <div className="mb-4 inline-flex items-center justify-center p-3 bg-white rounded-full border border-slate-200 shadow-sm">
                       <Public className="w-6 h-6 text-slate-400" />
                     </div>
-                    <h3 className="text-base font-bold mb-2">Local Search Grid</h3>
+                    <h3 className="text-base font-bold mb-2">{t('reports.localSearchGrid')}</h3>
                     <p className="text-slate-400 text-xs max-w-md">
-                      No data available yet. Create your first report to start tracking your local ranking performance against competitors.
+                      {t('reports.noDataYet')}
                     </p>
                   </div>
                 </section>
@@ -764,27 +766,27 @@ export function SEO({ setActiveTab }: SEOProps) {
               <div className="space-y-4">
                 <div className="flex items-center justify-center gap-3">
                   <LocalOffer className="w-7 h-7 text-slate-700" />
-                  <h2 className="text-3xl font-extrabold tracking-tight">SEO optimization:</h2>
+                  <h2 className="text-3xl font-extrabold tracking-tight">{t('reports.seoOptimization')}</h2>
                 </div>
                 <h3 className="text-2xl font-semibold text-slate-600">{businessInfo?.name}</h3>
-                <p className="text-slate-500 max-w-sm mx-auto text-sm leading-relaxed">
-                  Generate an optimization report. Get a guide on how to increase your ranking on Google and much more.
-                </p>
+                  <p className="text-slate-500 max-w-sm mx-auto text-sm leading-relaxed">
+                    {t('reports.generateOptReport')}
+                  </p>
               </div>
 
               <div className="space-y-4 flex flex-col items-center">
                 <div className="relative w-72">
                   <select className="w-full pl-4 pr-10 py-3 border border-slate-300 rounded-lg text-sm appearance-none focus:ring-2 focus:ring-primary focus:border-primary">
-                    <option>Period: Last week</option>
-                    <option>Period: Last month</option>
-                    <option>Period: Last 3 months</option>
+                    <option>{t('reports.periodLastWeek')}</option>
+                    <option>{t('reports.periodLastMonth')}</option>
+                    <option>{t('reports.periodLast3Months')}</option>
                   </select>
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</span>
                 </div>
                 <button className="flex items-center bg-pink-50 hover:bg-pink-100 border border-pink-100 text-slate-800 font-semibold px-5 py-3 rounded-lg transition-all">
                   <LocalOffer className="w-4 h-4 mr-2 text-pink-500" />
-                  <span className="mr-3">Generate report</span>
-                  <span className="bg-white border border-slate-200 text-[10px] px-2 py-0.5 rounded">5 credits</span>
+                  <span className="mr-3">{t('reports.generateReport')}</span>
+                  <span className="bg-white border border-slate-200 text-[10px] px-2 py-0.5 rounded">5 {t('reports.credits')}</span>
                 </button>
               </div>
             </div>

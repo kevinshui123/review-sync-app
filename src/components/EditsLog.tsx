@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   CheckCircle,
   Cancel,
@@ -13,6 +13,7 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'motion/react';
 import { apiGet } from '../utils/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EditsLogProps {
   setActiveTab: (tab: string) => void;
@@ -59,6 +60,7 @@ export function addActivityLog(log: Omit<EditLog, 'createdAt' | 'id'>) {
 }
 
 export function EditsLog({ setActiveTab }: EditsLogProps) {
+  const { t } = useLanguage();
   const [activeFilter, setActiveFilter] = useState('all');
   const [logs, setLogs] = useState<EditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,12 +132,12 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
   };
 
   const filterItems = [
-    { id: 'all', label: 'All Activity', icon: History, count: logs.length },
-    { id: 'create', label: 'Created', icon: CheckCircle, count: logs.filter(l => l.action === 'create').length },
-    { id: 'post', label: 'Posts', icon: Edit, count: logs.filter(l => l.action === 'post').length },
-    { id: 'reply', label: 'Replies', icon: Reply, count: logs.filter(l => l.action === 'reply').length },
-    { id: 'sync', label: 'Sync', icon: Refresh, count: logs.filter(l => l.action === 'sync').length },
-    { id: 'delete', label: 'Deleted', icon: Delete, count: logs.filter(l => l.action === 'delete').length },
+    { id: 'all', label: t('editsLog.allActivity'), icon: History, count: logs.length },
+    { id: 'create', label: t('editsLog.created'), icon: CheckCircle, count: logs.filter(l => l.action === 'create').length },
+    { id: 'post', label: t('editsLog.posts'), icon: Edit, count: logs.filter(l => l.action === 'post').length },
+    { id: 'reply', label: t('editsLog.replies'), icon: Reply, count: logs.filter(l => l.action === 'reply').length },
+    { id: 'sync', label: t('editsLog.sync'), icon: Refresh, count: logs.filter(l => l.action === 'sync').length },
+    { id: 'delete', label: t('editsLog.deleted'), icon: Delete, count: logs.filter(l => l.action === 'delete').length },
   ];
 
   const filteredLogs = activeFilter === 'all'
@@ -149,7 +151,7 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'Just now';
+    if (minutes < 1) return t('editsLog.justNow');
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   Search,
   Explore,
@@ -18,6 +18,7 @@ import {
 } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend, ComposedChart, Line } from 'recharts';
 import { apiGet } from '../utils/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardProps {
   setActiveTab: (tab: string) => void;
@@ -152,6 +153,7 @@ function ReviewCard({ review }: { review: Review }) {
 }
 
 function LocationHealthCard({ locations }: { locations: LocationData[] }) {
+  const { t } = useLanguage();
   const totalReviews = locations.reduce((acc, loc) => acc + (loc.totalReviews || 0), 0);
   const avgRating = locations.length > 0
     ? (locations.reduce((acc, loc) => acc + (loc.averageRating || 0), 0) / locations.length).toFixed(1)
@@ -164,20 +166,20 @@ function LocationHealthCard({ locations }: { locations: LocationData[] }) {
   const mainLocation = locations[0] || null;
 
   const getHealthStatus = (score: number) => {
-    if (score >= 80) return { label: 'Excellent', color: 'text-green-600', bg: 'bg-green-50', barColor: 'bg-green-500' };
-    if (score >= 60) return { label: 'Good', color: 'text-blue-600', bg: 'bg-blue-50', barColor: 'bg-blue-500' };
-    if (score >= 40) return { label: 'Needs Attention', color: 'text-amber-600', bg: 'bg-amber-50', barColor: 'bg-amber-500' };
-    return { label: 'Poor', color: 'text-red-600', bg: 'bg-red-50', barColor: 'bg-red-500' };
+    if (score >= 80) return { label: t('dashboard.excellent'), color: 'text-green-600', bg: 'bg-green-50', barColor: 'bg-green-500' };
+    if (score >= 60) return { label: t('dashboard.good'), color: 'text-blue-600', bg: 'bg-blue-50', barColor: 'bg-blue-500' };
+    if (score >= 40) return { label: t('dashboard.needsAttention'), color: 'text-amber-600', bg: 'bg-amber-50', barColor: 'bg-amber-500' };
+    return { label: t('dashboard.poor'), color: 'text-red-600', bg: 'bg-red-50', barColor: 'bg-red-500' };
   };
 
   const status = getHealthStatus(avgHealthScore);
 
   const checklistItems = mainLocation ? [
-    { label: 'Business name', done: mainLocation.hasBusinessName },
-    { label: 'Address (Location)', done: mainLocation.hasAddress },
-    { label: 'Website URL', done: mainLocation.hasWebsite },
-    { label: 'Phone number', done: mainLocation.hasPhone },
-    { label: 'Number of reviews', done: mainLocation.totalReviews > 0 },
+    { label: t('dashboard.businessName'), done: mainLocation.hasBusinessName },
+    { label: t('dashboard.address'), done: mainLocation.hasAddress },
+    { label: t('dashboard.website'), done: mainLocation.hasWebsite },
+    { label: t('dashboard.phoneNumber'), done: mainLocation.hasPhone },
+    { label: t('dashboard.numberOfReviews'), done: mainLocation.totalReviews > 0 },
   ] : [];
 
   return (
@@ -207,7 +209,7 @@ function LocationHealthCard({ locations }: { locations: LocationData[] }) {
       {/* Health Progress Bar */}
       <div className="mb-4">
         <div className="flex items-center justify-between text-xs mb-1">
-          <span className="font-medium text-slate-600">Overall location health</span>
+          <span className="font-medium text-slate-600">{t('dashboard.health')}</span>
           <span className={`font-bold ${status.color}`}>{avgHealthScore}%</span>
         </div>
         <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -220,7 +222,7 @@ function LocationHealthCard({ locations }: { locations: LocationData[] }) {
 
       {/* Checklist */}
       <div className="space-y-2">
-        <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Profile Completeness</div>
+        <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">{t('dashboard.profileCompleteness') || t('dashboard.profileCompleteness')}</div>
         {checklistItems.map((item, idx) => (
           <div key={idx} className="flex items-center gap-2">
             {item.done ? (
@@ -250,6 +252,7 @@ function LocationHealthCard({ locations }: { locations: LocationData[] }) {
 }
 
 export function Dashboard({ setActiveTab }: DashboardProps) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('all');
@@ -275,10 +278,10 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
   const [reviewTrendsData, setReviewTrendsData] = useState<ChartData[]>([]);
 
   const periodOptions: Record<string, { label: string; days: number }> = {
-    '7days': { label: 'Last 7 Days', days: 7 },
-    '30days': { label: 'Last 30 Days', days: 30 },
-    '90days': { label: 'Last 90 Days', days: 90 },
-    '12months': { label: 'Last 12 Months', days: 365 },
+    '7days': { label: t('dashboard.last7Days'), days: 7 },
+    '30days': { label: t('dashboard.last30Days'), days: 30 },
+    '90days': { label: t('dashboard.last90Days'), days: 90 },
+    '12months': { label: t('dashboard.last12Months'), days: 365 },
   };
 
   useEffect(() => {
@@ -559,9 +562,9 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
     : recentReviews.filter(r => reviewFilter === 'positive' ? r.isPositive : !r.isPositive);
 
   const secondaryMetrics = [
-    { icon: <AccessTime className="w-4 h-4" />, label: 'Aver. Posting Time', value: `${embedMetrics.avgPostingTime}d` },
-    { icon: <Reply className="w-4 h-4" />, label: 'Aver. Response Time', value: `${embedMetrics.avgResponseTime}h` },
-    { icon: <CheckCircle className="w-4 h-4" />, label: 'Response %', value: `${embedMetrics.responsePercentage}%` },
+    { icon: <AccessTime className="w-4 h-4" />, label: t('dashboard.averPostingTime'), value: `${embedMetrics.avgPostingTime}d` },
+    { icon: <Reply className="w-4 h-4" />, label: t('dashboard.averResponseTime'), value: `${embedMetrics.avgResponseTime}h` },
+    { icon: <CheckCircle className="w-4 h-4" />, label: t('dashboard.responsePct'), value: `${embedMetrics.responsePercentage}%` },
   ];
 
   if (!mounted || loading) {
@@ -603,10 +606,10 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
               onChange={(e) => setSelectedPeriod(e.target.value)}
               className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer"
             >
-              <option value="7days">Last 7 Days</option>
-              <option value="30days">Last 30 Days</option>
-              <option value="90days">Last 90 Days</option>
-              <option value="12months">Last 12 Months</option>
+              <option value="7days">{t('dashboard.last7Days')}</option>
+              <option value="30days">{t('dashboard.last30Days')}</option>
+              <option value="90days">{t('dashboard.last90Days')}</option>
+              <option value="12months">{t('dashboard.last12Months')}</option>
             </select>
           </div>
 

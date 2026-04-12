@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { ArrowBack, Add, Delete } from '@mui/icons-material';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { apiGet, apiPut } from '../utils/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EditBusinessPageProps {
   location: {
@@ -22,6 +23,7 @@ interface EditBusinessPageProps {
 }
 
 export function EditBusinessPage({ location, onBack, onSuccess }: EditBusinessPageProps) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: location.name || '',
     address: location.address || '',
@@ -96,9 +98,9 @@ export function EditBusinessPage({ location, onBack, onSuccess }: EditBusinessPa
   };
 
   const sections = [
-    { id: 'basic', label: 'Basic Info' },
-    { id: 'hours', label: 'Hours' },
-    { id: 'categories', label: 'Categories' },
+    { id: 'basic', label: t('business.basicInfo') },
+    { id: 'hours', label: t('business.hours') },
+    { id: 'categories', label: t('business.categories') },
   ];
 
   return (
@@ -312,7 +314,7 @@ Sunday: Closed"
                   Saving...
                 </>
               ) : (
-                'Save Changes'
+                t('business.saveChanges')
               )}
             </button>
           </div>

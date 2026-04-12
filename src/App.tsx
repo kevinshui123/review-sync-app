@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Component, ReactNode } from 'react';
 
-interface ErrorBoundaryProps { children: ReactNode; fallback?: ReactNode; }
+interface ErrorBoundaryProps { children: ReactNode; fallback?: ReactNode; t?: (key: string) => string; }
 interface ErrorBoundaryState { hasError: boolean; error?: Error; }
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -15,9 +15,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     if (this.state.hasError) {
       return this.props.fallback || (
         <div className="flex flex-col items-center justify-center h-screen bg-surface gap-4">
-          <p className="text-red-500 font-bold">Something went wrong.</p>
+          <p className="text-red-500 font-bold">{this.props.t ? this.props.t('app.errorBoundary') : 'Something went wrong.'}</p>
           <button className="px-4 py-2 bg-primary text-white rounded-lg" onClick={() => this.setState({ hasError: false })}>
-            Try again
+            {this.props.t ? this.props.t('app.tryAgain') : 'Try again'}
           </button>
         </div>
       );
@@ -104,7 +104,7 @@ function AppContent() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-surface gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-slate-500">{t('app.loading')}</p>
       </div>
     );
   }
@@ -114,7 +114,7 @@ function AppContent() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-surface gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-slate-500">{t('app.loading')}</p>
       </div>
     );
   }
@@ -167,7 +167,7 @@ function AppContent() {
         )}
 
         <main className="flex-1 flex flex-col min-h-0 overflow-y-auto relative bg-white">
-          <ErrorBoundary>
+          <ErrorBoundary t={t}>
             <div className="flex-1 flex flex-col min-h-0">
               {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
               {activeTab === 'listings' && (

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { apiGet, apiPut } from '../utils/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EditBusinessInfoProps {
   location: {
@@ -17,6 +18,7 @@ interface EditBusinessInfoProps {
 }
 
 export function EditBusinessInfo({ location, onClose, onSuccess }: EditBusinessInfoProps) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: location.name || '',
     address: location.address || '',
@@ -167,7 +169,7 @@ export function EditBusinessInfo({ location, onClose, onSuccess }: EditBusinessI
                 Saving...
               </>
             ) : (
-              'Save Changes'
+              t('business.saveChanges')
             )}
           </button>
         </div>

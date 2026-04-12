@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   CheckCircle,
   Pending,
@@ -12,6 +12,7 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { apiGet, apiFetch } from '../utils/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface BulkEditsProps {
   setActiveTab: (tab: string) => void;
@@ -38,6 +39,7 @@ interface EditField {
 }
 
 export function BulkEdits({ setActiveTab }: BulkEditsProps) {
+  const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [listings, setListings] = useState<EmbedListing[]>([]);
@@ -246,7 +248,7 @@ export function BulkEdits({ setActiveTab }: BulkEditsProps) {
                         : 'bg-white border border-slate-200 text-slate-600'
                     }`}
                   >
-                    {selectedIds.size === listings.length ? 'Deselect All' : 'Select All'} ({selectedIds.size}/{listings.length})
+                    {selectedIds.size === listings.length ? t('bulkEdits.deselectAll') : t('bulkEdits.selectAll2')} ({selectedIds.size}/{listings.length})
                   </button>
                 </div>
 
@@ -269,7 +271,7 @@ export function BulkEdits({ setActiveTab }: BulkEditsProps) {
                       </div>
                       <div className="flex-1">
                         <h4 className="font-bold text-slate-900">{listing.name}</h4>
-                        <p className="text-sm text-slate-500">{listing.address || 'No address'}</p>
+                        <p className="text-sm text-slate-500">{listing.address || t('bulkEdits.noAddress')}</p>
                       </div>
                       <div className="text-right">
                         <span className="text-sm font-medium text-slate-700">{listing.averageRating.toFixed(1)}</span>

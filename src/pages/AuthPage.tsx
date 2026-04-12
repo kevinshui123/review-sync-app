@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function AuthPage() {
+  const { login, register, loginWithGoogle } = useAuth();
+  const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, register, loginWithGoogle } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +59,7 @@ export default function AuthPage() {
                 isLogin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              Sign In
+              {t('auth.signIn')}
             </button>
             <button
               onClick={() => { setIsLogin(false); setError(''); }}
@@ -65,7 +67,7 @@ export default function AuthPage() {
                 !isLogin ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              Sign Up
+              {t('auth.signUp')}
             </button>
           </div>
 
@@ -132,7 +134,7 @@ export default function AuthPage() {
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  {isLogin ? 'Sign In' : 'Create Account'}
+                  {isLogin ? t('auth.signIn') : t('auth.submitSignUp')}
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}

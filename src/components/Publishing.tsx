@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { addActivityLog } from './EditsLog';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface PublishingProps {
   setActiveTab: (tab: string) => void;
@@ -38,6 +39,7 @@ interface EmbedListing {
 }
 
 export function Publishing({ setActiveTab }: PublishingProps) {
+  const { t } = useLanguage();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -154,7 +156,7 @@ export function Publishing({ setActiveTab }: PublishingProps) {
         await fetchData();
         setShowCreateModal(false);
         setNewPost({ captionText: '', sourceIds: [], scheduledOn: '', imageUrls: [] });
-        const action = newPost.scheduledOn ? 'Scheduled' : 'Saved as draft';
+        const action = newPost.scheduledOn ? t('publishing.scheduled2') : t('publishing.draftStatus');
         showToast('success', `${action} post created!`);
         addActivityLog({
           action: 'post',
@@ -219,8 +221,8 @@ export function Publishing({ setActiveTab }: PublishingProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'published': return 'bg-green-100 text-green-700 border-l-green-600';
-      case 'scheduled': return 'bg-blue-100 text-blue-700 border-l-blue-600';
+      case t('publishing.published'): return 'bg-green-100 text-green-700 border-l-green-600';
+      case t('publishing.scheduled'): return 'bg-blue-100 text-blue-700 border-l-blue-600';
       case 'draft': return 'bg-amber-100 text-amber-700 border-l-amber-600';
       default: return 'bg-slate-100 text-slate-700 border-l-slate-400';
     }
@@ -228,8 +230,8 @@ export function Publishing({ setActiveTab }: PublishingProps) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'published': return <CheckCircle className="w-3 h-3" />;
-      case 'scheduled': return <Schedule className="w-3 h-3" />;
+      case t('publishing.published'): return <CheckCircle className="w-3 h-3" />;
+      case t('publishing.scheduled'): return <Schedule className="w-3 h-3" />;
       case 'draft': return <Edit className="w-3 h-3" />;
       default: return null;
     }
@@ -237,8 +239,8 @@ export function Publishing({ setActiveTab }: PublishingProps) {
 
   // Stats
   const stats = {
-    published: posts.filter(p => p.publishStatus === 'published').length,
-    scheduled: posts.filter(p => p.publishStatus === 'scheduled').length,
+    published: posts.filter(p => p.publishStatus === t('publishing.published')).length,
+    scheduled: posts.filter(p => p.publishStatus === t('publishing.scheduled')).length,
     draft: posts.filter(p => p.publishStatus === 'draft').length,
   };
 
@@ -325,7 +327,7 @@ export function Publishing({ setActiveTab }: PublishingProps) {
                   disabled={creating || !newPost.captionText.trim()}
                   className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {creating ? 'Creating...' : newPost.scheduledOn ? 'Schedule Post' : 'Save as Draft'}
+                  {creating ? t('publishing.creating') : newPost.scheduledOn ? t('publishing.schedulePost') : t('publishing.saveDraft')}
                 </button>
               </div>
             </motion.div>
@@ -456,7 +458,7 @@ export function Publishing({ setActiveTab }: PublishingProps) {
                       >
                         {getStatusIcon(post.publishStatus)}
                         <span className="truncate flex-1">{post.captionText}</span>
-                        {post.publishStatus !== 'published' && (
+                        {post.publishStatus !== t('publishing.published') && (
                           <button
                             onClick={() => handlePublishPost(post.id)}
                             disabled={publishing === post.id}
