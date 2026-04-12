@@ -2466,7 +2466,7 @@ Return ONLY valid JSON like this, nothing else:
       console.log('[generate-reply] Generating 3 AI replies for review:', reviewId);
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-1.5-flash',
         contents: prompt,
       });
 
