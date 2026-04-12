@@ -98,16 +98,31 @@ export function Reports({ setActiveTab }: ReportsProps) {
   const handleDownload = async () => {
     setDownloading(true);
     try {
+      const token = localStorage.getItem('token');
       let url = `/api/reports/gbp-pdf?startDate=${startDate}&endDate=${endDate}`;
       if (selectedLocation !== 'all') url += `&sourceId=${selectedLocation}`;
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Download failed' }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
+      link.href = blobUrl;
       link.download = `GBP_Insights_${startDate}_to_${endDate}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (e) {
-      console.error('[Reports] PDF download failed', e);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e: any) {
+      console.error('[Reports] PDF download failed:', e);
+      alert('PDF download failed: ' + (e.message || 'Please try again.'));
     } finally {
       setDownloading(false);
     }
