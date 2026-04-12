@@ -3,7 +3,7 @@ import express, { Response } from 'express';
 import authRoutes from './src/server/authRoutes.js';
 import oauthRoutes from './src/server/oauthRoutes.js';
 import { PrismaClient } from '@prisma/client';
-import { authMiddleware, AuthRequest } from './src/server/auth.js';
+import { authMiddleware, generateToken, AuthRequest } from './src/server/auth.js';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { Auth } from 'googleapis';
@@ -638,11 +638,63 @@ async function startServer() {
       const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, `${APP_URL}/api/auth/google/callback`);
       const { tokens } = await oauth2Client.getToken(code);
 
-      let tenant = await prisma.tenant.findFirst();
-      if (!tenant) {
-        tenant = await prisma.tenant.create({ data: { name: 'My Business' } });
+      // Get Google user info
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      const googleUser = await userInfoRes.json();
+      console.log('[google/callback] Google user:', googleUser.email);
+
+      // Find or create user
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: googleUser.email },
+            { oauthId: googleUser.id, oauthProvider: 'google' },
+          ],
+        },
+        include: { tenants: true },
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: googleUser.email,
+            name: googleUser.name,
+            avatar: googleUser.picture,
+            oauthProvider: 'google',
+            oauthId: googleUser.id,
+            tenants: {
+              create: {
+                name: `${googleUser.name || googleUser.email.split('@')[0]}'s Business`,
+              },
+            },
+          },
+          include: { tenants: true },
+        });
+      } else if (!user.oauthId) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            oauthProvider: 'google',
+            oauthId: googleUser.id,
+            avatar: googleUser.picture || user.avatar,
+          },
+          include: { tenants: true },
+        });
       }
 
+      // Get or create tenant
+      let tenant = user.tenants[0];
+      if (!tenant) {
+        tenant = await prisma.tenant.create({
+          data: {
+            name: `${user.name || user.email.split('@')[0]}'s Business`,
+          },
+        });
+      }
+
+      // Save Google tokens to tenant
       await prisma.tenant.update({
         where: { id: tenant.id },
         data: {
@@ -653,7 +705,11 @@ async function startServer() {
         },
       });
 
-      res.redirect(`${APP_URL}?googleAuthSuccess=true`);
+      // Generate JWT token
+      const jwtToken = generateToken(user.id, tenant.id);
+
+      // Redirect to app with token
+      res.redirect(`${APP_URL}/?token=${jwtToken}&tenantId=${tenant.id}`);
     } catch (err) {
       console.error('Google OAuth callback error:', err);
       res.redirect(`${APP_URL}?googleAuthError=token_exchange_failed`);
