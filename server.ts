@@ -1587,7 +1587,8 @@ async function startServer() {
   // Get listing metrics from EmbedSocial (formatted for dashboard)
   app.get('/api/embedsocial/metrics', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey(req.tenantId);
+      // Priority: Railway env vars > DB
+      const apiKey = process.env.EMBEDSOCIAL_API_KEY || await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1608,11 +1609,18 @@ async function startServer() {
       let totalReviews = 0;
       let averageRating = 0;
 
+      // Safe tenantId lookup
+      const tenantId = req.tenantId
+        ? req.tenantId
+        : (await prisma.tenant.findFirst())?.id;
+
       // Get this tenant's connected listing IDs
-      const tenantListings = await prisma.tenantListing.findMany({
-        where: { tenantId: req.tenantId!, status: 'active' },
-        select: { embedSocialListingId: true },
-      });
+      const tenantListings = tenantId
+        ? await prisma.tenantListing.findMany({
+            where: { tenantId, status: 'active' },
+            select: { embedSocialListingId: true },
+          })
+        : [];
       const tenantSourceIds = tenantListings.map(l => l.embedSocialListingId).filter(Boolean);
 
       // Get listings from EmbedSocial - only this tenant's connected listings
@@ -1721,7 +1729,8 @@ async function startServer() {
   // Get chart data (time series) from EmbedSocial
   app.get('/api/embedsocial/chart-data', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey(req.tenantId);
+      // Priority: Railway env vars (survive DB wipe on redeploy) > DB
+      const apiKey = process.env.EMBEDSOCIAL_API_KEY || await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
@@ -1737,11 +1746,18 @@ async function startServer() {
 
       console.log(`[chart-data] Fetching data for period: ${period}, days: ${days}`);
 
+      // Safe tenantId lookup: use req.tenantId if available, otherwise findFirst
+      const tenantId = req.tenantId
+        ? req.tenantId
+        : (await prisma.tenant.findFirst())?.id;
+
       // Get this tenant's connected listing IDs
-      const tenantListings = await prisma.tenantListing.findMany({
-        where: { tenantId: req.tenantId!, status: 'active' },
-        select: { embedSocialListingId: true },
-      });
+      const tenantListings = tenantId
+        ? await prisma.tenantListing.findMany({
+            where: { tenantId, status: 'active' },
+            select: { embedSocialListingId: true },
+          })
+        : [];
       const tenantSourceIds = tenantListings.map(l => l.embedSocialListingId).filter(Boolean);
 
       // Only use this tenant's connected source IDs
@@ -2001,7 +2017,8 @@ async function startServer() {
 
   app.get('/api/reports/gbp-pdf', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const apiKey = await getEmbedSocialApiKey(req.tenantId!);
+      // Priority: Railway env vars > DB
+      const apiKey = process.env.EMBEDSOCIAL_API_KEY || await getEmbedSocialApiKey(req.tenantId);
       if (!apiKey) return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
 
       const { startDate: startDateStr, endDate: endDateStr, sourceId } = req.query as Record<string, string>;
@@ -2015,7 +2032,7 @@ async function startServer() {
       const listing = allListings.find((l: any) => l.id === sourceId) || allListings[0] || {};
       const businessName = listing.name || 'Business';
 
-      const chartData = await getReportChartData(req.tenantId!, apiKey, days);
+      const chartData = await getReportChartData(req.tenantId, apiKey, days);
       const { daily, monthly, weekdaySearch, weekdayActions } = chartData;
 
       // Totals for donut charts

@@ -1,8 +1,10 @@
-fix: SEO optimization API key priority and settings fallback
+fix: all EmbedSocial endpoints use env vars priority + safe tenantId fallback
 
-- SEO optimization endpoint: prioritize Railway env vars over DB
-  (process.env.GEMINI_API_KEY || tenant.geminiApiKey) since DB is wiped
-  on every Railway redeploy while env vars persist
-- /api/settings GET: add safe fallback (findFirst()) when req.tenantId
-  is undefined, and merge env vars into response for resilience
-- /api/settings POST: use safe tenant lookup when req.tenantId missing
+Fixes GBP Performance Data / chart-data showing empty on Reports page.
+
+- /api/embedsocial/chart-data: env vars priority, safe tenantId fallback
+- /api/embedsocial/metrics: env vars priority, safe tenantId fallback
+- /api/reports/gbp-pdf: env vars priority
+- getReportChartData: tenantId can be null/undefined
+- All three endpoints now read process.env.EMBEDSOCIAL_API_KEY first
+  (survives Railway DB wipe on redeploy), then fall back to DB
