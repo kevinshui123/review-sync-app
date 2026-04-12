@@ -536,6 +536,31 @@ async function getEmbedSocialApiKey(tenantId?: string): Promise<string> {
   return tenant?.embedSocialApiKey || '';
 }
 
+async function getGooglePlacesApiKey(tenantId?: string): Promise<string> {
+  if (process.env.GOOGLE_PLACES_API_KEY) return process.env.GOOGLE_PLACES_API_KEY;
+  const tenant = tenantId
+    ? await prisma.tenant.findUnique({ where: { id: tenantId } })
+    : await prisma.tenant.findFirst();
+  return tenant?.googlePlacesApiKey || '';
+}
+
+async function getCoordinatesFromGoogle(address: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const query = encodeURIComponent(address);
+    const res = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${apiKey}`);
+    const data = await res.json();
+    if (data.results && data.results[0]?.geometry?.location) {
+      return {
+        lat: data.results[0].geometry.location.lat,
+        lng: data.results[0].geometry.location.lng,
+      };
+    }
+  } catch (e) {
+    console.warn('[getCoordinates] Google Places error:', (e as any).message);
+  }
+  return null;
+}
+
 async function embedSocialFetchWithKey(apiKey: string, path: string, options: RequestInit = {}): Promise<any> {
   const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://embedsocial.com/app/api').replace(/\/$/, '');
   console.log(`[embedSocialFetch] Using base: ${base}`);
@@ -1256,18 +1281,18 @@ async function startServer() {
         return res.status(401).json({ error: 'EmbedSocial API key not configured.' });
       }
 
-      // Get this tenant's connected listing IDs from TenantListing
-      const tenantListings = await prisma.tenantListing.findMany({
+      // Get this tenant's connected listings from LOCAL DB (with lat/lng)
+      const dbListings = await prisma.tenantListing.findMany({
         where: { tenantId: req.tenantId!, status: 'active' },
-        select: { embedSocialListingId: true },
       });
-      const tenantSourceIds = tenantListings.map(l => l.embedSocialListingId).filter(Boolean);
 
-      if (tenantSourceIds.length === 0) {
+      if (dbListings.length === 0) {
         return res.json([]);
       }
 
-      // Fetch from EmbedSocial with sourceId filter - only get user's connected listings
+      const tenantSourceIds = dbListings.map(l => l.embedSocialListingId).filter(Boolean);
+
+      // Fetch from EmbedSocial to get fresh metadata
       const allEmbedListings: any[] = [];
       for (const sourceId of tenantSourceIds) {
         try {
@@ -1293,6 +1318,15 @@ async function startServer() {
         }
       } catch (e) {
         console.log('[locations] Could not enrich with list data:', (e as any).message);
+      }
+
+      // Merge EmbedSocial data with DB coordinates
+      for (const listing of allEmbedListings) {
+        const dbListing = dbListings.find(l => l.embedSocialListingId === listing.id);
+        if (dbListing) {
+          listing.latitude = dbListing.latitude ?? null;
+          listing.longitude = dbListing.longitude ?? null;
+        }
       }
 
       res.json(allEmbedListings);
@@ -1337,10 +1371,13 @@ async function startServer() {
         return res.json({ message: 'No listings found in EmbedSocial', synced: 0 });
       }
 
+      // Get Google Places API key for coordinate lookup
+      const placesApiKey = await getGooglePlacesApiKey(req.tenantId);
+
       // Get existing tenant listings
       const existingListings = await prisma.tenantListing.findMany({
         where: { tenantId: req.tenantId! },
-        select: { embedSocialListingId: true, name: true },
+        select: { embedSocialListingId: true, name: true, latitude: true, longitude: true },
       });
       const existingIds = new Set(existingListings.map(l => l.embedSocialListingId));
 
@@ -1348,6 +1385,16 @@ async function startServer() {
       let synced = 0;
       for (const listing of allListings) {
         if (!existingIds.has(listing.id)) {
+          // Try to get coordinates from Google Places API
+          let lat: number | undefined;
+          let lng: number | undefined;
+          if (placesApiKey && listing.address) {
+            const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
+            if (coords) {
+              lat = coords.lat;
+              lng = coords.lng;
+            }
+          }
           await prisma.tenantListing.create({
             data: {
               tenantId: req.tenantId!,
@@ -1359,17 +1406,27 @@ async function startServer() {
               googleId: listing.googleId || '',
               totalReviews: listing.totalReviews || 0,
               averageRating: listing.averageRating || 0,
+              latitude: lat,
+              longitude: lng,
               status: 'active',
             },
           });
           synced++;
-          console.log(`[sync-listings] Added listing: ${listing.name} (${listing.id})`);
+          console.log(`[sync-listings] Added listing: ${listing.name} (${listing.id}) lat=${lat} lng=${lng}`);
         }
       }
 
       // Update existing listings with latest data
       for (const listing of allListings) {
         if (existingIds.has(listing.id)) {
+          const existing = existingListings.find(l => l.embedSocialListingId === listing.id);
+          // Fill in coordinates if missing
+          let lat: number | null = existing?.latitude ?? null;
+          let lng: number | null = existing?.longitude ?? null;
+          if ((lat === null || lng === null) && placesApiKey && listing.address) {
+            const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
+            if (coords) { lat = coords.lat; lng = coords.lng; }
+          }
           await prisma.tenantListing.updateMany({
             where: {
               tenantId: req.tenantId!,
@@ -1383,6 +1440,8 @@ async function startServer() {
               totalReviews: listing.totalReviews || 0,
               averageRating: listing.averageRating || 0,
               status: 'active',
+              latitude: lat,
+              longitude: lng,
             },
           });
         }

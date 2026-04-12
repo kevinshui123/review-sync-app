@@ -164,6 +164,8 @@ model TenantListing {
   googleId            String?  // The Google Business Profile ID
   totalReviews        Int      @default(0)
   averageRating       Float    @default(0)
+  latitude            Float?   // GPS latitude from Google Places API
+  longitude           Float?   // GPS longitude from Google Places API
   connectedAt         DateTime @default(now())
   status              String   @default("active") // active, disconnected
 
