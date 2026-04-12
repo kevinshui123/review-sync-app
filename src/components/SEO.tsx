@@ -11,8 +11,13 @@ import {
   Language,
   LocalOffer,
   Edit,
+  Star,
+  TrendingUp,
+  TrendingDown,
+  Place,
+  Refresh,
 } from '@mui/icons-material';
-import { motion } from 'motion/react';
+import { apiGet, apiPost } from '../utils/api';
 
 interface SEOProps {
   setActiveTab: (tab: string) => void;
@@ -36,6 +41,43 @@ interface BusinessInfo {
   category: string;
   keywords: string;
   hours: Record<string, string>;
+  lat?: number;
+  lng?: number;
+}
+
+interface GridPoint {
+  idx: number;
+  lat: number;
+  lng: number;
+  businessRank: number | null;
+  totalResults: number;
+  hasData: boolean;
+  competitors: {
+    rank: number;
+    name: string;
+    address: string;
+    rating: number;
+    reviews: number;
+    phone: string;
+    isTarget: boolean;
+  }[];
+}
+
+interface GridSummary {
+  totalPoints: number;
+  pointsWithData: number;
+  pointsRanked: number;
+  averageRank: number | null;
+  top3Percent: number;
+  top10Percent: number;
+}
+
+interface LocalSearchGridResult {
+  keyword: string;
+  center: { lat: number; lng: number };
+  gridSize: number;
+  points: GridPoint[];
+  summary: GridSummary;
 }
 
 export function SEO({ setActiveTab }: SEOProps) {
@@ -44,48 +86,82 @@ export function SEO({ setActiveTab }: SEOProps) {
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Local Search Grid state
+  const [gridKeyword, setGridKeyword] = useState('restaurant near me');
+  const [gridResult, setGridResult] = useState<LocalSearchGridResult | null>(null);
+  const [gridLoading, setGridLoading] = useState(false);
+  const [gridError, setGridError] = useState<string | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<GridPoint | null>(null);
+
+  const handleCreateReport = async () => {
+    if (!gridKeyword.trim() || !businessInfo?.lat || !businessInfo?.lng) return;
+    setGridLoading(true);
+    setGridError(null);
+    setGridResult(null);
+    setSelectedPoint(null);
+    try {
+      const res = await apiPost('/api/seo/local-search-grid', {
+        keyword: gridKeyword,
+        lat: businessInfo!.lat,
+        lng: businessInfo!.lng,
+        businessName: businessInfo!.name,
+        gridSize: 9,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGridResult(data);
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        setGridError(err.error || 'Failed to generate report. Please try again.');
+      }
+    } catch (e: any) {
+      setGridError(e.message || 'Network error. Please check your connection.');
+    } finally {
+      setGridLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Mock data - replace with actual API calls
-        setBusinessInfo({
-          name: 'Mahjong mini bowl-Baltimore',
-          address: '3105 saint pual st, unit A, Baltimore, 21218, US',
-          phone: '(443) 869-2177',
-          website: 'https://mahjong-box.com/',
-          category: 'Restaurant',
-          keywords: 'Asian Food, Mini Bowl, Noodles, Dumplings',
-          hours: {
-            Monday: '11 am - 8 pm',
-            Tuesday: '11 am - 8 pm',
-            Wednesday: '11 am - 8 pm',
-            Thursday: '11 am - 8 pm',
-            Friday: '11 am - 8 pm',
-            Saturday: '11 am - 8 pm',
-            Sunday: '11 am - 8 pm',
-          },
-        });
+        // Load locations from EmbedSocial
+        const locationsRes = await apiGet('/api/embedsocial/locations');
+        let locations: any[] = [];
+        if (locationsRes.ok) {
+          locations = await locationsRes.json();
+        }
 
-        setCitations([
-          {
-            id: '1',
-            name: "Mark's Duck House",
-            status: 'mismatch',
-            address: '6184 Arlington Blvd, Falls Church, 22044, US',
-            hours: 'Monday 10 am - 9 pm',
-            phone: '(703) 532-',
-            lastUpdate: '11.04.2026',
-          },
-          {
-            id: '2',
-            name: 'mahjong',
-            status: 'mismatch',
-            address: 'Saint Paul St, Baltimore, 21218, US',
-            hours: 'Matched',
-            phone: '+144386',
-            lastUpdate: '11.04.2026',
-          },
-        ]);
+        // Use first location as the active business
+        const primary = locations[0];
+        if (primary) {
+          setBusinessInfo({
+            name: primary.name || 'Business',
+            address: primary.address || '',
+            phone: primary.phoneNumber || primary.phone || '',
+            website: primary.websiteUrl || '',
+            category: primary.category || '',
+            keywords: 'restaurant, mini bowl, asian food',
+            hours: {},
+            lat: primary.latitude || primary.lat,
+            lng: primary.longitude || primary.lng,
+          });
+        } else {
+          setBusinessInfo({
+            name: 'Mahjong mini bowl-Baltimore',
+            address: '3105 saint pual st, unit A, Baltimore, 21218, US',
+            phone: '(443) 869-2177',
+            website: 'https://mahjong-box.com/',
+            category: 'Restaurant',
+            keywords: 'Asian Food, Mini Bowl, Noodles, Dumplings',
+            hours: {
+              Monday: '11 am - 8 pm', Tuesday: '11 am - 8 pm', Wednesday: '11 am - 8 pm',
+              Thursday: '11 am - 8 pm', Friday: '11 am - 8 pm', Saturday: '11 am - 8 pm', Sunday: '11 am - 8 pm',
+            },
+            lat: 39.3305, lng: -76.6150,
+          });
+        }
+
+        setCitations([]);
       } catch (error) {
         console.error('Failed to fetch SEO data:', error);
       } finally {
@@ -165,11 +241,7 @@ export function SEO({ setActiveTab }: SEOProps) {
       <main className="flex-1 overflow-y-auto p-8">
         {/* Section: Citations */}
         {activeSection === 'citations' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-8"
-          >
+          <div className="space-y-8">
             {/* Header */}
             <h1 className="text-2xl font-bold">
               Local citation: <span className="font-normal text-slate-500">{businessInfo?.name}</span>
@@ -299,16 +371,12 @@ export function SEO({ setActiveTab }: SEOProps) {
                 </tbody>
               </table>
             </section>
-          </motion.div>
+          </div>
         )}
 
         {/* Section: Local Search Grid */}
         {activeSection === 'grid' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-8"
-          >
+          <div className="space-y-8">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold">Location search grid</h1>
               <button className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50">
@@ -316,46 +384,382 @@ export function SEO({ setActiveTab }: SEOProps) {
               </button>
             </div>
 
-            {/* Hero Section */}
-            <section className="relative w-full h-[500px] flex items-center justify-center bg-gradient-to-b from-slate-50 to-white rounded-2xl border border-slate-200">
-              <div className="relative z-10 text-center max-w-lg px-4">
-                <div className="mb-4 inline-flex items-center justify-center p-3 bg-slate-100 rounded-full border border-slate-200">
-                  <Public className="w-6 h-6 text-slate-500" />
+            {/* Search form */}
+            <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+              <div className="flex gap-3 flex-wrap">
+                <div className="flex-1 min-w-[300px]">
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">
+                    <Search className="w-3 h-3 inline mr-1" />Keyword / Query
+                  </label>
+                  <input
+                    type="text"
+                    value={gridKeyword}
+                    onChange={e => setGridKeyword(e.target.value)}
+                    placeholder='e.g. "mini bowl" or "restaurant near me"'
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                    onKeyDown={e => e.key === 'Enter' && businessInfo?.lat && businessInfo?.lng && handleCreateReport()}
+                  />
                 </div>
-                <h2 className="text-2xl font-bold mb-3">Local Search Grid</h2>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                  Visualize rankings on a geographical map to identify local opportunities and track competitor performance.
-                </p>
-                <button className="bg-primary text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-primary/90 transition-colors">
-                  Create report
-                </button>
+                <div className="flex items-end gap-2">
+                  <button
+                    onClick={handleCreateReport}
+                    disabled={gridLoading || !gridKeyword.trim() || !businessInfo?.lat}
+                    className="flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold py-2.5 px-6 rounded-lg transition-colors"
+                  >
+                    {gridLoading ? (
+                      <>
+                        <Refresh className="w-4 h-4 animate-spin" />
+                        Scanning...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4" />
+                        Create report
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-            </section>
+              {(!businessInfo?.lat || !businessInfo?.lng) && (
+                <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                  <LocalOffer className="w-3 h-3" />
+                  No location coordinates found. Please connect a Google Business Profile listing with coordinates.
+                </p>
+              )}
+            </div>
 
-            {/* Competitors Section */}
-            <section className="border-t border-slate-200 pt-10">
-              <h2 className="text-lg font-bold mb-2">Ranking competitors</h2>
-              <p className="text-sm text-slate-500 mb-8">Top-performing search competitors, based on the Grid Points for this keyword</p>
-              <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-16 flex flex-col items-center justify-center text-center">
-                <div className="mb-4 inline-flex items-center justify-center p-3 bg-white rounded-full border border-slate-200 shadow-sm">
-                  <Public className="w-6 h-6 text-slate-400" />
-                </div>
-                <h3 className="text-base font-bold mb-2">Local Search Grid</h3>
-                <p className="text-slate-400 text-xs max-w-md">
-                  No data available yet. Create your first report to start tracking your local ranking performance against competitors.
-                </p>
+            {/* Error state */}
+            {gridError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                {gridError}
               </div>
-            </section>
-          </motion.div>
+            )}
+
+            {/* Results: Grid + Summary */}
+            {gridResult && !gridLoading && (
+              <>
+                {/* Summary KPI row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                    <div className="text-xs text-slate-400 font-semibold mb-1">Average Rank</div>
+                    <div className="text-2xl font-extrabold font-headline text-primary">
+                      {gridResult.summary.averageRank ?? '20+'}
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">across {gridResult.summary.totalPoints} points</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                    <div className="text-xs text-slate-400 font-semibold mb-1">Top 3 Positions</div>
+                    <div className="text-2xl font-extrabold font-headline text-green-600">
+                      {gridResult.summary.top3Percent}%
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">of all grid points</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                    <div className="text-xs text-slate-400 font-semibold mb-1">Top 10 Positions</div>
+                    <div className="text-2xl font-extrabold font-headline text-blue-600">
+                      {gridResult.summary.top10Percent}%
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">of all grid points</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                    <div className="text-xs text-slate-400 font-semibold mb-1">Points Scanned</div>
+                    <div className="text-2xl font-extrabold font-headline text-slate-700">
+                      {gridResult.summary.pointsWithData}
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">of {gridResult.summary.totalPoints} grid points</div>
+                  </div>
+                </div>
+
+                {/* Grid Map Visualization */}
+                <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-bold">Search Grid Map</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Keyword: <span className="font-semibold text-slate-600">"{gridResult.keyword}"</span> — {gridResult.gridSize} grid points around {businessInfo?.name}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded bg-green-500 inline-block" /> Rank 1-3
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded bg-yellow-400 inline-block" /> Rank 4-10
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded bg-red-400 inline-block" /> Rank 11+
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded bg-slate-200 inline-block" /> No data
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* SVG Grid Map */}
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[600px]">
+                      <svg
+                        viewBox="0 0 600 600"
+                        className="w-full"
+                        style={{ background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}
+                      >
+                        {/* Grid lines */}
+                        {[200, 400].map(pos => (
+                          <React.Fragment key={pos}>
+                            <line x1={pos} y1="0" x2={pos} y2="600" stroke="#e2e8f0" strokeWidth="1" />
+                            <line x1="0" y1={pos} x2="600" y2={pos} stroke="#e2e8f0" strokeWidth="1" />
+                          </React.Fragment>
+                        ))}
+
+                        {/* Grid cells */}
+                        {gridResult.points.map((point) => {
+                          const col = point.idx % 3;
+                          const row = Math.floor(point.idx / 3);
+                          const x = col * 200 + 10;
+                          const y = row * 200 + 10;
+                          const w = 180;
+                          const h = 180;
+                          const isSelected = selectedPoint?.idx === point.idx;
+
+                          let bgColor = '#f1f5f9';
+                          let textColor = '#94a3b8';
+                          let rankLabel = '—';
+
+                          if (point.businessRank !== null) {
+                            if (point.businessRank <= 3) { bgColor = '#22c55e'; textColor = 'white'; }
+                            else if (point.businessRank <= 10) { bgColor = '#facc15'; textColor = '#713f12'; }
+                            else { bgColor = '#f87171'; textColor = 'white'; }
+                            rankLabel = `#${point.businessRank}`;
+                          }
+
+                          return (
+                            <g
+                              key={point.idx}
+                              onClick={() => setSelectedPoint(point)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <rect
+                                x={x} y={y} width={w} height={h}
+                                rx="12"
+                                fill={bgColor}
+                                stroke={isSelected ? '#2563eb' : 'transparent'}
+                                strokeWidth={isSelected ? 3 : 0}
+                                opacity={0.9}
+                              />
+                              <text
+                                x={x + w / 2} y={y + h / 2 - 10}
+                                textAnchor="middle"
+                                fill={textColor}
+                                fontSize="36"
+                                fontWeight="800"
+                              >
+                                {rankLabel}
+                              </text>
+                              <text
+                                x={x + w / 2} y={y + h / 2 + 15}
+                                textAnchor="middle"
+                                fill={textColor}
+                                fontSize="11"
+                                fontWeight="500"
+                                opacity="0.8"
+                              >
+                                {point.businessRank !== null
+                                  ? `${point.totalResults} results`
+                                  : 'No data'
+                                }
+                              </text>
+                              {isSelected && (
+                                <circle cx={x + w / 2} cy={y + h / 2 - 10} r="5" fill="white" opacity="0.5" />
+                              )}
+                            </g>
+                          );
+                        })}
+
+                        {/* Center marker */}
+                        <circle cx="300" cy="300" r="8" fill="#2563eb" />
+                        <circle cx="300" cy="300" r="4" fill="white" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Selected Point Detail + All Competitors */}
+                {selectedPoint && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Selected point detail */}
+                    <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                      <h3 className="text-base font-bold mb-4">Grid Point #{selectedPoint.idx + 1} Details</h3>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Your rank here</span>
+                          <span className={`font-bold ${selectedPoint.businessRank !== null ? (selectedPoint.businessRank <= 3 ? 'text-green-600' : selectedPoint.businessRank <= 10 ? 'text-yellow-600' : 'text-red-600') : 'text-slate-400'}`}>
+                            {selectedPoint.businessRank !== null ? `#${selectedPoint.businessRank}` : 'Not found'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Total results</span>
+                          <span className="font-semibold">{selectedPoint.totalResults}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Coordinates</span>
+                          <span className="font-mono text-xs">{selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Competitors visible</span>
+                          <span className="font-semibold">{selectedPoint.competitors.length}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Competitors at this point */}
+                    <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                      <h3 className="text-base font-bold mb-4">Top Competitors at This Point</h3>
+                      <div className="space-y-2">
+                        {selectedPoint.competitors.length > 0 ? (
+                          selectedPoint.competitors.slice(0, 5).map(comp => (
+                            <div key={comp.rank} className={`flex items-center gap-3 p-3 rounded-xl ${comp.isTarget ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50'}`}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                                comp.isTarget ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-600'
+                              }`}>
+                                {comp.rank}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-sm font-bold truncate ${comp.isTarget ? 'text-primary' : 'text-slate-700'}`}>
+                                  {comp.name} {comp.isTarget && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1">You</span>}
+                                </div>
+                                <div className="text-xs text-slate-400 truncate">{comp.address}</div>
+                              </div>
+                              {comp.rating && (
+                                <div className="flex items-center gap-1 text-sm flex-shrink-0">
+                                  <Star className="w-3.5 h-3.5 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
+                                  <span className="font-semibold text-slate-700">{comp.rating}</span>
+                                  {comp.reviews !== undefined && (
+                                    <span className="text-xs text-slate-400">({comp.reviews})</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-400 text-center py-4">No competitor data for this point.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* All Points Overview Table */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100">
+                    <h3 className="text-base font-bold">All Grid Points</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Point</th>
+                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Your Rank</th>
+                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Results</th>
+                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Top Competitor</th>
+                          <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Coordinates</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {gridResult.points.map((point) => (
+                          <tr
+                            key={point.idx}
+                            onClick={() => setSelectedPoint(point)}
+                            className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedPoint?.idx === point.idx ? 'bg-blue-50' : ''}`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <Place className="w-4 h-4 text-slate-400" />
+                                <span className="text-sm font-semibold text-slate-700">Point #{point.idx + 1}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              {point.businessRank !== null ? (
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-bold ${
+                                  point.businessRank <= 3 ? 'bg-green-100 text-green-700' :
+                                  point.businessRank <= 10 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  #{point.businessRank}
+                                  {point.businessRank <= 3 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-sm">Not ranked</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-600">{point.totalResults}</td>
+                            <td className="px-6 py-4">
+                              {point.competitors[0] ? (
+                                <div>
+                                  <div className="text-sm font-semibold text-slate-700 truncate max-w-[200px]">{point.competitors[0].name}</div>
+                                  <div className="text-xs text-slate-400 flex items-center gap-1">
+                                    <Star className="w-3 h-3 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
+                                    {point.competitors[0].rating} ({point.competitors[0].reviews} reviews)
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 text-sm">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="font-mono text-xs text-slate-500">{point.lat.toFixed(4)}, {point.lng.toFixed(4)}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Empty state (no report yet) */}
+            {!gridResult && !gridLoading && (
+              <>
+                <section className="relative w-full h-[500px] flex items-center justify-center bg-gradient-to-b from-slate-50 to-white rounded-2xl border border-slate-200">
+                  <div className="relative z-10 text-center max-w-lg px-4">
+                    <div className="mb-4 inline-flex items-center justify-center p-3 bg-slate-100 rounded-full border border-slate-200">
+                      <Public className="w-6 h-6 text-slate-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-3">Local Search Grid</h2>
+                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                      Visualize rankings on a geographical map to identify local opportunities and track competitor performance.
+                    </p>
+                    <button
+                      onClick={handleCreateReport}
+                      disabled={!gridKeyword.trim() || !businessInfo?.lat}
+                      className="bg-primary text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      Create report
+                    </button>
+                  </div>
+                </section>
+
+                <section className="border-t border-slate-200 pt-10">
+                  <h2 className="text-lg font-bold mb-2">Ranking competitors</h2>
+                  <p className="text-sm text-slate-500 mb-8">Top-performing search competitors, based on the Grid Points for this keyword</p>
+                  <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-16 flex flex-col items-center justify-center text-center">
+                    <div className="mb-4 inline-flex items-center justify-center p-3 bg-white rounded-full border border-slate-200 shadow-sm">
+                      <Public className="w-6 h-6 text-slate-400" />
+                    </div>
+                    <h3 className="text-base font-bold mb-2">Local Search Grid</h3>
+                    <p className="text-slate-400 text-xs max-w-md">
+                      No data available yet. Create your first report to start tracking your local ranking performance against competitors.
+                    </p>
+                  </div>
+                </section>
+              </>
+            )}
+          </div>
         )}
 
         {/* Section: Optimization */}
         {activeSection === 'optimization' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center min-h-[600px]"
-          >
+          <div className="flex flex-col items-center justify-center min-h-[600px]">
             <div className="max-w-xl w-full text-center space-y-8 px-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-center gap-3">
@@ -400,7 +804,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                 <Public className="w-7 h-7 text-white" />
               </button>
             </div>
-          </motion.div>
+          </div>
         )}
       </main>
     </div>

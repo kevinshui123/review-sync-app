@@ -2816,6 +2816,123 @@ The review should sound natural, authentic, and written by a real customer. Keep
     }
   });
 
+  // ==========================================
+  // Local Search Grid — SEO API
+  // Uses SerpApi Google Maps to scan grid points and competitor rankings
+  // ==========================================
+  app.post('/api/seo/local-search-grid', async (req, res) => {
+    try {
+      const { keyword, lat, lng, businessName, gridSize = 9 } = req.body;
+      if (!keyword || lat === undefined || lng === undefined || !businessName) {
+        return res.status(400).json({ error: 'Missing required parameters: keyword, lat, lng, businessName' });
+      }
+
+      const serpApiKey = process.env.SERPAPI_KEY || '603217379ed95d286aef18d62c3d3ade08714b176e486c26933ce51aa1186010';
+
+      // Build grid points (3x3 grid around center point)
+      const gridOffsets9: number[][] = [[-0.005, -0.005], [-0.005, 0], [-0.005, 0.005], [0, -0.005], [0, 0], [0, 0.005], [0.005, -0.005], [0.005, 0], [0.005, 0.005]];
+      const gridOffsets16: number[][] = [[-0.008, -0.008], [-0.008, 0], [-0.008, 0.008], [0, -0.008], [0, 0], [0, 0.008], [0.008, -0.008], [0.008, 0], [0.008, 0.008]];
+      const gridOffsets = gridSize === 16 ? gridOffsets16 : gridOffsets9;
+
+      // Scan each grid point in parallel
+      const scanPoint = async (offset: number[], idx: number) => {
+        const pointLat = parseFloat(lat) + offset[0];
+        const pointLng = parseFloat(lng) + offset[1];
+
+        try {
+          const url = new URL('https://serpapi.com/search.json');
+          url.searchParams.append('engine', 'google_maps');
+          url.searchParams.append('q', keyword);
+          url.searchParams.append('ll', `@${pointLat},${pointLng},15z`);
+          url.searchParams.append('type', 'search');
+          url.searchParams.append('api_key', serpApiKey);
+          url.searchParams.append('num', '20');
+
+          const response = await fetch(url.toString());
+          const data = await response.json();
+
+          if (!response.ok) throw new Error(data.error || 'SerpApi error');
+
+          const localResults = data.local_results || [];
+          let businessRank = null;
+          const competitors = localResults.slice(0, 5).map((r: any, i: number) => {
+            const isTarget = r.title?.toLowerCase().includes(businessName.toLowerCase());
+            if (isTarget) businessRank = i + 1;
+            return {
+              rank: i + 1,
+              name: r.title,
+              address: r.address,
+              rating: r.rating,
+              reviews: r.reviews,
+              phone: r.phone,
+              isTarget,
+            };
+          });
+
+          // If business not found in top 20, try to find it
+          if (businessRank === null) {
+            const targetIdx = localResults.findIndex((r: any) =>
+              r.title?.toLowerCase().includes(businessName.toLowerCase()),
+            );
+            if (targetIdx !== -1) businessRank = targetIdx + 1;
+          }
+
+          return {
+            idx,
+            lat: pointLat,
+            lng: pointLng,
+            businessRank,
+            totalResults: localResults.length,
+            competitors,
+            hasData: localResults.length > 0,
+          };
+        } catch (err) {
+          console.error(`[local-search-grid] Point ${idx} error:`, err);
+          return {
+            idx,
+            lat: pointLat,
+            lng: pointLng,
+            businessRank: null,
+            totalResults: 0,
+            competitors: [],
+            hasData: false,
+          };
+        }
+      };
+
+      // Run all grid scans in parallel
+      const results = await Promise.all(gridOffsets.map((offset, i) => scanPoint(offset, i)));
+
+      // Calculate summary stats
+      const ranked = results.filter(r => r.businessRank !== null);
+      const avgRank = ranked.length > 0
+        ? Math.round(ranked.reduce((s, r) => s + r.businessRank!, 0) / ranked.length)
+        : null;
+      const top3Count = ranked.filter(r => r.businessRank <= 3).length;
+      const top3Percent = ranked.length > 0 ? Math.round((top3Count / ranked.length) * 100) : 0;
+      const top10Count = ranked.filter(r => r.businessRank <= 10).length;
+      const top10Percent = ranked.length > 0 ? Math.round((top10Count / ranked.length) * 100) : 0;
+
+      res.json({
+        keyword,
+        center: { lat: parseFloat(lat), lng: parseFloat(lng) },
+        gridSize,
+        points: results,
+        summary: {
+          totalPoints: results.length,
+          pointsWithData: results.filter(r => r.hasData).length,
+          pointsRanked: ranked.length,
+          averageRank: avgRank,
+          top3Percent,
+          top10Percent,
+        },
+      });
+    } catch (error: any) {
+      console.error('Local search grid error:', error);
+      res.status(500).json({ error: 'Failed to generate local search grid', details: error.message });
+    }
+  });
+
   app.post('/api/rank-tracker/scan', async (req, res) => {
     try {
       const { keyword, lat, lng, businessName } = req.body;
