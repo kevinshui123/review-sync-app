@@ -12,6 +12,7 @@ import {
   Delete,
 } from '@mui/icons-material';
 import { motion } from 'motion/react';
+import { apiPost, apiPut } from '../utils/api';
 import type { AIAgent } from '../types/automation';
 
 interface AIAgentEditorProps {
@@ -101,21 +102,19 @@ export function AIAgentEditor({ agent, onClose, onSave }: AIAgentEditorProps) {
     setSaving(true);
     try {
       const url = agent ? `/api/ai-agents/${agent.id}` : '/api/ai-agents';
-      const method = agent ? 'PUT' : 'POST';
+      const payload = {
+        name,
+        description,
+        tone,
+        personality: tone === 'custom' ? personality : PRESET_PERSONALITIES.find(p => p.id === tone)?.name,
+        expertise,
+        customInstructions: tone === 'custom' ? customInstructions : undefined,
+        model,
+      };
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          description,
-          tone,
-          personality: tone === 'custom' ? personality : PRESET_PERSONALITIES.find(p => p.id === tone)?.name,
-          expertise,
-          customInstructions: tone === 'custom' ? customInstructions : undefined,
-          model,
-        }),
-      });
+      const res = agent
+        ? await apiPut(url, payload)
+        : await apiPost(url, payload);
 
       if (res.ok) {
         onSave();
