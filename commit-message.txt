@@ -1,0 +1,15 @@
+feat(automations): Add Automations and AI Agents system
+
+- Add Automations page with reply-on-reviews and analyze-reviews workflows
+- Add AI Agents Team for custom reply agents with personalities
+- Add AI Profile Analysis drawer in Listings page
+- Add Prisma models for Automation and AIAgent
+- Add backend API endpoints for automations and AI agents
+- Integrate automations tab into Reviews page
+
+Features:
+- 3-step wizard for creating automations (Setup, Configure, Reply)
+- Support for Default Reply and AI Agent reply modes
+- Custom AI agents with tone, personality, expertise, and model selection
+- Toggle automation status (live/paused/draft)
+- Profile analysis with 8 SEO dimensions
