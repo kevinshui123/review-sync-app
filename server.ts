@@ -677,6 +677,23 @@ async function getCoordinatesFromPlaceId(placeId: string, apiKey: string): Promi
   return null;
 }
 
+async function getCoordinatesFromAddressFree(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const query = encodeURIComponent(address);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+      { headers: { 'User-Agent': 'ReviewSyncApp/1.0' } }
+    );
+    const data = await res.json();
+    if (data && data[0]?.lat && data[0]?.lon) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (e) {
+    console.warn('[getCoordinatesFromAddressFree] Nominatim error:', (e as any).message);
+  }
+  return null;
+}
+
 async function embedSocialFetchWithKey(apiKey: string, path: string, options: RequestInit = {}): Promise<any> {
   const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://embedsocial.com/app/api').replace(/\/$/, '');
   console.log(`[embedSocialFetch] Using base: ${base}`);
@@ -1543,6 +1560,11 @@ async function startServer() {
             const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
             if (coords) { lat = coords.lat; lng = coords.lng; }
           }
+          // Priority 4: Free Nominatim geocoding (no API key needed)
+          if ((lat === undefined || lng === undefined) && listing.address) {
+            const coords = await getCoordinatesFromAddressFree(listing.address);
+            if (coords) { lat = coords.lat; lng = coords.lng; }
+          }
           await prisma.tenantListing.create({
             data: {
               tenantId: req.tenantId!,
@@ -1582,6 +1604,10 @@ async function startServer() {
             }
             if ((lat === null || lng === null) && placesApiKey && listing.address) {
               const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
+              if (coords) { lat = coords.lat; lng = coords.lng; }
+            }
+            if ((lat === null || lng === null) && listing.address) {
+              const coords = await getCoordinatesFromAddressFree(listing.address);
               if (coords) { lat = coords.lat; lng = coords.lng; }
             }
           }
@@ -1672,6 +1698,11 @@ async function startServer() {
         // Priority 3: Google Places Text Search API via address
         if ((lat === null || lng === null) && placesApiKey && listing.address) {
           const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
+          if (coords) { lat = coords.lat; lng = coords.lng; }
+        }
+        // Priority 4: Free Nominatim geocoding (no API key needed)
+        if ((lat === null || lng === null) && listing.address) {
+          const coords = await getCoordinatesFromAddressFree(listing.address);
           if (coords) { lat = coords.lat; lng = coords.lng; }
         }
 
@@ -4176,7 +4207,7 @@ IMPORTANT RULES:
 11. "overallScore" should reflect the business's local SEO health based on available data`;
 
       const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
