@@ -210,11 +210,45 @@ function AppContent() {
               {activeTab === 'edits-log' && <EditsLog setActiveTab={setActiveTab} />}
               {activeTab === 'publishing' && <Publishing setActiveTab={setActiveTab} />}
               {activeTab === 'reports' && <Reports setActiveTab={setActiveTab} />}
-              {(activeTab === 'seo' || activeTab.startsWith('seo-')) && (
+              {(activeTab === 'seo' || activeTab === 'seo-grid' || activeTab === 'seo-citations' || activeTab === 'seo-optimization') && (
                 <SEO
                   setActiveTab={setActiveTab}
-                  activeSection={activeTab === 'seo' ? 'grid' : activeTab.replace('seo-', '')}
-                  setActiveSection={(section) => setActiveTab(`seo-${section}`)}
+                  activeSection={
+                    activeTab === 'seo' || activeTab === 'seo-grid' || activeTab === 'seo-citations' || activeTab === 'seo-optimization'
+                      ? 'localSeo'
+                      : activeTab === 'seo-real-comment'
+                      ? 'realComment'
+                      : activeTab === 'seo-rednote-seo'
+                      ? 'rednoteSeo'
+                      : 'localSeo'
+                  }
+                  setActiveSection={(section) => {
+                    if (section === 'localSeo') setActiveTab('seo-grid');
+                    else if (section === 'realComment') setActiveTab('seo-real-comment');
+                    else if (section === 'rednoteSeo') setActiveTab('seo-rednote-seo');
+                  }}
+                />
+              )}
+              {activeTab === 'seo-real-comment' && (
+                <SEO
+                  setActiveTab={setActiveTab}
+                  activeSection="realComment"
+                  setActiveSection={(section) => {
+                    if (section === 'localSeo') setActiveTab('seo-grid');
+                    else if (section === 'realComment') setActiveTab('seo-real-comment');
+                    else if (section === 'rednoteSeo') setActiveTab('seo-rednote-seo');
+                  }}
+                />
+              )}
+              {activeTab === 'seo-rednote-seo' && (
+                <SEO
+                  setActiveTab={setActiveTab}
+                  activeSection="rednoteSeo"
+                  setActiveSection={(section) => {
+                    if (section === 'localSeo') setActiveTab('seo-grid');
+                    else if (section === 'realComment') setActiveTab('seo-real-comment');
+                    else if (section === 'rednoteSeo') setActiveTab('seo-rednote-seo');
+                  }}
                 />
               )}
               {activeTab === 'settings' && <Settings />}

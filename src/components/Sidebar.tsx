@@ -57,35 +57,39 @@ const MAIN_NAV_ITEMS: NavItem[] = [
   { id: 'reports', labelKey: 'nav.reports', icon: BarChart },
 ];
 
-const SEO_NAV_ITEMS: SubNavItem[] = [
+const SEO_LOCAL_ITEMS: SubNavItem[] = [
   { id: 'seo-grid', labelKey: 'seo.localSearchGrid', icon: Map, parent: 'seo' },
   { id: 'seo-citations', labelKey: 'seo.localCitations', icon: Description, parent: 'seo', badge: 'BETA' },
   { id: 'seo-optimization', labelKey: 'seo.optimization', icon: LocalOffer, parent: 'seo' },
-  { id: 'seo-real-comment', labelKey: 'seo.section.realComment', icon: Star, parent: 'seo', badge: 'NEW' },
-  { id: 'seo-rednote', labelKey: 'seo.section.rednoteSeo', icon: Article, parent: 'seo' },
+];
+
+const SEO_TOP_ITEMS: NavItem[] = [
+  { id: 'seo', labelKey: 'nav.seo', icon: Public },
+  { id: 'seo-real-comment', labelKey: 'seo.section.realComment', icon: Star, badge: 'NEW' },
+  { id: 'seo-rednote-seo', labelKey: 'seo.section.rednoteSeo', icon: Article },
 ];
 
 export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarProps) {
   const { t } = useLanguage();
-  const [seoExpanded, setSeoExpanded] = useState(true);
+  const [seoLocalExpanded, setSeoLocalExpanded] = useState(true);
 
-  // Check if current active tab is part of SEO
-  const isSeoActive = activeTab.startsWith('seo-');
-  const seoParentActive = activeTab === 'seo' || isSeoActive;
+  // Check which SEO sub-section is active
+  const isSeoLocal = ['seo-grid', 'seo-citations', 'seo-optimization'].includes(activeTab);
+  const isSeoRealComment = activeTab === 'seo-real-comment';
+  const isSeoRednote = activeTab === 'seo-rednote-seo';
+  const isSeoTopActive = activeTab === 'seo' || isSeoLocal || isSeoRealComment || isSeoRednote;
 
   const handleNavClick = (id: string) => {
     setActiveTab(id);
     setIsOpen(false);
   };
 
-  const handleSeoClick = () => {
-    if (seoExpanded) {
-      // If already expanded, collapse it but don't navigate
-      setSeoExpanded(false);
+  const handleSeoLocalClick = () => {
+    if (seoLocalExpanded) {
+      setSeoLocalExpanded(false);
     } else {
-      // If collapsed, expand and go to first SEO item
-      setSeoExpanded(true);
-      if (!isSeoActive) {
+      setSeoLocalExpanded(true);
+      if (!isSeoLocal) {
         setActiveTab('seo-grid');
       }
     }
@@ -174,43 +178,104 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
           navItem(id, labelKey, icon, activeTab === id)
         )}
 
-        {/* SEO Section with sub-items */}
+        {/* SEO Section - two-level nested menu */}
         <div className="pt-2">
-          <button
-            onClick={handleSeoClick}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-              seoParentActive
-                ? 'bg-primary text-white font-semibold shadow-sm'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-primary'
-            }`}
-          >
-            <Public className="w-5 h-5" />
-            <span className="text-sm font-medium flex-1">{t('nav.seo')}</span>
-            {seoExpanded ? (
-              <ExpandLess className="w-4 h-4" />
-            ) : (
-              <ExpandMore className="w-4 h-4" />
-            )}
-          </button>
+          {/* SEO top-level items: Local SEO (expandable), Real Comment, Rednote SEO */}
+          <div className="space-y-0.5">
+            {SEO_TOP_ITEMS.map(({ id, labelKey, icon, badge }) => {
+              const Icon = icon;
+              const isActive = activeTab === id;
+              const isLocalSeo = id === 'seo';
+              return (
+                <div key={id}>
+                  {isLocalSeo ? (
+                    <>
+                      {/* Local SEO - expandable with sub-items */}
+                      <button
+                        onClick={handleSeoLocalClick}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                          isSeoTopActive && seoLocalExpanded
+                            ? 'bg-primary text-white font-semibold shadow-sm'
+                            : isSeoTopActive
+                            ? 'bg-primary/10 text-primary font-semibold'
+                            : 'text-slate-500 hover:bg-slate-100 hover:text-primary'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-sm font-medium flex-1">{t(labelKey)}</span>
+                        {seoLocalExpanded ? (
+                          <ExpandLess className="w-4 h-4" />
+                        ) : (
+                          <ExpandMore className="w-4 h-4" />
+                        )}
+                      </button>
 
-          {/* SEO Sub-items */}
-          <AnimatePresence>
-            {seoExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="pt-1 space-y-0.5">
-                  {SEO_NAV_ITEMS.map((item) =>
-                    subNavItem(item, activeTab === item.id)
+                      {/* Local SEO sub-items: Grid, Citations, Optimization */}
+                      <AnimatePresence>
+                        {seoLocalExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pt-1 space-y-0.5">
+                              {SEO_LOCAL_ITEMS.map((item) => {
+                                const SubIcon = item.icon;
+                                const isSubActive = activeTab === item.id;
+                                return (
+                                  <button
+                                    key={item.id}
+                                    onClick={() => handleNavClick(item.id)}
+                                    className={`w-full flex items-center gap-3 px-4 py-2.5 pl-12 rounded-lg transition-all duration-200 text-xs ${
+                                      isSubActive
+                                        ? 'bg-primary/10 text-primary font-semibold'
+                                        : 'text-slate-500 hover:bg-slate-50 hover:text-primary'
+                                    }`}
+                                  >
+                                    <SubIcon className="w-4 h-4" />
+                                    <span className="text-sm font-medium flex-1">{t(item.labelKey)}</span>
+                                    {item.badge && (
+                                      <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
+                                        isSubActive ? 'bg-primary/20 text-primary' : 'bg-orange-500 text-white'
+                                      }`}>
+                                        {item.badge}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </>
+                  ) : (
+                    /* Real Comment and Rednote SEO - top-level items */
+                    <button
+                      onClick={() => handleNavClick(id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary/10 text-primary font-semibold'
+                          : 'text-slate-500 hover:bg-slate-100 hover:text-primary'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-sm font-medium flex-1">{t(labelKey)}</span>
+                      {badge && (
+                        <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
+                          isActive ? 'bg-primary/20 text-primary' : 'bg-orange-500 text-white'
+                        }`}>
+                          {badge}
+                        </span>
+                      )}
+                    </button>
                   )}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              );
+            })}
+          </div>
         </div>
       </nav>
 
