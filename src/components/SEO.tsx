@@ -103,10 +103,22 @@ export function SEO({ setActiveTab }: SEOProps) {
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Optimization state
-  const [seoReport, setSeoReport] = useState<any>(null);
+  // Optimization state — restore from localStorage so report survives page navigation
+  const [seoReport, setSeoReport] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem('seo_report');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [seoLoading, setSeoLoading] = useState(false);
   const [seoError, setSeoError] = useState<string | null>(null);
+
+  // Persist report to localStorage whenever it changes
+  useEffect(() => {
+    if (seoReport) {
+      localStorage.setItem('seo_report', JSON.stringify(seoReport));
+    }
+  }, [seoReport]);
 
   // Local Search Grid state
   const [gridKeyword, setGridKeyword] = useState('restaurant near me');
@@ -836,12 +848,21 @@ export function SEO({ setActiveTab }: SEOProps) {
               <button
                 onClick={generateSeoReport}
                 disabled={seoLoading}
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
+                className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-xl shadow-lg transition-all ${
+                  seoReport
+                    ? 'bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50'
+                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-500/20'
+                } disabled:opacity-50`}
               >
                 {seoLoading ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
                     <span className="animate-pulse">Analyzing...</span>
+                  </>
+                ) : seoReport ? (
+                  <>
+                    <Refresh className="w-4 h-4" />
+                    Regenerate Report
                   </>
                 ) : (
                   <>
@@ -879,9 +900,11 @@ export function SEO({ setActiveTab }: SEOProps) {
 
             {/* Report Content */}
             {seoReport && !seoLoading && (
-              <div className="space-y-6">
-                {/* Score + Quick Wins */}
+              <div className="space-y-5">
+
+                {/* Top Row: Score + Quick Wins */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
                   {/* Score Card */}
                   <div className={`rounded-2xl p-6 border ${getScoreColor(seoReport.overallScore).border} ${getScoreColor(seoReport.overallScore).bg}`}>
                     <div className="flex items-center gap-2 mb-4">
@@ -892,7 +915,7 @@ export function SEO({ setActiveTab }: SEOProps) {
                       </span>
                     </div>
                     <div className="flex items-center justify-center mb-4">
-                      <div className="relative w-32 h-32">
+                      <div className="relative w-28 h-28">
                         <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
                           <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
                           <circle cx="60" cy="60" r="50" fill="none" stroke={getScoreColor(seoReport.overallScore).color} strokeWidth="10"
@@ -907,17 +930,17 @@ export function SEO({ setActiveTab }: SEOProps) {
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-600 text-center">{seoReport.overallSummary}</p>
+                    <p className="text-sm text-slate-600 text-center leading-relaxed">{seoReport.overallSummary}</p>
                   </div>
 
                   {/* Quick Wins */}
-                  <div className="bg-white rounded-2xl p-5 border border-slate-100 md:col-span-2">
+                  <div className="bg-white rounded-2xl p-5 border border-slate-100 md:col-span-2 flex flex-col">
                     <div className="flex items-center gap-2 mb-4">
                       <LocalFireDepartment className="w-5 h-5 text-orange-500" />
                       <h4 className="font-bold text-slate-800">Quick Wins</h4>
                       <span className="ml-auto bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.quickWins?.length || 0} items</span>
                     </div>
-                    <div className="space-y-2">
+                    <div className="flex-1 space-y-2 overflow-auto">
                       {(seoReport.quickWins || []).map((win: any, i: number) => (
                         <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
                           <div className="w-6 h-6 rounded-full bg-white border-2 border-orange-400 flex items-center justify-center mt-0.5 flex-shrink-0">
@@ -949,49 +972,78 @@ export function SEO({ setActiveTab }: SEOProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {(seoReport.insights || []).map((insight: any, i: number) => {
                       const prioColor = insight.priority === 'high' ? '#dc2626' : insight.priority === 'medium' ? '#d97706' : '#16a34a';
+                      const isCompleted = insight.completed === true;
+
+                      // Determine completion: check if action already done in-app
+                      const completionStatus = (() => {
+                        if (isCompleted) return { done: true, reason: 'Already completed' };
+                        if (insight.actionType === 'editable' && businessInfo?.name && businessInfo?.address) return { done: true, reason: 'Listings updated' };
+                        if (insight.actionType === 'review' && (seoReport.reviewResponseRate > 50 || seoReport.totalReviews > 0)) return { done: true, reason: 'Reviews active' };
+                        if (insight.actionType === 'citation') return { done: false };
+                        if (insight.actionType === 'post' && seoReport.publishedPosts > 0) return { done: true, reason: 'Posts published' };
+                        return { done: false };
+                      })();
+
                       return (
-                        <div key={i} className="rounded-xl border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all p-4">
+                        <div key={i} className={`rounded-xl border transition-all p-4 flex flex-col ${isCompleted || completionStatus.done ? 'border-green-200 bg-green-50/30' : 'border-slate-200 hover:border-purple-300 hover:shadow-md'}`}>
+                          {/* Card Header */}
                           <div className="flex items-start gap-3 mb-3">
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                               style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>
                               <Lightbulb className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h5 className="font-bold text-slate-800 text-sm mb-1">{insight.title}</h5>
-                              <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>{insight.priority} priority</span>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <h5 className="font-bold text-slate-800 text-sm leading-tight">{insight.title}</h5>
+                                {(isCompleted || completionStatus.done) && (
+                                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>{insight.priority}</span>
+                                {completionStatus.reason && (
+                                  <span className="text-xs text-green-600 font-medium">{completionStatus.reason}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <p className="text-xs text-slate-500 leading-relaxed mb-3">{insight.description}</p>
+
+                          {/* Description */}
+                          <p className="text-xs text-slate-500 leading-relaxed mb-3 flex-shrink-0">{insight.description}</p>
+
+                          {/* Current vs Suggested Values */}
                           {insight.currentValue && (
-                            <div className="bg-slate-50 rounded-lg p-2.5 mb-3 text-xs space-y-1">
+                            <div className="bg-slate-50 rounded-lg p-2.5 mb-3 text-xs space-y-1.5 flex-shrink-0">
                               <div className="flex items-center gap-2">
-                                <CheckCircle className="w-3 h-3 text-slate-400" />
-                                <span className="text-slate-400 font-semibold">Current:</span>
-                                <span className="text-slate-600 ml-auto">{insight.currentValue}</span>
+                                <span className="text-slate-400 font-semibold shrink-0">Current:</span>
+                                <span className="text-slate-600 ml-auto text-right">{insight.currentValue}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <ArrowForward className="w-3 h-3 text-purple-400" />
-                                <span className="text-slate-400 font-semibold">Suggested:</span>
-                                <span className="text-purple-600 ml-auto">{insight.suggestedValue}</span>
+                                <span className="text-purple-500 font-semibold shrink-0">Suggested:</span>
+                                <span className="text-purple-600 ml-auto text-right">{insight.suggestedValue}</span>
                               </div>
                             </div>
                           )}
-                          {insight.potentialImpact && (
-                            <p className="text-xs text-slate-400 italic mb-3 flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" />{insight.potentialImpact}
-                            </p>
+
+                          {/* Action Button */}
+                          {!(isCompleted || completionStatus.done) && (
+                            <button
+                              onClick={() => {
+                                if (insight.actionType === 'editable') setActiveTab('listings');
+                                else if (insight.actionType === 'review') setActiveTab('reviews');
+                                else if (insight.actionType === 'citation') setActiveTab('seo');
+                                else setActiveTab('publishing');
+                              }}
+                              className="mt-auto w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 transition-all"
+                            >
+                              {insight.actionLabel || 'Take Action'} <OpenInNew className="w-3 h-3" />
+                            </button>
                           )}
-                          <button
-                            onClick={() => {
-                              if (insight.actionType === 'editable') setActiveTab('listings');
-                              else if (insight.actionType === 'review') setActiveTab('reviews');
-                              else if (insight.actionType === 'citation') setActiveTab('seo');
-                              else setActiveTab('publishing');
-                            }}
-                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 hover:border-purple-400 transition-all"
-                          >
-                            {insight.actionLabel} <OpenInNew className="w-3 h-3" />
-                          </button>
+                          {(isCompleted || completionStatus.done) && (
+                            <div className="mt-auto w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-green-100 text-green-700">
+                              <CheckCircle className="w-3.5 h-3.5" /> Done in app
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1009,18 +1061,18 @@ export function SEO({ setActiveTab }: SEOProps) {
                     {(seoReport.competitiveInsights || []).map((comp: any, i: number) => {
                       const prioColor = comp.priority === 'high' ? '#dc2626' : comp.priority === 'medium' ? '#d97706' : '#16a34a';
                       return (
-                        <div key={i} className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl p-5 border border-slate-200">
+                        <div key={i} className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl p-5 border border-slate-200 flex flex-col">
                           <div className="flex items-start gap-3 mb-3">
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${prioColor}15` }}>
                               <Star className="w-4 h-4" style={{ color: prioColor }} />
                             </div>
-                            <div>
+                            <div className="flex-1">
                               <h5 className="font-bold text-slate-800 text-sm mb-1">{comp.title}</h5>
-                              <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>{comp.priority} priority</span>
+                              <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>{comp.priority}</span>
                             </div>
                           </div>
-                          <p className="text-xs text-slate-500 leading-relaxed mb-3">{comp.description}</p>
-                          <div className="space-y-1.5">
+                          <p className="text-xs text-slate-500 leading-relaxed mb-4">{comp.description}</p>
+                          <div className="mt-auto space-y-2">
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Steps:</p>
                             {comp.actionSteps.map((step: string, j: number) => (
                               <div key={j} className="flex items-start gap-2">

@@ -1,8 +1,0 @@
-fix: auto-backfill coordinates on SEO page load
-
-- Add POST /api/embedsocial/listings/backfill-coordinates endpoint:
-  fetches GBP coordinates via OAuth and updates all tenant listings
-  missing lat/lng, then saves to DB
-- SEO.tsx: when locations load without coordinates, automatically
-  calls backfill endpoint then re-fetches locations
-- /api/embedsocial/locations: env vars priority + safe tenantId fallback
