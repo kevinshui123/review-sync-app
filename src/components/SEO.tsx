@@ -681,117 +681,218 @@ export function SEO({ setActiveTab }: SEOProps) {
                   </div>
                 </div>
 
-                {/* Selected Point Detail + All Competitors */}
+                {/* Selected Point Banner + Unified Competitors Table */}
                 {selectedPoint && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Selected point detail */}
-                    <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-                      <h3 className="text-base font-bold mb-4">{t('reports.gridPointDetails')} #{selectedPoint.idx + 1}</h3>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{t('reports.yourRankHere')}</span>
-                          <span className={`font-bold ${selectedPoint.businessRank !== null ? (selectedPoint.businessRank <= 3 ? 'text-green-600' : selectedPoint.businessRank <= 10 ? 'text-yellow-600' : 'text-red-600') : 'text-slate-400'}`}>
-                            {selectedPoint.businessRank !== null ? `#${selectedPoint.businessRank}` : t('reports.notFound')}
-                          </span>
+                  <div className="space-y-4">
+                    {/* Your Performance Banner */}
+                    <div className="bg-white rounded-xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-extrabold ${
+                          selectedPoint.businessRank !== null
+                            ? selectedPoint.businessRank <= 3 ? 'bg-green-100 text-green-700' : selectedPoint.businessRank <= 10 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          {selectedPoint.businessRank !== null ? `#${selectedPoint.businessRank}` : '?'}
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{t('reports.totalResults')}</span>
-                          <span className="font-semibold">{selectedPoint.totalResults}</span>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Your Rank at This Point</p>
+                          <p className={`text-base md:text-lg font-extrabold leading-tight ${
+                            selectedPoint.businessRank !== null
+                              ? selectedPoint.businessRank <= 3 ? 'text-green-600' : selectedPoint.businessRank <= 10 ? 'text-yellow-600' : 'text-red-600'
+                              : 'text-slate-400'
+                          }`}>
+                            {selectedPoint.businessRank !== null
+                              ? `Rank #${selectedPoint.businessRank} of ${selectedPoint.totalResults}`
+                              : `Not found in top ${selectedPoint.totalResults}`}
+                          </p>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{t('reports.coordinates')}</span>
-                          <span className="font-mono text-xs">{selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)}</span>
+                      </div>
+                      <div className="ml-auto text-right hidden sm:block shrink-0">
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Coordinates</p>
+                        <p className="text-xs font-mono text-slate-500">{selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)}</p>
+                      </div>
+                      <div className="hidden md:flex items-center gap-5 pl-4 border-l border-slate-200 shrink-0">
+                        <div className="text-center">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total</p>
+                          <p className="text-lg font-extrabold text-slate-700">{selectedPoint.totalResults}</p>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{t('reports.competitorsVisible')}</span>
-                          <span className="font-semibold">{selectedPoint.competitors.length}</span>
+                        <div className="text-center">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Competitors</p>
+                          <p className="text-lg font-extrabold text-slate-700">{selectedPoint.competitors.length}</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Your Performance at This Point */}
-                    <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-                      <h3 className="text-base font-bold mb-4">{t('reports.gridPointDetails')} #{selectedPoint.idx + 1}</h3>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{t('reports.yourRankHere')}</span>
-                          <span className={`font-bold ${selectedPoint.businessRank !== null ? (selectedPoint.businessRank <= 3 ? 'text-green-600' : selectedPoint.businessRank <= 10 ? 'text-yellow-600' : 'text-red-600') : 'text-slate-400'}`}>
-                            {selectedPoint.businessRank !== null ? `#${selectedPoint.businessRank}` : t('reports.notFound')}
-                          </span>
+                    {/* Unified Competitors Table */}
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                      <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold">Local Search Competitors</h3>
+                          <p className="text-xs text-slate-400 mt-0.5">All competitors across {gridResult.points.length} grid points — sorted by best rank</p>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{t('reports.totalResults')}</span>
-                          <span className="font-semibold">{selectedPoint.totalResults}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{t('reports.coordinates')}</span>
-                          <span className="font-mono text-xs">{selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{t('reports.competitorsVisible')}</span>
-                          <span className="font-semibold">{selectedPoint.competitors.length}</span>
-                        </div>
+                        <span className="text-xs text-slate-400 font-semibold shrink-0">{gridResult.topCompetitors.length} competitors</span>
                       </div>
-                    </div>
-
-                    {/* Top Competitors across all points */}
-                    <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-base font-bold">{t('reports.topCompetitors')}</h3>
-                        {gridResult.topCompetitors && (
-                          <span className="text-xs text-slate-400">{gridResult.topCompetitors.length} competitors found</span>
-                        )}
-                      </div>
-                      <div className="space-y-2 max-h-80 overflow-y-auto">
-                        {gridResult.topCompetitors && gridResult.topCompetitors.length > 0 ? (
-                          gridResult.topCompetitors.map((comp, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                              {/* Rank + thumbnail */}
-                              <div className="relative flex-shrink-0">
-                                {comp.thumbnail ? (
-                                  <img src={comp.thumbnail} alt={comp.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-full bg-slate-200 border border-slate-200 flex items-center justify-center flex-shrink-0">
-                                    <Place className="w-5 h-5 text-slate-400" />
-                                  </div>
-                                )}
-                                <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                  comp.bestRank <= 3 ? 'bg-green-500 text-white' :
-                                  comp.bestRank <= 10 ? 'bg-yellow-400 text-yellow-900' :
-                                  'bg-red-400 text-white'
-                                }`}>
-                                  {comp.bestRank}
-                                </div>
-                              </div>
-                              {/* Business info */}
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-bold text-slate-800 truncate">{comp.name}</div>
-                                <div className="text-xs text-slate-400 truncate">{comp.address}</div>
-                              </div>
-                              {/* Stats */}
-                              <div className="flex items-center gap-3 flex-shrink-0">
-                                {comp.rating !== null && (
-                                  <div className="flex items-center gap-1 text-sm">
-                                    <Star className="w-3.5 h-3.5 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
-                                    <span className="font-semibold text-slate-700">{comp.rating}</span>
-                                    {comp.reviews !== null && (
-                                      <span className="text-xs text-slate-400">({comp.reviews})</span>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business</th>
+                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Best Rank</th>
+                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Reviews</th>
+                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rating</th>
+                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Points Found</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {gridResult.topCompetitors.map((comp, i) => (
+                              <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-4 md:px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    {comp.thumbnail ? (
+                                      <img src={comp.thumbnail} alt={comp.name} className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                    ) : (
+                                      <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                                        <Place className="w-4 h-4 text-slate-400" />
+                                      </div>
                                     )}
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-bold text-slate-800 truncate max-w-[140px] md:max-w-[200px]">{comp.name}</div>
+                                      <div className="text-[10px] text-slate-400 truncate max-w-[140px] md:max-w-[200px] hidden sm:block">{comp.address}</div>
+                                    </div>
                                   </div>
-                                )}
-                                <div className="text-xs text-slate-400">{comp.rankAtPoints.length}pt</div>
-                              </div>
+                                </td>
+                                <td className="px-4 md:px-6 py-4">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-bold ${
+                                    comp.bestRank <= 3 ? 'bg-green-100 text-green-700' :
+                                    comp.bestRank <= 10 ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                                  }`}>
+                                    #{comp.bestRank}
+                                  </span>
+                                </td>
+                                <td className="px-4 md:px-6 py-4">
+                                  <span className="text-sm font-semibold text-slate-600">{comp.reviews ?? '—'}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-4">
+                                  {comp.rating !== null ? (
+                                    <div className="flex items-center gap-1">
+                                      <Star className="w-3.5 h-3.5 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
+                                      <span className="text-sm font-bold text-slate-700">{comp.rating}</span>
+                                    </div>
+                                  ) : <span className="text-slate-400 text-sm">—</span>}
+                                </td>
+                                <td className="px-4 md:px-6 py-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="flex gap-0.5">
+                                      {gridResult.points.map((pt) => (
+                                        <div
+                                          key={pt.idx}
+                                          className={`w-2 h-2 rounded-full ${
+                                            comp.rankAtPoints.includes(pt.idx)
+                                              ? (comp.bestRank <= 3 ? 'bg-green-400' : comp.bestRank <= 10 ? 'bg-yellow-400' : 'bg-red-400')
+                                              : 'bg-slate-200'
+                                          }`}
+                                          title={`Point #${pt.idx + 1}`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <span className="text-xs text-slate-500 font-semibold">{comp.rankAtPoints.length}/{gridResult.points.length}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {gridResult.topCompetitors.length === 0 && (
+                          <div className="py-16 text-center">
+                            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                              <Place className="w-8 h-8 text-slate-400" />
                             </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-slate-400 text-center py-4">No competitor data yet</p>
+                            <p className="text-slate-500 text-sm">No competitor data yet</p>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* All Points Overview Table */}
+                {/* All Grid Points Table */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="px-4 md:px-6 py-4 border-b border-slate-100">
+                    <h3 className="text-base font-bold">All Grid Points</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Your ranking at each location point</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Point</th>
+                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Your Rank</th>
+                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Results</th>
+                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#1 Competitor</th>
+                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Coordinates</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {gridResult.points.map((point) => (
+                          <tr
+                            key={point.idx}
+                            onClick={() => setSelectedPoint(point)}
+                            className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedPoint?.idx === point.idx ? 'bg-blue-50' : ''}`}
+                          >
+                            <td className="px-4 md:px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <Place className="w-4 h-4 text-slate-400" />
+                                <span className="text-sm font-semibold text-slate-700">Point #{point.idx + 1}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 md:px-6 py-4">
+                              {point.businessRank !== null ? (
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-bold ${
+                                  point.businessRank <= 3 ? 'bg-green-100 text-green-700' :
+                                  point.businessRank <= 10 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  #{point.businessRank}
+                                  {point.businessRank <= 3 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-sm">Not ranked</span>
+                              )}
+                            </td>
+                            <td className="px-4 md:px-6 py-4 text-sm text-slate-600">{point.totalResults}</td>
+                            <td className="px-4 md:px-6 py-4">
+                              {point.competitors[0] ? (
+                                <div className="flex items-center gap-2">
+                                  {point.competitors[0].thumbnail ? (
+                                    <img src={point.competitors[0].thumbnail} alt={point.competitors[0].name} className="w-7 h-7 rounded-full object-cover border border-slate-200 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+                                      <Place className="w-3.5 h-3.5 text-slate-400" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-semibold text-slate-700 truncate max-w-[140px] md:max-w-[160px]">{point.competitors[0].name}</div>
+                                    {point.competitors[0].rating !== null && (
+                                      <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                                        <Star className="w-2.5 h-2.5 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
+                                        {point.competitors[0].rating}
+                                        {point.competitors[0].reviews !== null && <>({point.competitors[0].reviews})</>}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : <span className="text-slate-400 text-sm">—</span>}
+                            </td>
+                            <td className="px-4 md:px-6 py-4 hidden sm:table-cell">
+                              <span className="font-mono text-xs text-slate-500">{point.lat.toFixed(4)}, {point.lng.toFixed(4)}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>                {/* All Points Overview Table */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100">
                     <h3 className="text-base font-bold">{t('reports.allGridPoints')}</h3>
