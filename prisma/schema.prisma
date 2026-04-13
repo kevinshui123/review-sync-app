@@ -60,6 +60,8 @@ model Tenant {
   locations   Location[]
   commentTasks CommentTask[]
   tenantListings TenantListing[]
+  automations Automation[]
+  aiAgents   AIAgent[]
 }
 
 model Location {
@@ -173,4 +175,49 @@ model TenantListing {
 
   @@index([tenantId])
   @@index([embedSocialListingId])
+}
+
+model Automation {
+  id              String   @id @default(uuid())
+  tenantId        String
+  name            String
+  type            String   // 'reply-on-reviews' | 'analyze-reviews'
+  status          String   @default("draft") // 'draft' | 'live' | 'paused'
+  locationId      String
+  trigger         String   @default("new-review") // 'new-review' | 'all-reviews'
+  ratingFilter    String   @default("all") // 'all' | '5-stars' | '4-stars' | etc.
+  replyMode       String   @default("default") // 'default' | 'ai-agent'
+  defaultReply    String?
+  aiAgentId       String?
+  aiAgentName     String?
+  isEnabled       Boolean  @default(false)
+  totalTriggered  Int      @default(0)
+  lastTriggered   DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model AIAgent {
+  id                String   @id @default(uuid())
+  tenantId          String
+  name              String
+  description       String
+  tone              String   // 'professional' | 'friendly' | 'empathetic' | 'custom'
+  personality       String?
+  expertise         String[] @default([]) // Array of industry specializations
+  customInstructions String?
+  model             String   @default("gemini") // 'gemini' | 'openai'
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }

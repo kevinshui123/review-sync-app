@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Inventory2, Store, LocationOn, Sync, Close, Link, ArrowBack, Edit, Star, Phone, Language, Lock, PhotoCamera, Tag, AccountCircle, CheckCircle, Add, Delete } from '@mui/icons-material';
+import { Inventory2, Store, LocationOn, Sync, Close, Link, ArrowBack, Edit, Star, Phone, Language, Lock, PhotoCamera, Tag, AccountCircle, CheckCircle, Add, Delete, AutoAwesome } from '@mui/icons-material';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EditBusinessPage } from './EditBusinessPage';
+import { ProfileAnalysisDrawer } from './ProfileAnalysisDrawer';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
 
 interface ListingsProps {
@@ -47,6 +48,8 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
+  const [showAnalysisDrawer, setShowAnalysisDrawer] = useState(false);
+  const [selectedLocationForAnalysis, setSelectedLocationForAnalysis] = useState<Location | null>(null);
 
   useEffect(() => {
     fetchLocations();
@@ -248,6 +251,17 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => {
+                          setSelectedLocationForAnalysis(location);
+                          setShowAnalysisDrawer(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20 hover:from-purple-700 hover:to-indigo-700 transition-all"
+                        title="AI Profile Analysis"
+                      >
+                        <AutoAwesome className="w-4 h-4" />
+                        AI Analysis
+                      </button>
+                      <button
+                        onClick={() => {
                           setSelectedLocation(location);
                           setShowDetailDrawer(true);
                         }}
@@ -292,6 +306,13 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
         </div>
       </div>
 
+      {/* Profile Analysis Drawer */}
+      <ProfileAnalysisDrawer
+        isOpen={showAnalysisDrawer}
+        onClose={() => setShowAnalysisDrawer(false)}
+        location={selectedLocationForAnalysis}
+      />
+
       {/* View Details Drawer */}
       <AnimatePresence>
         {showDetailDrawer && selectedLocation && (
@@ -321,16 +342,29 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                     </button>
                     <h2 className="text-xl font-bold text-white">Business Info</h2>
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowDetailDrawer(false);
-                      setListingsSubTab?.('edit', selectedLocation);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white text-primary rounded-xl font-semibold text-sm hover:bg-white/90 transition-all"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setShowDetailDrawer(false);
+                        setSelectedLocationForAnalysis(selectedLocation);
+                        setShowAnalysisDrawer(true);
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-semibold text-xs transition-all"
+                    >
+                      <AutoAwesome className="w-4 h-4" />
+                      AI Analysis
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowDetailDrawer(false);
+                        setListingsSubTab?.('edit', selectedLocation);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-white text-primary rounded-xl font-semibold text-sm hover:bg-white/90 transition-all"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Edit
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -390,6 +424,17 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                 <div className="bg-slate-50 rounded-2xl p-5">
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Quick Actions</h3>
                   <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setShowDetailDrawer(false);
+                        setSelectedLocationForAnalysis(selectedLocation);
+                        setShowAnalysisDrawer(true);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-200 hover:border-purple-400 transition-colors"
+                    >
+                      <AutoAwesome className="w-5 h-5 text-purple-600" />
+                      <span className="font-medium text-purple-700">AI Profile Analysis</span>
+                    </button>
                     <button
                       onClick={() => setActiveTab('reviews')}
                       className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-primary transition-colors"

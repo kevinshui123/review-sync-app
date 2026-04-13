@@ -15,10 +15,16 @@ import {
   Star,
   Sync,
   CheckCircle,
+  Bolt,
 } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../utils/api';
 import { addActivityLog } from './EditsLog';
+import { Automations } from './Automations';
+
+interface ReviewsProps {
+  setActiveTab?: (tab: string) => void;
+}
 
 interface Review {
   id: string;
@@ -58,7 +64,7 @@ interface AIReplyOptions {
   empathetic: string;
 }
 
-export function Reviews() {
+export function Reviews({ setActiveTab }: ReviewsProps) {
   const { t } = useLanguage();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
@@ -77,6 +83,7 @@ export function Reviews() {
   const [sending, setSending] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showLocationMenu, setShowLocationMenu] = useState(false);
+  const [reviewsSubTab, setReviewsSubTab] = useState<'reviews' | 'automations'>('reviews');
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -219,6 +226,11 @@ export function Reviews() {
     { id: 'ai', label: 'AI replies', icon: SmartToy, count: filters.ai },
   ];
 
+  const reviewsNavItems = [
+    { id: 'reviews', label: 'Reviews', icon: AllInbox },
+    { id: 'automations', label: 'Automations', icon: Bolt, badge: 'NEW' },
+  ];
+
   const filteredAndSortedReviews = (reviews || [])
     .filter(r => {
       if (activeFilter === 'waiting') return !r.replied && !(r.replies && r.replies.length > 0);
@@ -253,6 +265,10 @@ export function Reviews() {
   }
 
   return (
+    <>
+      {reviewsSubTab === 'automations' ? (
+        <Automations />
+      ) : (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
@@ -285,105 +301,167 @@ export function Reviews() {
       {/* Mobile: Filter Tabs + Controls */}
       <div className="md:hidden shrink-0 bg-white border-b border-slate-100 relative z-10">
         <div className="flex overflow-x-auto px-4 pt-3 gap-2 scrollbar-hide">
-          {filterCategories.map((cat) => {
-            const Icon = cat.icon;
-            const isActive = activeFilter === cat.id;
+          {reviewsNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = reviewsSubTab === item.id;
             return (
               <button
-                key={cat.id}
-                onClick={() => setActiveFilter(cat.id)}
+                key={item.id}
+                onClick={() => setReviewsSubTab(item.id as 'reviews' | 'automations')}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
                   isActive ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
-                <span>{cat.count}</span>
+                <span>{item.label}</span>
+                {item.badge && (
+                  <span className="text-[9px] px-1 py-0.5 rounded-full bg-orange-500 text-white font-bold">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
-        <div className="flex gap-2 px-4 pb-3 pt-2">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <input
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border-none rounded-full text-xs"
-              placeholder="Search..."
-            />
-          </div>
-          <button
-            onClick={() => { setShowSortMenu(!showSortMenu); setShowLocationMenu(false); }}
-            className="flex items-center gap-1 px-3 py-2 bg-slate-50 text-xs font-semibold rounded-full"
-          >
-            <Sort className="w-3.5 h-3.5" /> Sort
-          </button>
-          <button
-            onClick={() => { setShowLocationMenu(!showLocationMenu); setShowSortMenu(false); }}
-            className="flex items-center gap-1 px-3 py-2 bg-slate-50 text-xs font-semibold rounded-full"
-          >
-            <LocationOn className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        {/* Dropdowns */}
-        {showSortMenu && (
-          <div className="absolute left-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-0">
-            {[{ id: 'newest', label: 'Newest first' }, { id: 'oldest', label: 'Oldest first' }, { id: 'highest', label: 'Highest rating' }, { id: 'lowest', label: 'Lowest rating' }].map(opt => (
+
+        {/* Only show filters when in reviews tab */}
+        {reviewsSubTab === 'reviews' && (
+          <>
+            <div className="flex overflow-x-auto px-4 pt-2 gap-2 scrollbar-hide">
+              {filterCategories.map((cat) => {
+                const Icon = cat.icon;
+                const isActive = activeFilter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveFilter(cat.id)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                      isActive ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{cat.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-2 px-4 pb-3 pt-2">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border-none rounded-full text-xs"
+                  placeholder="Search..."
+                />
+              </div>
               <button
-                key={opt.id}
-                onClick={() => { setSortBy(opt.id as SortOption); setShowSortMenu(false); }}
-                className={`w-full text-left px-4 py-2.5 text-xs ${sortBy === opt.id ? 'text-primary font-bold' : 'text-slate-600'}`}
+                onClick={() => { setShowSortMenu(!showSortMenu); setShowLocationMenu(false); }}
+                className="flex items-center gap-1 px-3 py-2 bg-slate-50 text-xs font-semibold rounded-full"
               >
-                {opt.label}
+                <Sort className="w-3.5 h-3.5" /> Sort
               </button>
-            ))}
-          </div>
-        )}
-        {showLocationMenu && (
-          <div className="absolute left-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-0">
-            <button onClick={() => { setSelectedLocation('all'); setShowLocationMenu(false); }} className={`w-full text-left px-4 py-2.5 text-xs ${selectedLocation === 'all' ? 'text-primary font-bold' : 'text-slate-600'}`}>
-              All Locations
-            </button>
-            {locations.map(loc => (
-              <button key={loc.id} onClick={() => { setSelectedLocation(loc.id); setShowLocationMenu(false); }} className={`w-full text-left px-4 py-2.5 text-xs truncate ${selectedLocation === loc.id ? 'text-primary font-bold' : 'text-slate-600'}`}>
-                {loc.name}
+              <button
+                onClick={() => { setShowLocationMenu(!showLocationMenu); setShowSortMenu(false); }}
+                className="flex items-center gap-1 px-3 py-2 bg-slate-50 text-xs font-semibold rounded-full"
+              >
+                <LocationOn className="w-3.5 h-3.5" />
               </button>
-            ))}
-          </div>
+            </div>
+            {/* Dropdowns */}
+            {showSortMenu && (
+              <div className="absolute left-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-0">
+                {[{ id: 'newest', label: 'Newest first' }, { id: 'oldest', label: 'Oldest first' }, { id: 'highest', label: 'Highest rating' }, { id: 'lowest', label: 'Lowest rating' }].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => { setSortBy(opt.id as SortOption); setShowSortMenu(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-xs ${sortBy === opt.id ? 'text-primary font-bold' : 'text-slate-600'}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+              </div>
+            )}
+            {showLocationMenu && (
+              <div className="absolute left-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-0">
+                <button onClick={() => { setSelectedLocation('all'); setShowLocationMenu(false); }} className={`w-full text-left px-4 py-2.5 text-xs ${selectedLocation === 'all' ? 'text-primary font-bold' : 'text-slate-600'}`}>
+                  All Locations
+                </button>
+                {locations.map(loc => (
+                  <button key={loc.id} onClick={() => { setSelectedLocation(loc.id); setShowLocationMenu(false); }} className={`w-full text-left px-4 py-2.5 text-xs truncate ${selectedLocation === loc.id ? 'text-primary font-bold' : 'text-slate-600'}`}>
+                    {loc.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop: Left Pane */}
         <aside className="hidden md:flex w-64 bg-slate-50 p-6 flex-col gap-1 overflow-y-auto shrink-0">
-          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-3">Filter Views</h3>
-          {filterCategories.map((cat) => {
-            const Icon = cat.icon;
-            const isActive = activeFilter === cat.id;
+          {/* Sub Navigation */}
+          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-3">Navigation</h3>
+          {reviewsNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = reviewsSubTab === item.id;
             return (
               <button
-                key={cat.id}
-                onClick={() => setActiveFilter(cat.id)}
+                key={item.id}
+                onClick={() => setReviewsSubTab(item.id as 'reviews' | 'automations')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
                   isActive ? 'bg-white text-primary font-semibold shadow-sm' : 'text-slate-500 hover:bg-white/50'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
-                  <span className="text-sm">{cat.label}</span>
+                  <span className="text-sm">{item.label}</span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  isActive ? 'bg-primary/10 text-primary font-bold' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {cat.count}
-                </span>
+                {item.badge && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                    isActive ? 'bg-primary/20 text-primary' : 'bg-orange-100 text-orange-600'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
-          <div className="mt-6 pt-6 border-t border-slate-200">
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-white/50 rounded-xl transition-all">
-              <Analytics className="w-5 h-5" />
-              <span className="text-sm">Analytics</span>
-            </button>
-          </div>
+
+          {/* Only show filters when in reviews tab */}
+          {reviewsSubTab === 'reviews' && (
+            <>
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-3 mt-6">Filter Views</h3>
+              {filterCategories.map((cat) => {
+                const Icon = cat.icon;
+                const isActive = activeFilter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveFilter(cat.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                      isActive ? 'bg-white text-primary font-semibold shadow-sm' : 'text-slate-500 hover:bg-white/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
+                      <span className="text-sm">{cat.label}</span>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isActive ? 'bg-primary/10 text-primary font-bold' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {cat.count}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="mt-6 pt-6 border-t border-slate-200">
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-white/50 rounded-xl transition-all">
+                  <Analytics className="w-5 h-5" />
+                  <span className="text-sm">Analytics</span>
+                </button>
+              </div>
+            </>
+          )}
         </aside>
 
         {/* Review List Pane */}
@@ -646,6 +724,7 @@ export function Reviews() {
           </section>
         )}
       </div>
-    </div>
+      )}
+    </>
   );
 }

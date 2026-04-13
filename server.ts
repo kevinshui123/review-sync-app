@@ -4361,6 +4361,553 @@ IMPORTANT RULES:
   });
 
   // ==========================================
+  // Business Profile AI Analysis - Gemini AI
+  // ==========================================
+
+  app.post('/api/reports/profile-analysis', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const apiKey = process.env.GEMINI_API_KEY || tenant.geminiApiKey;
+      if (!apiKey) return res.status(500).json({ error: 'AI API key not configured. Please add Gemini API key in Settings.' });
+
+      const embedSocialKey = process.env.EMBEDSOCIAL_API_KEY || tenant.embedSocialApiKey;
+      if (!embedSocialKey) return res.status(500).json({ error: 'EmbedSocial API key not configured.' });
+
+      const locationData = req.body?.location;
+      if (!locationData) return res.status(400).json({ error: 'Location data is required' });
+
+      // --- Fetch additional data from EmbedSocial for this location ---
+      let listingMetrics: any[] = [];
+      let reviewMetrics: any[] = [];
+      let recentReviews: any[] = [];
+
+      try {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const startStr = `${String(thirtyDaysAgo.getDate()).padStart(2,'0')}-${String(thirtyDaysAgo.getMonth()+1).padStart(2,'0')}-${thirtyDaysAgo.getFullYear()}`;
+        const endStr = `${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}`;
+
+        const metricsRes = await embedSocialFetchWithKey(embedSocialKey, `/rest/v1/listing_metrics?startDate=${startStr}&endDate=${endStr}&pageSize=100`);
+        listingMetrics = metricsRes?.listings || [];
+      } catch (e) { console.error('[profile-analysis] listing_metrics error:', (e as any).message); }
+
+      try {
+        const reviewMetricsRes = await embedSocialFetchWithKey(embedSocialKey, `/rest/v1/listing_item_metrics?pageSize=50`);
+        reviewMetrics = reviewMetricsRes?.listings || [];
+      } catch (e) { console.error('[profile-analysis] review_metrics error:', (e as any).message); }
+
+      try {
+        const reviewsRes = await embedSocialFetchWithKey(embedSocialKey, '/rest/v1/items?pageSize=20');
+        recentReviews = Array.isArray(reviewsRes) ? reviewsRes : (reviewsRes.data || reviewsRes.items || []);
+      } catch (e) { console.error('[profile-analysis] reviews error:', (e as any).message); }
+
+      const locationMetrics = listingMetrics.find((m: any) =>
+        m.listingId === locationData.embedId ||
+        m.listingId === locationData.embedSocialLocationId ||
+        m.listingId === locationData.googleId ||
+        m.name === locationData.name
+      );
+
+      const prompt = `You are a Google Business Profile expert analyst. Analyze the following business profile data and generate a comprehensive improvement analysis.
+
+--- PROFILE DATA ---
+Business Name: ${locationData.name || 'N/A'}
+Address: ${locationData.address || 'N/A'}
+Phone: ${locationData.phoneNumber || 'N/A'}
+Website: ${locationData.websiteUrl || 'N/A'}
+Categories: ${Array.isArray(locationData.categories) ? locationData.categories.join(', ') : (locationData.categories || 'N/A')}
+Opening Hours: ${locationData.openingHours || 'N/A'}
+Average Rating: ${locationData.averageRating || 'N/A'} (${locationData.totalReviews || 0} reviews)
+Status: ${locationData.status || 'N/A'}
+Latitude: ${locationData.latitude || 'N/A'}
+Longitude: ${locationData.longitude || 'N/A'}
+
+--- SEARCH VISIBILITY METRICS (Last 30 Days) ---
+${JSON.stringify(locationMetrics || {}, null, 2)}
+
+--- REVIEW METRICS ---
+${JSON.stringify(reviewMetrics, null, 2)}
+
+--- RECENT REVIEWS (Latest 10) ---
+${JSON.stringify(recentReviews.slice(0, 10).map((r: any) => ({
+  rating: r.rating,
+  text: r.captionText,
+  source: r.sourceName,
+  date: r.originalCreatedOn,
+  hasReply: Array.isArray(r.replies) && r.replies.length > 0,
+})), null, 2)}
+
+---
+
+Generate a detailed business profile analysis in the EXACT JSON format below. Return ONLY the JSON object, no markdown:
+
+{
+  "overallScore": <number 0-100 based on how well-optimized this profile is>,
+  "overallSummary": "<2-3 sentence summary of the profile's current state and key opportunity>",
+  "dimensions": [
+    {
+      "id": "basic-info",
+      "name": "Basic Business Information",
+      "icon": "business-info",
+      "score": <0-100>,
+      "status": "excellent|good|fair|poor",
+      "findings": [
+        {
+          "type": "positive|warning|critical",
+          "text": "<specific finding about this dimension>"
+        }
+      ],
+      "recommendations": [
+        {
+          "priority": "high|medium|low",
+          "action": "<specific actionable recommendation>",
+          "impact": "high|medium|low",
+          "effort": "low|medium|high"
+        }
+      ]
+    },
+    {
+      "id": "categories",
+      "name": "Business Categories",
+      "icon": "categories",
+      "score": <0-100>,
+      "status": "excellent|good|fair|poor",
+      "findings": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "description",
+      "name": "Business Description",
+      "icon": "description",
+      "score": <0-100>,
+      "status": "excellent|good|fair|poor",
+      "findings": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "photos",
+      "name": "Photos & Visual Content",
+      "icon": "photos",
+      "score": <0-100>,
+      "status": "excellent|good|fair|poor",
+      "findings": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "hours",
+      "name": "Business Hours",
+      "icon": "hours",
+      "score": <0-100>,
+      "status": "excellent|good|fair|poor",
+      "findings": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "reviews",
+      "name": "Reviews & Ratings",
+      "icon": "reviews",
+      "score": <0-100>,
+      "status": "excellent|good|fair|poor",
+      "findings": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "citations",
+      "name": "Local Citations",
+      "icon": "citations",
+      "score": <0-100>,
+      "status": "excellent|good|fair|poor",
+      "findings": [...],
+      "recommendations": [...]
+    },
+    {
+      "id": "website-seo",
+      "name": "Website & SEO",
+      "icon": "website",
+      "score": <0-100>,
+      "status": "excellent|good|fair|poor",
+      "findings": [...],
+      "recommendations": [...]
+    }
+  ],
+  "quickWins": [
+    {
+      "action": "<high-impact, low-effort action description>",
+      "impact": "high|medium|low",
+      "effort": "low|medium|high"
+    }
+  ],
+  "competitiveInsights": [
+    {
+      "title": "<opportunity title>",
+      "description": "<detailed description>",
+      "actionSteps": ["<step 1>", "<step 2>", "<step 3>"],
+      "priority": "high|medium|low"
+    }
+  ]
+}
+
+IMPORTANT RULES:
+1. Return ONLY the JSON object, no markdown, no code blocks, no explanations
+2. Generate ALL 8 dimensions with at least 2 findings and 2 recommendations each
+3. Generate at least 3 "quickWins" items (high impact, low-medium effort)
+4. Generate at least 3 "competitiveInsights" with actionable steps
+5. Score each dimension 0-100 based on local SEO best practices
+6. "status" should be: excellent (80-100), good (60-79), fair (40-59), poor (0-39)
+7. Each finding should be specific to the provided data or common local SEO best practices
+8. Recommendations should be actionable and specific, not generic`;
+
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+          }),
+        }
+      );
+
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        console.error('[profile-analysis] Gemini API error:', geminiResponse.status, errorText);
+        return res.status(500).json({ error: 'AI analysis failed', details: errorText, status: geminiResponse.status });
+      }
+
+      const geminiData = await geminiResponse.json();
+      let aiText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      aiText = aiText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+      let report;
+      try {
+        report = JSON.parse(aiText);
+      } catch {
+        const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try { report = JSON.parse(jsonMatch[0]); }
+          catch {
+            return res.status(500).json({ error: 'Failed to parse AI response', raw: aiText.slice(0, 500) });
+          }
+        } else {
+          return res.status(500).json({ error: 'Failed to parse AI response', raw: aiText.slice(0, 500) });
+        }
+      }
+
+      res.json(report);
+    } catch (error: any) {
+      console.error('[profile-analysis] Error:', error);
+      res.status(500).json({ error: 'Failed to generate profile analysis', details: error.message });
+    }
+  });
+
+  // ==========================================
+  // Automations API - CRUD Operations
+  // ==========================================
+
+  // Get all automations
+  app.get('/api/automations', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const automations = await prisma.automation.findMany({
+        where: { tenantId: tenant.id },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Get location names
+      const locations = await prisma.tenantListing.findMany({
+        where: { tenantId: tenant.id },
+        select: { id: true, name: true },
+      });
+
+      const locationMap = new Map(locations.map(l => [l.id, l.name]));
+
+      const result = automations.map(a => ({
+        ...a,
+        locationName: locationMap.get(a.locationId) || 'Unknown Location',
+      }));
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('[automations] Error:', error);
+      res.status(500).json({ error: 'Failed to fetch automations', details: error.message });
+    }
+  });
+
+  // Create automation
+  app.post('/api/automations', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const {
+        name,
+        type,
+        status,
+        locationId,
+        trigger,
+        ratingFilter,
+        replyMode,
+        defaultReply,
+        aiAgentId,
+        aiAgentName,
+        isEnabled,
+      } = req.body;
+
+      if (!name || !type || !locationId) {
+        return res.status(400).json({ error: 'Name, type, and location are required' });
+      }
+
+      const automation = await prisma.automation.create({
+        data: {
+          tenantId: tenant.id,
+          name,
+          type,
+          status: status || 'draft',
+          locationId,
+          trigger: trigger || 'new-review',
+          ratingFilter: ratingFilter || 'all',
+          replyMode: replyMode || 'default',
+          defaultReply,
+          aiAgentId,
+          aiAgentName,
+          isEnabled: isEnabled || false,
+          totalTriggered: 0,
+        },
+      });
+
+      res.status(201).json(automation);
+    } catch (error: any) {
+      console.error('[automations] Create error:', error);
+      res.status(500).json({ error: 'Failed to create automation', details: error.message });
+    }
+  });
+
+  // Update automation
+  app.put('/api/automations/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const existing = await prisma.automation.findFirst({
+        where: { id, tenantId: tenant.id },
+      });
+
+      if (!existing) return res.status(404).json({ error: 'Automation not found' });
+
+      const {
+        name,
+        type,
+        status,
+        locationId,
+        trigger,
+        ratingFilter,
+        replyMode,
+        defaultReply,
+        aiAgentId,
+        aiAgentName,
+        isEnabled,
+        totalTriggered,
+      } = req.body;
+
+      const automation = await prisma.automation.update({
+        where: { id },
+        data: {
+          name,
+          type,
+          status,
+          locationId,
+          trigger,
+          ratingFilter,
+          replyMode,
+          defaultReply,
+          aiAgentId,
+          aiAgentName,
+          isEnabled,
+          totalTriggered,
+        },
+      });
+
+      res.json(automation);
+    } catch (error: any) {
+      console.error('[automations] Update error:', error);
+      res.status(500).json({ error: 'Failed to update automation', details: error.message });
+    }
+  });
+
+  // Delete automation
+  app.delete('/api/automations/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const existing = await prisma.automation.findFirst({
+        where: { id, tenantId: tenant.id },
+      });
+
+      if (!existing) return res.status(404).json({ error: 'Automation not found' });
+
+      await prisma.automation.delete({ where: { id } });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[automations] Delete error:', error);
+      res.status(500).json({ error: 'Failed to delete automation', details: error.message });
+    }
+  });
+
+  // ==========================================
+  // AI Agents API - CRUD Operations
+  // ==========================================
+
+  // Get all AI agents
+  app.get('/api/ai-agents', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const agents = await prisma.aiAgent.findMany({
+        where: { tenantId: tenant.id },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json(agents);
+    } catch (error: any) {
+      console.error('[ai-agents] Error:', error);
+      res.status(500).json({ error: 'Failed to fetch AI agents', details: error.message });
+    }
+  });
+
+  // Create AI agent
+  app.post('/api/ai-agents', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const {
+        name,
+        description,
+        tone,
+        personality,
+        expertise,
+        customInstructions,
+        model,
+      } = req.body;
+
+      if (!name || !description || !tone) {
+        return res.status(400).json({ error: 'Name, description, and tone are required' });
+      }
+
+      const agent = await prisma.aiAgent.create({
+        data: {
+          tenantId: tenant.id,
+          name,
+          description,
+          tone,
+          personality: personality || '',
+          expertise: expertise || [],
+          customInstructions,
+          model: model || 'gemini',
+        },
+      });
+
+      res.status(201).json(agent);
+    } catch (error: any) {
+      console.error('[ai-agents] Create error:', error);
+      res.status(500).json({ error: 'Failed to create AI agent', details: error.message });
+    }
+  });
+
+  // Update AI agent
+  app.put('/api/ai-agents/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const existing = await prisma.aiAgent.findFirst({
+        where: { id, tenantId: tenant.id },
+      });
+
+      if (!existing) return res.status(404).json({ error: 'AI agent not found' });
+
+      const {
+        name,
+        description,
+        tone,
+        personality,
+        expertise,
+        customInstructions,
+        model,
+      } = req.body;
+
+      const agent = await prisma.aiAgent.update({
+        where: { id },
+        data: {
+          name,
+          description,
+          tone,
+          personality,
+          expertise,
+          customInstructions,
+          model,
+        },
+      });
+
+      res.json(agent);
+    } catch (error: any) {
+      console.error('[ai-agents] Update error:', error);
+      res.status(500).json({ error: 'Failed to update AI agent', details: error.message });
+    }
+  });
+
+  // Delete AI agent
+  app.delete('/api/ai-agents/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const tenant = req.tenantId
+        ? await prisma.tenant.findUnique({ where: { id: req.tenantId } })
+        : await prisma.tenant.findFirst();
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+      const existing = await prisma.aiAgent.findFirst({
+        where: { id, tenantId: tenant.id },
+      });
+
+      if (!existing) return res.status(404).json({ error: 'AI agent not found' });
+
+      await prisma.aiAgent.delete({ where: { id } });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[ai-agents] Delete error:', error);
+      res.status(500).json({ error: 'Failed to delete AI agent', details: error.message });
+    }
+  });
+
+  // ==========================================
   // Vite Middleware (For Frontend Integration)
   // ==========================================
   if (process.env.NODE_ENV !== 'production') {
