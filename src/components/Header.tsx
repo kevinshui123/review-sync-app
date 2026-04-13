@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Search, Notifications, History, Person, Translate, Logout } from '@mui/icons-material';
+import { Menu, Search, Notifications, Person, Translate, Logout } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -49,14 +49,14 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderPr
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Search */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+        <div className="relative hidden sm:block">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
           <input
             type="text"
             placeholder={t('header.search')}
-            className="pl-10 pr-4 py-2 bg-surface-container-highest border-none rounded-full text-sm focus:ring-2 focus:ring-primary/20 transition-all w-64"
+            className="pl-9 pr-4 py-2 bg-surface-container-highest border-none rounded-full text-xs focus:ring-2 focus:ring-primary/20 transition-all w-48 lg:w-64"
           />
         </div>
 
@@ -66,21 +66,16 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderPr
           <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
         </button>
 
-        {/* History */}
-        <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
-          <History className="w-5 h-5" />
-        </button>
-
         {/* User Avatar */}
-        <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+        <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-slate-200">
           <div className="hidden sm:block text-right">
-            <p className="text-sm font-bold text-on-surface">{user?.name || user?.email}</p>
+            <p className="text-xs md:text-sm font-bold text-on-surface truncate max-w-[80px] md:max-w-none">{user?.name || user?.email}</p>
             <p className="text-[10px] text-slate-500">User</p>
           </div>
           {user?.avatar ? (
-            <img src={user.avatar} alt={user.name || 'User'} className="w-10 h-10 rounded-full" />
+            <img src={user.avatar} alt={user.name || 'User'} className="w-9 h-9 md:w-10 md:h-10 rounded-full" />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+            <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm md:text-base">
               {(user?.name || user?.email || 'U')[0].toUpperCase()}
             </div>
           )}
@@ -89,7 +84,7 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderPr
             className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
             title="Logout"
           >
-            <Logout className="w-5 h-5" />
+            <Logout className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
       </div>
