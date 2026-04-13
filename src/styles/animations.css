@@ -65,6 +65,16 @@
   opacity: 0;
 }
 
+/* Twinkle animation (replaces motion animate={{ opacity: [0.1, 0.5, 0.1], scale: [0.8, 1.4, 0.8] }}) */
+.animate-twinkle {
+  animation: twinkle var(--twinkle-duration, 3s) ease-in-out infinite;
+}
+
+/* Icon glow animation (replaces motion animate boxShadow pulse) */
+.animate-icon-glow {
+  animation: iconGlow 3s ease-in-out infinite;
+}
+
 /* Keyframes */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -119,6 +129,16 @@
 @keyframes collapseHeight {
   from { max-height: 1000px; opacity: 1; }
   to { max-height: 0; opacity: 0; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.1; transform: scale(0.8); }
+  50% { opacity: 0.5; transform: scale(1.4); }
+}
+
+@keyframes iconGlow {
+  0%, 100% { box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 8px 48px rgba(59, 130, 246, 0.6); }
 }
 
 /* Conditional enter/exit with CSS class toggling */

@@ -18,17 +18,25 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'esnext',
-      minify: 'esbuild',
+      minify: false,
       sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            if (id.includes('node_modules/recharts')) return 'recharts';
+            if (id.includes('node_modules/lucide-react')) return 'icons';
+            if (id.includes('node_modules/@mui/icons-material')) return 'mui-icons';
+          },
+        },
+      },
     },
     optimizeDeps: {
       include: [
         'react',
         'react-dom',
         'react/jsx-runtime',
-        'motion/react',
-        'framer-motion',
         'recharts',
+        'lucide-react',
       ],
     },
     server: {
