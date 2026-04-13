@@ -187,10 +187,37 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="flex flex-1 overflow-hidden"
+      className="flex flex-1 overflow-hidden flex-col"
     >
-      {/* Filter Sidebar */}
-      <nav className="w-64 bg-slate-50 p-6 flex flex-col gap-6 overflow-y-auto">
+      {/* Mobile: Horizontal filter tabs */}
+      <div className="md:hidden shrink-0 bg-white border-b border-slate-100 px-4 py-3 flex overflow-x-auto gap-2 scrollbar-hide">
+        {filterItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeFilter === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveFilter(item.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                isActive ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{item.count}</span>
+            </button>
+          );
+        })}
+        <button
+          onClick={fetchLogs}
+          className="ml-auto flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-500 rounded-full text-xs font-semibold shrink-0"
+        >
+          <Refresh className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+      {/* Desktop: Filter Sidebar */}
+      <nav className="hidden md:flex w-64 bg-slate-50 p-6 flex-col gap-6 overflow-y-auto shrink-0">
         <div>
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Filter by Action</h3>
           <ul className="space-y-1">
@@ -202,9 +229,7 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
                   <button
                     onClick={() => setActiveFilter(item.id)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      isActive
-                        ? 'bg-white text-primary font-semibold shadow-sm'
-                        : 'text-slate-500 hover:bg-white/50'
+                      isActive ? 'bg-white text-primary font-semibold shadow-sm' : 'text-slate-500 hover:bg-white/50'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -235,12 +260,12 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
       </nav>
 
       {/* Main Content */}
-      <section className="flex-1 bg-white p-8 overflow-y-auto">
+      <section className="flex-1 bg-white p-4 md:p-8 overflow-y-auto">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6 md:mb-8">
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">Activity Log</h2>
-              <p className="text-sm text-slate-500 mt-1">Track all changes and sync activities</p>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900">Activity Log</h2>
+              <p className="text-xs md:text-sm text-slate-500 mt-1 hidden sm:block">Track all changes and sync activities</p>
             </div>
             <FilterList className="w-5 h-5 text-slate-400" />
           </div>
@@ -297,6 +322,7 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
           )}
         </div>
       </section>
+      </div>
     </motion.div>
   );
 }
