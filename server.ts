@@ -4784,7 +4784,7 @@ IMPORTANT RULES:
         : await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
-      const agents = await prisma.aiAgent.findMany({
+      const agents = await prisma.aIAgent.findMany({
         where: { tenantId: tenant.id },
         orderBy: { createdAt: 'desc' },
       });
@@ -4818,7 +4818,7 @@ IMPORTANT RULES:
         return res.status(400).json({ error: 'Name, description, and tone are required' });
       }
 
-      const agent = await prisma.aiAgent.create({
+      const agent = await prisma.aIAgent.create({
         data: {
           tenantId: tenant.id,
           name,
@@ -4847,7 +4847,7 @@ IMPORTANT RULES:
         : await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
-      const existing = await prisma.aiAgent.findFirst({
+      const existing = await prisma.aIAgent.findFirst({
         where: { id, tenantId: tenant.id },
       });
 
@@ -4863,7 +4863,7 @@ IMPORTANT RULES:
         model,
       } = req.body;
 
-      const agent = await prisma.aiAgent.update({
+      const agent = await prisma.aIAgent.update({
         where: { id },
         data: {
           name,
@@ -4892,13 +4892,13 @@ IMPORTANT RULES:
         : await prisma.tenant.findFirst();
       if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
-      const existing = await prisma.aiAgent.findFirst({
+      const existing = await prisma.aIAgent.findFirst({
         where: { id, tenantId: tenant.id },
       });
 
       if (!existing) return res.status(404).json({ error: 'AI agent not found' });
 
-      await prisma.aiAgent.delete({ where: { id } });
+      await prisma.aIAgent.delete({ where: { id } });
 
       res.json({ success: true });
     } catch (error: any) {
