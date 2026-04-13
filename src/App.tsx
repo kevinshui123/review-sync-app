@@ -95,9 +95,9 @@ function AppContent() {
       case 'seo':
       case 'seo-grid':
       case 'seo-citations':
-      case 'seo-optimization':
-      case 'seo-real-comment':
-      case 'seo-rednote': return t('nav.seo');
+      case 'seo-optimization': return t('nav.localSeo');
+      case 'seo-real-comment': return t('nav.realComment');
+      case 'seo-rednote': return t('nav.rednoteSeo');
       case 'settings': return t('nav.settings');
       case 'help': return t('nav.help');
       default: return t('nav.dashboard');

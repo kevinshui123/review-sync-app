@@ -63,9 +63,9 @@ const SEO_LOCAL_ITEMS: SubNavItem[] = [
 ];
 
 const SEO_TOP_ITEMS: NavItem[] = [
-  { id: 'seo', labelKey: 'nav.seo', icon: Public },
-  { id: 'seo-real-comment', labelKey: 'seo.section.realComment', icon: Star, badge: 'NEW' },
-  { id: 'seo-rednote-seo', labelKey: 'seo.section.rednoteSeo', icon: Article },
+  { id: 'seo', labelKey: 'nav.localSeo', icon: Public },
+  { id: 'seo-real-comment', labelKey: 'nav.realComment', icon: Star, badge: 'NEW' },
+  { id: 'seo-rednote-seo', labelKey: 'nav.rednoteSeo', icon: Article },
 ];
 
 export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarProps) {
