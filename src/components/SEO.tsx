@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search,
-  Notifications,
-  History,
   Public,
   Map,
   Description,
@@ -21,9 +19,20 @@ import {
   Speed,
   OpenInNew,
   CheckCircle,
-  ArrowForward,
   LocalFireDepartment,
   Error as ErrorIcon,
+  // Real Comment icons
+  AccountCircle,
+  PhotoCamera,
+  StarBorder,
+  History,
+  Add,
+  Delete,
+  // Rednote icons
+  Article,
+  Tag,
+  Image,
+  Link,
 } from '@mui/icons-material';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { apiGet, apiPost } from '../utils/api';
@@ -46,16 +55,11 @@ function getRankColor(rank: number | null): string {
   return '#f87171';
 }
 
-function getRankBg(rank: number | null): string {
-  if (rank === null) return 'rgba(148,163,184,0.15)';
-  if (rank <= 3) return 'rgba(34,197,94,0.15)';
-  if (rank <= 10) return 'rgba(250,204,21,0.15)';
-  return 'rgba(248,113,113,0.15)';
-}
-
-function rankLabel(rank: number | null, t: (key: string) => string): string {
-  if (rank === null) return t('reports.notFound');
-  return `#${rank}`;
+function getScoreColor(score: number) {
+  if (score >= 80) return { color: '#22c55e', label: 'Excellent', bg: 'bg-green-50', border: 'border-green-200' };
+  if (score >= 60) return { color: '#f59e0b', label: 'Good', bg: 'bg-amber-50', border: 'border-amber-200' };
+  if (score >= 40) return { color: '#f97316', label: 'Fair', bg: 'bg-orange-50', border: 'border-orange-200' };
+  return { color: '#ef4444', label: 'Needs Work', bg: 'bg-red-50', border: 'border-red-200' };
 }
 
 // Component to fly map to selected point
@@ -141,21 +145,69 @@ interface LocalSearchGridResult {
   summary: GridSummary;
 }
 
-function getScoreColor(score: number) {
-  if (score >= 80) return { color: '#22c55e', label: 'Excellent', bg: 'bg-green-50', border: 'border-green-200' };
-  if (score >= 60) return { color: '#f59e0b', label: 'Good', bg: 'bg-amber-50', border: 'border-amber-200' };
-  if (score >= 40) return { color: '#f97316', label: 'Fair', bg: 'bg-orange-50', border: 'border-orange-200' };
-  return { color: '#ef4444', label: 'Needs Work', bg: 'bg-red-50', border: 'border-red-200' };
+interface GoogleAccount {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string;
+  connected: boolean;
 }
+
+interface ReviewTask {
+  id: string;
+  accountEmail: string;
+  location: string;
+  content: string;
+  rating: number;
+  status: 'pending' | 'published' | 'failed';
+  date: string;
+  photos?: string[];
+}
+
+interface RednotePost {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  status: 'draft' | 'published' | 'scheduled';
+  date: string;
+  location?: string;
+  photos?: string[];
+}
+
+// AI Review Personas for variety
+const REVIEW_PERSONAS = [
+  { name: 'Food Blogger', identity: 'Food blogger and local dining enthusiast' },
+  { name: 'Regular Customer', identity: 'Regular customer who visits frequently' },
+  { name: 'First-time Visitor', identity: 'First-time visitor from out of town' },
+  { name: 'Family Diner', identity: 'Parent with young children dining with family' },
+  { name: 'Office Worker', identity: 'Nearby office worker on lunch break' },
+  { name: 'Student', identity: 'College student exploring cheap eats' },
+  { name: 'Health Conscious', identity: 'Health-conscious diner looking for clean options' },
+  { name: 'Group Events', identity: 'Someone who visits for group celebrations' },
+];
+
+// AI Review Scenarios for variety
+const REVIEW_SCENARIOS = [
+  'visiting during peak hours',
+  'taking photos for social media',
+  'trying the most popular items on the menu',
+  'ordering for delivery for the first time',
+  'celebrating a special occasion',
+  'working remotely from the location',
+  'recommending to a friend',
+  'comparing with competitors',
+];
 
 export function SEO({ setActiveTab }: SEOProps) {
   const { t, language } = useLanguage();
-  const [activeSection, setActiveSection] = useState('citations');
+  const [activeSection, setActiveSection] = useState('grid');
+  const [activeCategory, setActiveCategory] = useState<'localSeo' | 'realComment' | 'rednoteSeo'>('localSeo');
   const [citations, setCitations] = useState<Citation[]>([]);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Optimization state — restore from localStorage so report survives page navigation
+  // Optimization state
   const [seoReport, setSeoReport] = useState<any>(() => {
     try {
       const saved = localStorage.getItem('seo_report');
@@ -165,7 +217,6 @@ export function SEO({ setActiveTab }: SEOProps) {
   const [seoLoading, setSeoLoading] = useState(false);
   const [seoError, setSeoError] = useState<string | null>(null);
 
-  // Persist report to localStorage whenever it changes
   useEffect(() => {
     if (seoReport) {
       localStorage.setItem('seo_report', JSON.stringify(seoReport));
@@ -178,6 +229,34 @@ export function SEO({ setActiveTab }: SEOProps) {
   const [gridLoading, setGridLoading] = useState(false);
   const [gridError, setGridError] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<GridPoint | null>(null);
+
+  // Real Comment state
+  const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([
+    { id: '1', email: 'account1@gmail.com', name: 'John D.', connected: true },
+    { id: '2', email: 'account2@gmail.com', name: 'Sarah M.', connected: true },
+  ]);
+  const [selectedAccount, setSelectedAccount] = useState<string>('');
+  const [reviewContent, setReviewContent] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [aiGeneratingReview, setAiGeneratingReview] = useState(false);
+  const [aiReviewGenerated, setAiReviewGenerated] = useState(false);
+  const [currentPersona, setCurrentPersona] = useState<typeof REVIEW_PERSONAS[0] | null>(null);
+  const [reviewHistory, setReviewHistory] = useState<ReviewTask[]>([]);
+  const [savingReview, setSavingReview] = useState(false);
+
+  // Rednote SEO state
+  const [rednoteConnected, setRednoteConnected] = useState(false);
+  const [rednoteTitle, setRednoteTitle] = useState('');
+  const [rednoteContent, setRednoteContent] = useState('');
+  const [rednoteTags, setRednoteTags] = useState<string[]>([]);
+  const [rednoteTagInput, setRednoteTagInput] = useState('');
+  const [rednotePhotos, setRednotePhotos] = useState<string[]>([]);
+  const [rednoteSelectedLocation, setRednoteSelectedLocation] = useState<string>('all');
+  const [aiGeneratingPost, setAiGeneratingPost] = useState(false);
+  const [postHistory, setPostHistory] = useState<RednotePost[]>([]);
+  const [savingPost, setSavingPost] = useState(false);
 
   const handleCreateReport = async () => {
     if (!gridKeyword.trim() || !businessInfo?.lat || !businessInfo?.lng) return;
@@ -197,11 +276,11 @@ export function SEO({ setActiveTab }: SEOProps) {
         const data = await res.json();
         setGridResult(data);
       } else {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        setGridError(err.error || 'Failed to generate report. Please try again.');
+        const err = await res.json().catch(() => ({ error: 'Failed to generate report' }));
+        setGridError(err.error || 'Failed to generate report');
       }
     } catch (e: any) {
-      setGridError(e.message || 'Network error. Please check your connection.');
+      setGridError(e.message || 'Network error');
     } finally {
       setGridLoading(false);
     }
@@ -229,36 +308,23 @@ export function SEO({ setActiveTab }: SEOProps) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Load locations from EmbedSocial
         const locationsRes = await apiGet('/api/embedsocial/locations');
         let locations: any[] = [];
         if (locationsRes.ok) {
           locations = await locationsRes.json();
         }
-
-        // Check if we have locations but all missing coordinates
         const hasCoords = locations.some((l: any) => l.latitude || l.lat);
-
-        // If locations exist but all are missing coords, try to backfill them
         if (locations.length > 0 && !hasCoords) {
-          console.log('[SEO] Locations found but all missing coordinates — attempting backfill…');
           try {
             const backfillRes = await apiPost('/api/embedsocial/listings/backfill-coordinates');
             if (backfillRes.ok) {
-              const result = await backfillRes.json();
-              console.log('[SEO] Backfill result:', result);
-              // Re-fetch locations after backfill
               const refreshed = await apiGet('/api/embedsocial/locations');
-              if (refreshed.ok) {
-                locations = await refreshed.json();
-              }
+              if (refreshed.ok) locations = await refreshed.json();
             }
           } catch (e) {
             console.warn('[SEO] Backfill failed:', e);
           }
         }
-
-        // Use first location as the active business
         const primary = locations[0];
         if (primary) {
           setBusinessInfo({
@@ -287,7 +353,6 @@ export function SEO({ setActiveTab }: SEOProps) {
             lat: 39.3305, lng: -76.6150,
           });
         }
-
         setCitations([]);
       } catch (error) {
         console.error('Failed to fetch SEO data:', error);
@@ -298,11 +363,243 @@ export function SEO({ setActiveTab }: SEOProps) {
     fetchData();
   }, []);
 
-  const sections = [
-            { id: 'grid', label: t('seo.localSearchGrid'), icon: Map },
-            { id: 'citations', label: t('seo.localCitations'), icon: Description, badge: 'BETA' },
-            { id: 'optimization', label: t('seo.optimization'), icon: LocalOffer },
-  ];
+  const handleGenerateAIReview = async () => {
+    if (!selectedAccount) {
+      alert(t('realComment.errorNoAccount'));
+      return;
+    }
+    setAiGeneratingReview(true);
+    try {
+      // Randomly select persona and scenario for variety
+      const persona = REVIEW_PERSONAS[Math.floor(Math.random() * REVIEW_PERSONAS.length)];
+      const scenario = REVIEW_SCENARIOS[Math.floor(Math.random() * REVIEW_SCENARIOS.length)];
+      
+      // Generate unique review based on business info
+      const businessContext = businessInfo ? 
+        `${businessInfo.name} - ${businessInfo.category} located at ${businessInfo.address}` : 
+        'the restaurant';
+      
+      const prompt = `You are writing as a ${persona.identity}. You are ${scenario} at ${businessContext}.
+Write a unique, authentic positive Google review that:
+1. Uses a different writing style than typical reviews
+2. Mentions specific but plausible details about the experience
+3. Is 100-200 words
+4. Sounds natural and not AI-generated
+5. Uses casual, everyday language
+6. Does NOT mention being paid, incentivized, or that this is for a business
+7. Focuses on the dining experience, food quality, service, or atmosphere
+8. Varies the sentence structure and tone
+
+Write ONLY the review text, nothing else.`;
+
+      const res = await apiPost('/api/reviews/generate-reply', {
+        reviewId: 'ai-generated-review',
+        reviewerName: persona.name,
+        rating: 5,
+        comment: prompt,
+        businessName: businessInfo?.name || 'this business',
+      });
+      
+      let generatedContent = '';
+      if (res.ok) {
+        const data = await res.json();
+        if (data.replies?.professional) {
+          generatedContent = data.replies.professional;
+        }
+      }
+      
+      // Fallback if API fails
+      if (!generatedContent) {
+        const fallbackReviews = [
+          `${businessInfo?.name || 'The restaurant'} is quickly becoming my favorite spot! The atmosphere is so welcoming, and the staff really know how to make you feel at home. I tried the ${businessInfo?.category || 'specialties'} and was blown away by the flavors. Everything was fresh and made to order. The portions are generous without being overpriced. Definitely coming back soon!`,
+          `What a gem! Found this place while exploring the neighborhood and so glad I did. The food was absolutely delicious and the service was top-notch. The staff went above and beyond to make sure we had everything we needed. Perfect for a casual lunch or a special dinner out. Highly recommend!`,
+          `I've been coming here regularly for months now and they never disappoint. Each visit feels like the first time - exciting and satisfying. The quality of the food speaks for itself, and the prices are very reasonable for the quality you get. My go-to recommendation for anyone looking for great food!`,
+          `Stopped by with my family and we were all impressed! The place has such a warm and inviting atmosphere. The kids loved their meals and so did the adults. Great portion sizes and the flavors are amazing. The staff were friendly and attentive. Will definitely be back for more!`,
+        ];
+        generatedContent = fallbackReviews[Math.floor(Math.random() * fallbackReviews.length)];
+      }
+      
+      setReviewContent(generatedContent);
+      setCurrentPersona(persona);
+      setReviewRating(5);
+      setAiReviewGenerated(true);
+    } catch (error) {
+      console.error('Failed to generate AI review:', error);
+      alert('Failed to generate review. Please try again.');
+    } finally {
+      setAiGeneratingReview(false);
+    }
+  };
+
+  const handleSaveReview = async () => {
+    if (!selectedAccount) {
+      alert(t('realComment.errorNoAccount'));
+      return;
+    }
+    if (!reviewContent.trim()) {
+      alert(t('realComment.errorNoContent'));
+      return;
+    }
+    
+    setSavingReview(true);
+    try {
+      const account = googleAccounts.find(a => a.id === selectedAccount);
+      const newTask: ReviewTask = {
+        id: Date.now().toString(),
+        accountEmail: account?.email || 'Unknown',
+        location: selectedLocation === 'all' ? 'All Locations' : selectedLocation,
+        content: reviewContent,
+        rating: reviewRating,
+        status: 'pending',
+        date: new Date().toISOString(),
+        photos: reviewPhotos,
+      };
+      setReviewHistory(prev => [newTask, ...prev]);
+      setReviewContent('');
+      setReviewPhotos([]);
+      setAiReviewGenerated(false);
+      setCurrentPersona(null);
+      alert(t('realComment.successSaved'));
+    } catch (error) {
+      console.error('Failed to save review:', error);
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  const handleGenerateRednotePost = async () => {
+    setAiGeneratingPost(true);
+    try {
+      const businessContext = businessInfo ? 
+        `${businessInfo.name} - ${businessInfo.category}\nAddress: ${businessInfo.address}\nKeywords: ${businessInfo.keywords}` : 
+        'the restaurant';
+      
+      const prompt = `Generate a Xiaohongshu (Rednote) style post for this business:
+${businessContext}
+
+Create a engaging post that:
+1. Has a catchy, clickbait-style Chinese title
+2. Uses popular Chinese social media language and hashtags
+3. Describes the experience in an authentic, personal way
+4. Mentions specific dishes or features
+5. Includes relevant tags
+6. Is written in Simplified Chinese
+7. Sounds like a real Chinese Gen-Z social media post
+
+Format the response as:
+TITLE: [Chinese title]
+TAGS: [tag1, tag2, tag3, tag4, tag5]
+CONTENT: [The post content in Chinese]`;
+
+      const res = await apiPost('/api/reviews/generate-reply', {
+        reviewId: 'ai-rednote-post',
+        comment: prompt,
+        businessName: businessInfo?.name || 'this business',
+      });
+      
+      let generatedPost = '';
+      if (res.ok) {
+        const data = await res.json();
+        if (data.replies?.professional) {
+          generatedPost = data.replies.professional;
+        }
+      }
+      
+      // Fallback if API fails
+      if (!generatedPost) {
+        const fallbackPosts = [
+          `TITLE: 😍宝藏小店被我发现啦！必打卡！
+TAGS: #美食探店 #宝藏餐厅 #周末去哪玩 #美食分享 #种草推荐
+CONTENT: 这家店真的太绝了！✨ 一进门就被装修风格吸引住了，超适合拍照打卡📸
+
+菜品方面也是没话说，分量足，味道好，价格还实惠！老板人特别热情，服务态度满分💯
+
+特别推荐他家的招牌菜，真的绝绝子！吃完还想再来！
+
+📍地址：${businessInfo?.address || '就在市中心很好找'}
+💰人均：${Math.floor(Math.random() * 50 + 30)}左右
+🕐营业时间：${businessInfo?.hours?.Monday || '每天11点开始营业'}
+
+姐妹们快冲！错过真的会后悔！冲冲冲！🏃‍♀️💨`,
+        ];
+        generatedPost = fallbackPosts[0];
+      }
+      
+      // Parse the generated content
+      const titleMatch = generatedPost.match(/TITLE:\s*(.+?)(?=TAGS:|$)/s);
+      const tagsMatch = generatedPost.match(/TAGS:\s*(.+?)(?=CONTENT:|$)/s);
+      const contentMatch = generatedPost.match(/CONTENT:\s*(.+?)$/s);
+      
+      if (titleMatch) setRednoteTitle(titleMatch[1].trim());
+      if (tagsMatch) {
+        const tags = tagsMatch[1].split(/[,#\s]+/).filter(t => t.trim()).slice(0, 5);
+        setRednoteTags(tags);
+      }
+      if (contentMatch) setRednoteContent(contentMatch[1].trim());
+      
+    } catch (error) {
+      console.error('Failed to generate Rednote post:', error);
+      alert('Failed to generate post. Please try again.');
+    } finally {
+      setAiGeneratingPost(false);
+    }
+  };
+
+  const handleSaveRednotePost = async (publish: boolean = false) => {
+    if (!rednoteTitle.trim()) {
+      alert(t('rednote.errorNoTitle'));
+      return;
+    }
+    if (!rednoteContent.trim()) {
+      alert(t('rednote.errorNoContent'));
+      return;
+    }
+    
+    setSavingPost(true);
+    try {
+      const newPost: RednotePost = {
+        id: Date.now().toString(),
+        title: rednoteTitle,
+        content: rednoteContent,
+        tags: rednoteTags,
+        status: publish ? 'published' : 'draft',
+        date: new Date().toISOString(),
+        location: rednoteSelectedLocation === 'all' ? undefined : rednoteSelectedLocation,
+        photos: rednotePhotos,
+      };
+      setPostHistory(prev => [newPost, ...prev]);
+      setRednoteTitle('');
+      setRednoteContent('');
+      setRednoteTags([]);
+      setRednotePhotos([]);
+      alert(publish ? t('rednote.successPublished') : t('rednote.successSaved'));
+    } catch (error) {
+      console.error('Failed to save post:', error);
+    } finally {
+      setSavingPost(false);
+    }
+  };
+
+  const handleAddPhoto = (setPhotos: React.Dispatch<React.SetStateAction<string[]>>) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setPhotos(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
+
+  const handleRemovePhoto = (index: number, photos: string[], setPhotos: React.Dispatch<React.SetStateAction<string[]>>) => {
+    setPhotos(photos.filter((_, i) => i !== index));
+  };
 
   if (loading) {
     return (
@@ -315,881 +612,847 @@ export function SEO({ setActiveTab }: SEOProps) {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden min-h-0">
-      <div className="flex items-center gap-1 px-3 py-2 bg-white border-b border-slate-100 overflow-x-auto shrink-0">
-        {sections.map((section) => {
-          const Icon = section.icon;
-          const isActive = activeSection === section.id;
-          return (
-            <button
-              key={section.id}
-              onClick={() => setActiveSection(section.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0 ${
-                isActive
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {section.label}
-              {section.badge && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                }`}>
-                  {section.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* Main Category Navigation - 3 Main Sections */}
+      <div className="bg-white border-b border-slate-200 shrink-0">
+        <div className="flex items-stretch">
+          {/* Local SEO */}
+          <button
+            onClick={() => setActiveCategory('localSeo')}
+            className={`flex-1 px-4 py-3 text-sm font-bold transition-all border-b-2 ${
+              activeCategory === 'localSeo'
+                ? 'border-primary text-primary bg-primary/5'
+                : 'border-transparent text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            {t('seo.section.localSeo')}
+          </button>
+          
+          {/* Real Comment - Highlighted as important */}
+          <button
+            onClick={() => setActiveCategory('realComment')}
+            className={`flex-1 px-4 py-3 text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
+              activeCategory === 'realComment'
+                ? 'border-orange-500 text-orange-600 bg-orange-50'
+                : 'border-transparent text-orange-600 hover:bg-orange-50'
+            }`}
+          >
+            {t('seo.section.realComment')}
+            <span className="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold animate-pulse">NEW</span>
+          </button>
+          
+          {/* Rednote SEO */}
+          <button
+            onClick={() => setActiveCategory('rednoteSeo')}
+            className={`flex-1 px-4 py-3 text-sm font-bold transition-all border-b-2 ${
+              activeCategory === 'rednoteSeo'
+                ? 'border-pink-500 text-pink-600 bg-pink-50'
+                : 'border-transparent text-pink-600 hover:bg-pink-50'
+            }`}
+          >
+            {t('seo.section.rednoteSeo')}
+          </button>
+        </div>
       </div>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        {/* Section: Citations */}
-        {activeSection === 'citations' && (
-          <div className="space-y-8">
-            {/* Header */}
-              <h1 className="text-2xl font-bold">
-                {t('seo.localCitation')} <span className="font-normal text-slate-500">{businessInfo?.name}</span>
-              </h1>
+      {/* Local SEO Sub-sections */}
+      {activeCategory === 'localSeo' && (
+        <div className="flex items-center gap-1 px-3 py-2 bg-white border-b border-slate-100 overflow-x-auto shrink-0">
+          <button
+            onClick={() => setActiveSection('grid')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+              activeSection === 'grid' ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            <Map className="w-3.5 h-3.5" />
+            {t('seo.localSearchGrid')}
+          </button>
+          <button
+            onClick={() => setActiveSection('citations')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+              activeSection === 'citations' ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            <Description className="w-3.5 h-3.5" />
+            {t('seo.localCitations')}
+            <span className="text-[9px] px-1 py-0.5 rounded bg-slate-200 text-slate-600 font-bold">BETA</span>
+          </button>
+          <button
+            onClick={() => setActiveSection('optimization')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+              activeSection === 'optimization' ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            <LocalOffer className="w-3.5 h-3.5" />
+            {t('seo.optimization')}
+          </button>
+        </div>
+      )}
 
-            {/* Baseline Info Card */}
-            <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-bold mb-6">{t('seo.baselineInfo')}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Contact Info */}
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <Description className="w-5 h-5 text-slate-400 mt-0.5" />
-                    <span className="text-sm font-medium">{businessInfo?.name}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Map className="w-5 h-5 text-slate-400 mt-0.5" />
-                    <span className="text-sm text-slate-600">{businessInfo?.address}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-slate-400 mt-0.5" />
-                    <span className="text-sm text-slate-600">{businessInfo?.phone}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Language className="w-5 h-5 text-slate-400 mt-0.5" />
-                    <a className="text-sm text-primary underline" href={businessInfo?.website}>
-                      {businessInfo?.website}
-                    </a>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <LocalOffer className="w-5 h-5 text-slate-400 mt-0.5" />
-                    <span className="text-sm text-slate-600">{businessInfo?.category}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Edit className="w-5 h-5 text-slate-400 mt-0.5" />
-                    <span className="text-sm text-slate-600">{businessInfo?.keywords}</span>
-                  </div>
-                </div>
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-6">
 
-                {/* Business Hours */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Schedule className="w-5 h-5 text-slate-400" />
-                    <span className="text-sm font-semibold">{t('seo.businessHours')}</span>
+        {/* ========== LOCAL SEO SECTION ========== */}
+        {activeCategory === 'localSeo' && (
+          <>
+            {/* Citations Section */}
+            {activeSection === 'citations' && (
+              <div className="space-y-6">
+                <h1 className="text-2xl font-bold">
+                  {t('seo.localCitation')} <span className="font-normal text-slate-500">{businessInfo?.name}</span>
+                </h1>
+                <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+                  <h2 className="text-lg font-bold mb-6">{t('seo.baselineInfo')}</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <Description className="w-5 h-5 text-slate-400 mt-0.5" />
+                        <span className="text-sm font-medium">{businessInfo?.name}</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Map className="w-5 h-5 text-slate-400 mt-0.5" />
+                        <span className="text-sm text-slate-600">{businessInfo?.address}</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Phone className="w-5 h-5 text-slate-400 mt-0.5" />
+                        <span className="text-sm text-slate-600">{businessInfo?.phone}</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Language className="w-5 h-5 text-slate-400 mt-0.5" />
+                        <a className="text-sm text-primary underline" href={businessInfo?.website}>{businessInfo?.website}</a>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3 mb-4">
+                        <Schedule className="w-5 h-5 text-slate-400" />
+                        <span className="text-sm font-semibold">{t('seo.businessHours')}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm text-slate-600">
+                        {Object.entries(businessInfo?.hours || {}).map(([day, time]) => (
+                          <React.Fragment key={day}>
+                            <span>{day}</span>
+                            <span className="text-right">{time}</span>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm text-slate-600">
-                    {Object.entries(businessInfo?.hours || {}).map(([day, time]) => (
-                      <React.Fragment key={day}>
-                        <span>{day}</span>
-                        <span className="text-right">{time}</span>
-                      </React.Fragment>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Citations Table */}
-            <section className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('seo.name')}</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('seo.status')}</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">{t('seo.address')}</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('seo.hours')}</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('seo.phone')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {citations.map((citation) => (
-                    <tr key={citation.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-8">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 flex items-center justify-center text-red-600">
-                            <Public className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold">{citation.name}</p>
-                            <p className="text-xs text-slate-500">
-                              {t('seo.lastUpdate')} {citation.lastUpdate} •{' '}
-                              <a className="text-primary underline" href="#">{t('seo.notYourBusiness')}</a>
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-8">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                          citation.status === 'matched'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {citation.status === 'matched' ? t('seo.matched') : t('seo.mismatch')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-8">
-                        <span className={`px-3 py-1 rounded text-sm ${
-                          citation.status === 'matched'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-slate-700'
-                        }`}>
-                          {citation.address}
-                        </span>
-                      </td>
-                      <td className="px-6 py-8">
-                        {citation.hours === 'Matched' ? (
-                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">{t('seo.matched')}</span>
-                        ) : (
-                          <div className="space-y-1">
-                            <span className="block bg-yellow-100 text-slate-700 px-2 py-0.5 rounded text-[11px]">
-                              {citation.hours}
+                </section>
+                <section className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('seo.name')}</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('seo.status')}</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">{t('seo.address')}</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('seo.hours')}</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('seo.phone')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {citations.map((citation) => (
+                        <tr key={citation.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 flex items-center justify-center text-red-600"><Public className="w-6 h-6" /></div>
+                              <div>
+                                <p className="text-sm font-bold">{citation.name}</p>
+                                <p className="text-xs text-slate-500">{t('seo.lastUpdate')} {citation.lastUpdate}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-6">
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${citation.status === 'matched' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                              {citation.status === 'matched' ? t('seo.matched') : t('seo.mismatch')}
                             </span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-8">
-                        <span className={`px-3 py-1 rounded text-sm ${
-                          citation.status === 'matched'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-slate-700'
-                        }`}>
-                          {citation.phone}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          </div>
-        )}
-
-        {/* Section: Local Search Grid */}
-        {activeSection === 'grid' && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold">{t('reports.localSearchGrid')}</h1>
-              <button className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50">
-                {t('reports.reportSettings') || 'Report settings'}
-              </button>
-            </div>
-
-            {/* Search form */}
-            <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-              <div className="flex gap-3 flex-wrap">
-                <div className="flex-1 min-w-[300px]">
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">
-                    <Search className="w-3 h-3 inline mr-1" />{t('reports.keywordQuery')}
-                  </label>
-                  <input
-                    type="text"
-                    value={gridKeyword}
-                    onChange={e => setGridKeyword(e.target.value)}
-                    placeholder={t('reports.keywordPlaceholder')}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                    onKeyDown={e => e.key === 'Enter' && businessInfo?.lat && businessInfo?.lng && handleCreateReport()}
-                  />
-                </div>
-                <div className="flex items-end gap-2">
-                  <button
-                    onClick={handleCreateReport}
-                    disabled={gridLoading || !gridKeyword.trim() || !businessInfo?.lat}
-                    className="flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold py-2.5 px-6 rounded-lg transition-colors"
-                  >
-                    {gridLoading ? (
-                      <>
-                        <Refresh className="w-4 h-4 animate-spin" />
-                        {t('reports.scanning')}
-                      </>
-                    ) : (
-                      <>
-                        <Search className="w-4 h-4" />
-                        {t('reports.createReport')}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-              {(!businessInfo?.lat || !businessInfo?.lng) && (
-                <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
-                  <LocalOffer className="w-3 h-3" />
-                  {t('reports.noCoords')}
-                </p>
-              )}
-            </div>
-
-            {/* Error state */}
-            {gridError && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-                {gridError}
+                          </td>
+                          <td className="px-6 py-6 text-sm text-slate-600">{citation.address}</td>
+                          <td className="px-6 py-6 text-sm text-slate-600">{citation.hours}</td>
+                          <td className="px-6 py-6 text-sm text-slate-600">{citation.phone}</td>
+                        </tr>
+                      ))}
+                      {citations.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                            No citations found. Sync your listings to discover citations.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </section>
               </div>
             )}
 
-            {/* Results: Grid + Summary */}
-            {gridResult && !gridLoading && (
-              <>
-                {/* Summary KPI row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                    <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.avgRank')}</div>
-                    <div className="text-2xl font-extrabold font-headline text-primary">
-                      {gridResult.summary.averageRank ?? '20+'}
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{t('reports.across')} {gridResult.summary.totalPoints} {t('reports.points')}</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                    <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.top3Positions')}</div>
-                    <div className="text-2xl font-extrabold font-headline text-green-600">
-                      {gridResult.summary.top3Percent}%
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{t('reports.ofAllPoints')}</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                    <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.top10Positions')}</div>
-                    <div className="text-2xl font-extrabold font-headline text-blue-600">
-                      {gridResult.summary.top10Percent}%
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{t('reports.ofAllPoints')}</div>
-                  </div>
-                  <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                    <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.pointsScanned')}</div>
-                    <div className="text-2xl font-extrabold font-headline text-slate-700">
-                      {gridResult.summary.pointsWithData}
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-1">{t('reports.across')} {gridResult.summary.totalPoints} {t('reports.gridPoints')}</div>
-                  </div>
+            {/* Grid Section */}
+            {activeSection === 'grid' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h1 className="text-2xl font-bold">{t('reports.localSearchGrid')}</h1>
+                  <button className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50">
+                    {t('reports.reportSettings')}
+                  </button>
                 </div>
-
-                {/* Grid Map Visualization */}
                 <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-base font-bold">{t('reports.searchGridMap')}</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {t('reports.keyword')}: <span className="font-semibold text-slate-600">"{gridResult.keyword}"</span> — {gridResult.gridSize} {t('reports.gridPointsAround')} {businessInfo?.name}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded bg-green-500 inline-block" /> {t('reports.rank1to3')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded bg-yellow-400 inline-block" /> {t('reports.rank4to10')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded bg-red-400 inline-block" /> {t('reports.rank11plus')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded bg-slate-200 inline-block" /> {t('reports.noData2')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Real Leaflet Map */}
-                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
-                    <MapContainer
-                      center={[businessInfo!.lat!, businessInfo!.lng!]}
-                      zoom={14}
-                      style={{ height: '480px', width: '100%', borderRadius: '12px' }}
-                      zoomControl={true}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  <div className="flex gap-3 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">
+                        <Search className="w-3 h-3 inline mr-1" />{t('reports.keywordQuery')}
+                      </label>
+                      <input type="text" value={gridKeyword} onChange={e => setGridKeyword(e.target.value)}
+                        placeholder={t('reports.keywordPlaceholder')}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-primary/20"
+                        onKeyDown={e => e.key === 'Enter' && businessInfo?.lat && handleCreateReport()}
                       />
-                      {gridResult.points.map((point) => {
-                        const color = getRankColor(point.businessRank);
-                        const isSelected = selectedPoint?.idx === point.idx;
-                        const r = point.businessRank === null ? 14 : isSelected ? 20 : 16;
-                        return (
-                          <CircleMarker
-                            key={point.idx}
-                            center={[point.lat, point.lng]}
-                            radius={r}
-                            pathOptions={{
-                              color: isSelected ? '#2563eb' : color,
-                              fillColor: color,
-                              fillOpacity: 0.7,
-                              weight: isSelected ? 3 : 2,
-                            }}
-                            eventHandlers={{ click: () => setSelectedPoint(point) }}
-                          >
-                            <Tooltip
-                              permanent={false}
-                              direction="top"
-                              offset={[0, -r]}
-                            >
-                              <div className="text-center">
-                                <div className="font-bold text-base" style={{ color }}>{rankLabel(point.businessRank, t)}</div>
-                                <div className="text-xs opacity-70">{point.totalResults} results</div>
-                              </div>
-                            </Tooltip>
-                          </CircleMarker>
-                        );
-                      })}
-                      {/* Center business marker */}
-                      <CircleMarker
-                        center={[businessInfo!.lat!, businessInfo!.lng!]}
-                        radius={10}
-                        pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 1, weight: 3 }}
-                      >
-                        <Tooltip permanent direction="bottom" offset={[0, 10]}>
-                          <span className="font-bold text-blue-700">{businessInfo?.name}</span>
-                        </Tooltip>
-                      </CircleMarker>
-                      {selectedPoint && (
-                        <MapController center={[selectedPoint.lat, selectedPoint.lng]} zoom={15} />
-                      )}
-                    </MapContainer>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <button onClick={handleCreateReport} disabled={gridLoading || !gridKeyword.trim() || !businessInfo?.lat}
+                        className="flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold py-2.5 px-6 rounded-lg">
+                        {gridLoading ? <><Refresh className="w-4 h-4 animate-spin" />{t('reports.scanning')}</> : <><Search className="w-4 h-4" />{t('reports.createReport')}</>}
+                      </button>
+                    </div>
                   </div>
+                  {(!businessInfo?.lat || !businessInfo?.lng) && (
+                    <p className="mt-2 text-xs text-amber-600">{t('reports.noCoords')}</p>
+                  )}
                 </div>
-
-                {/* Selected Point Banner + Unified Competitors Table */}
-                {selectedPoint && (
-                  <div className="space-y-4">
-                    {/* Your Performance Banner */}
-                    <div className="bg-white rounded-xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-extrabold ${
-                          selectedPoint.businessRank !== null
-                            ? selectedPoint.businessRank <= 3 ? 'bg-green-100 text-green-700' : selectedPoint.businessRank <= 10 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                            : 'bg-slate-100 text-slate-400'
-                        }`}>
-                          {selectedPoint.businessRank !== null ? `#${selectedPoint.businessRank}` : '?'}
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Your Rank at This Point</p>
-                          <p className={`text-base md:text-lg font-extrabold leading-tight ${
-                            selectedPoint.businessRank !== null
-                              ? selectedPoint.businessRank <= 3 ? 'text-green-600' : selectedPoint.businessRank <= 10 ? 'text-yellow-600' : 'text-red-600'
-                              : 'text-slate-400'
-                          }`}>
-                            {selectedPoint.businessRank !== null
-                              ? `Rank #${selectedPoint.businessRank} of ${selectedPoint.totalResults}`
-                              : `Not found in top ${selectedPoint.totalResults}`}
-                          </p>
-                        </div>
+                {gridError && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{gridError}</div>
+                )}
+                {gridResult && !gridLoading && (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-white rounded-xl p-5 border border-slate-200">
+                        <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.avgRank')}</div>
+                        <div className="text-2xl font-extrabold text-primary">{gridResult.summary.averageRank ?? '20+'}</div>
+                        <div className="text-[10px] text-slate-400 mt-1">{t('reports.across')} {gridResult.summary.totalPoints} pts</div>
                       </div>
-                      <div className="ml-auto text-right hidden sm:block shrink-0">
-                        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Coordinates</p>
-                        <p className="text-xs font-mono text-slate-500">{selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)}</p>
+                      <div className="bg-white rounded-xl p-5 border border-slate-200">
+                        <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.top3Positions')}</div>
+                        <div className="text-2xl font-extrabold text-green-600">{gridResult.summary.top3Percent}%</div>
+                        <div className="text-[10px] text-slate-400 mt-1">{t('reports.ofAllPoints')}</div>
                       </div>
-                      <div className="hidden md:flex items-center gap-5 pl-4 border-l border-slate-200 shrink-0">
-                        <div className="text-center">
-                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total</p>
-                          <p className="text-lg font-extrabold text-slate-700">{selectedPoint.totalResults}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Competitors</p>
-                          <p className="text-lg font-extrabold text-slate-700">{selectedPoint.competitors.length}</p>
-                        </div>
+                      <div className="bg-white rounded-xl p-5 border border-slate-200">
+                        <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.top10Positions')}</div>
+                        <div className="text-2xl font-extrabold text-blue-600">{gridResult.summary.top10Percent}%</div>
+                        <div className="text-[10px] text-slate-400 mt-1">{t('reports.ofAllPoints')}</div>
+                      </div>
+                      <div className="bg-white rounded-xl p-5 border border-slate-200">
+                        <div className="text-xs text-slate-400 font-semibold mb-1">{t('reports.pointsScanned')}</div>
+                        <div className="text-2xl font-extrabold text-slate-700">{gridResult.summary.pointsWithData}</div>
+                        <div className="text-[10px] text-slate-400 mt-1">{t('reports.across')} {gridResult.summary.totalPoints} pts</div>
                       </div>
                     </div>
-
-                    {/* Unified Competitors Table */}
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                      <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                    <div className="bg-white rounded-xl p-6 border border-slate-200">
+                      <div className="flex items-center justify-between mb-4">
                         <div>
-                          <h3 className="text-base font-bold">Local Search Competitors</h3>
-                          <p className="text-xs text-slate-400 mt-0.5">All competitors across {gridResult.points.length} grid points — sorted by best rank</p>
+                          <h3 className="text-base font-bold">{t('reports.searchGridMap')}</h3>
+                          <p className="text-xs text-slate-400">"{gridResult.keyword}" — {gridResult.gridSize} pts around {businessInfo?.name}</p>
                         </div>
-                        <span className="text-xs text-slate-400 font-semibold shrink-0">{gridResult.topCompetitors.length} competitors</span>
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500" /> Rank 1-3</span>
+                          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-400" /> Rank 4-10</span>
+                          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400" /> Rank 11+</span>
+                        </div>
+                      </div>
+                      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
+                        <MapContainer center={[businessInfo!.lat!, businessInfo!.lng!]} zoom={14} style={{ height: '400px', width: '100%' }} zoomControl={true}>
+                          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                          {gridResult.points.map((point) => (
+                            <CircleMarker key={point.idx} center={[point.lat, point.lng]} radius={point.businessRank === null ? 10 : 14}
+                              pathOptions={{ color: getRankColor(point.businessRank), fillColor: getRankColor(point.businessRank), fillOpacity: 0.7, weight: 2 }}
+                              eventHandlers={{ click: () => setSelectedPoint(point) }}>
+                              <Tooltip permanent={false} direction="top">#{point.businessRank ?? '?'}</Tooltip>
+                            </CircleMarker>
+                          ))}
+                          <CircleMarker center={[businessInfo!.lat!, businessInfo!.lng!]} radius={10}
+                            pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 1, weight: 3 }}>
+                            <Tooltip permanent direction="bottom">{businessInfo?.name}</Tooltip>
+                          </CircleMarker>
+                          {selectedPoint && <MapController center={[selectedPoint.lat, selectedPoint.lng]} zoom={15} />}
+                        </MapContainer>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="px-6 py-4 border-b border-slate-100">
+                        <h3 className="text-base font-bold">{t('reports.allGridPoints')}</h3>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-left">
                           <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business</th>
-                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Best Rank</th>
-                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Reviews</th>
-                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rating</th>
-                              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Points Found</th>
+                              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Point</th>
+                              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">{t('reports.yourRank')}</th>
+                              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Results</th>
+                              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">{t('reports.topCompetitor')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                            {gridResult.topCompetitors.map((comp, i) => (
-                              <tr key={i} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-4 md:px-6 py-4">
-                                  <div className="flex items-center gap-3">
-                                    {comp.thumbnail ? (
-                                      <img src={comp.thumbnail} alt={comp.name} className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                    ) : (
-                                      <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-                                        <Place className="w-4 h-4 text-slate-400" />
-                                      </div>
-                                    )}
-                                    <div className="min-w-0">
-                                      <div className="text-sm font-bold text-slate-800 truncate max-w-[140px] md:max-w-[200px]">{comp.name}</div>
-                                      <div className="text-[10px] text-slate-400 truncate max-w-[140px] md:max-w-[200px] hidden sm:block">{comp.address}</div>
-                                    </div>
-                                  </div>
+                            {gridResult.points.map((point) => (
+                              <tr key={point.idx} onClick={() => setSelectedPoint(point)}
+                                className={`hover:bg-slate-50 cursor-pointer ${selectedPoint?.idx === point.idx ? 'bg-blue-50' : ''}`}>
+                                <td className="px-6 py-4">
+                                  <span className="text-sm font-semibold text-slate-700">Point #{point.idx + 1}</span>
                                 </td>
-                                <td className="px-4 md:px-6 py-4">
-                                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-bold ${
-                                    comp.bestRank <= 3 ? 'bg-green-100 text-green-700' :
-                                    comp.bestRank <= 10 ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-red-100 text-red-700'
-                                  }`}>
-                                    #{comp.bestRank}
-                                  </span>
+                                <td className="px-6 py-4">
+                                  {point.businessRank !== null ? (
+                                    <span className={`px-2 py-1 rounded text-sm font-bold ${
+                                      point.businessRank <= 3 ? 'bg-green-100 text-green-700' :
+                                      point.businessRank <= 10 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                                    }`}>#{point.businessRank}</span>
+                                  ) : (
+                                    <span className="text-slate-400 text-sm">{t('reports.notRanked')}</span>
+                                  )}
                                 </td>
-                                <td className="px-4 md:px-6 py-4">
-                                  <span className="text-sm font-semibold text-slate-600">{comp.reviews ?? '—'}</span>
-                                </td>
-                                <td className="px-4 md:px-6 py-4">
-                                  {comp.rating !== null ? (
-                                    <div className="flex items-center gap-1">
-                                      <Star className="w-3.5 h-3.5 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
-                                      <span className="text-sm font-bold text-slate-700">{comp.rating}</span>
-                                    </div>
-                                  ) : <span className="text-slate-400 text-sm">—</span>}
-                                </td>
-                                <td className="px-4 md:px-6 py-4">
-                                  <div className="flex items-center gap-1.5">
-                                    <div className="flex gap-0.5">
-                                      {gridResult.points.map((pt) => (
-                                        <div
-                                          key={pt.idx}
-                                          className={`w-2 h-2 rounded-full ${
-                                            comp.rankAtPoints.includes(pt.idx)
-                                              ? (comp.bestRank <= 3 ? 'bg-green-400' : comp.bestRank <= 10 ? 'bg-yellow-400' : 'bg-red-400')
-                                              : 'bg-slate-200'
-                                          }`}
-                                          title={`Point #${pt.idx + 1}`}
-                                        />
-                                      ))}
-                                    </div>
-                                    <span className="text-xs text-slate-500 font-semibold">{comp.rankAtPoints.length}/{gridResult.points.length}</span>
-                                  </div>
+                                <td className="px-6 py-4 text-sm text-slate-600">{point.totalResults}</td>
+                                <td className="px-6 py-4 text-sm text-slate-600">
+                                  {point.competitors[0]?.name || '—'}
                                 </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
-                        {gridResult.topCompetitors.length === 0 && (
-                          <div className="py-16 text-center">
-                            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                              <Place className="w-8 h-8 text-slate-400" />
-                            </div>
-                            <p className="text-slate-500 text-sm">No competitor data yet</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Optimization Section */}
+            {activeSection === 'optimization' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                      <AutoAwesome className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold">{t('reports.seoOptimization')}</h2>
+                      <p className="text-sm text-slate-500">{businessInfo?.name}</p>
+                    </div>
+                  </div>
+                  <button onClick={generateSeoReport} disabled={seoLoading}
+                    className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-xl ${
+                      seoReport ? 'bg-white border-2 border-purple-600 text-purple-600' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
+                    } disabled:opacity-50`}>
+                    {seoLoading ? <><Refresh className="w-4 h-4 animate-spin" />Analyzing...</> :
+                     seoReport ? <><Refresh className="w-4 h-4" />Regenerate</> :
+                     <><AutoAwesome className="w-4 h-4" />{t('reports.generateReport')}</>}
+                  </button>
+                </div>
+                {seoError && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                    <ErrorIcon className="w-5 h-5 inline mr-2" />{seoError}
+                  </div>
+                )}
+                {seoReport && !seoLoading && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className={`rounded-2xl p-6 border ${getScoreColor(seoReport.overallScore).border} ${getScoreColor(seoReport.overallScore).bg}`}>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Speed className="w-5 h-5" style={{ color: getScoreColor(seoReport.overallScore).color }} />
+                        <h4 className="font-bold">SEO Health Score</h4>
+                        <span className="ml-auto text-xs font-bold px-2 py-1 rounded-full" style={{ backgroundColor: `${getScoreColor(seoReport.overallScore).color}20`, color: getScoreColor(seoReport.overallScore).color }}>
+                          {getScoreColor(seoReport.overallScore).label}
+                        </span>
+                      </div>
+                      <div className="flex justify-center mb-4">
+                        <div className="relative w-24 h-24">
+                          <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                            <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                            <circle cx="60" cy="60" r="50" fill="none" stroke={getScoreColor(seoReport.overallScore).color} strokeWidth="10"
+                              strokeLinecap="round" strokeDasharray={`${(seoReport.overallScore / 100) * 314} 314`} />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-2xl font-extrabold" style={{ color: getScoreColor(seoReport.overallScore).color }}>{seoReport.overallScore}</span>
+                            <span className="text-xs text-slate-400">/ 100</span>
                           </div>
-                        )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-slate-600 text-center">{seoReport.overallSummary}</p>
+                    </div>
+                    <div className="bg-white rounded-2xl p-5 border border-slate-100 md:col-span-2">
+                      <div className="flex items-center gap-2 mb-4">
+                        <LocalFireDepartment className="w-5 h-5 text-orange-500" />
+                        <h4 className="font-bold">Quick Wins</h4>
+                        <span className="ml-auto bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.quickWins?.length || 0} items</span>
+                      </div>
+                      <div className="space-y-2 max-h-48 overflow-auto">
+                        {(seoReport.quickWins || []).map((win: any, i: number) => (
+                          <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+                            <div className="w-6 h-6 rounded-full bg-white border-2 border-orange-400 flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-bold text-orange-500">{i+1}</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-700">{win.action}</p>
+                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${win.impact === 'high' ? 'bg-red-100 text-red-600' : win.impact === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{win.impact}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
                 )}
-
-                {/* All Grid Points Table */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="px-4 md:px-6 py-4 border-b border-slate-100">
-                    <h3 className="text-base font-bold">All Grid Points</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Your ranking at each location point</p>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr>
-                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Point</th>
-                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Your Rank</th>
-                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Results</th>
-                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#1 Competitor</th>
-                          <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Coordinates</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {gridResult.points.map((point) => (
-                          <tr
-                            key={point.idx}
-                            onClick={() => setSelectedPoint(point)}
-                            className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedPoint?.idx === point.idx ? 'bg-blue-50' : ''}`}
-                          >
-                            <td className="px-4 md:px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <Place className="w-4 h-4 text-slate-400" />
-                                <span className="text-sm font-semibold text-slate-700">Point #{point.idx + 1}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 md:px-6 py-4">
-                              {point.businessRank !== null ? (
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-bold ${
-                                  point.businessRank <= 3 ? 'bg-green-100 text-green-700' :
-                                  point.businessRank <= 10 ? 'bg-yellow-100 text-yellow-700' :
-                                  'bg-red-100 text-red-700'
-                                }`}>
-                                  #{point.businessRank}
-                                  {point.businessRank <= 3 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 text-sm">Not ranked</span>
-                              )}
-                            </td>
-                            <td className="px-4 md:px-6 py-4 text-sm text-slate-600">{point.totalResults}</td>
-                            <td className="px-4 md:px-6 py-4">
-                              {point.competitors[0] ? (
-                                <div className="flex items-center gap-2">
-                                  {point.competitors[0].thumbnail ? (
-                                    <img src={point.competitors[0].thumbnail} alt={point.competitors[0].name} className="w-7 h-7 rounded-full object-cover border border-slate-200 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                  ) : (
-                                    <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-                                      <Place className="w-3.5 h-3.5 text-slate-400" />
-                                    </div>
-                                  )}
-                                  <div className="min-w-0">
-                                    <div className="text-xs font-semibold text-slate-700 truncate max-w-[140px] md:max-w-[160px]">{point.competitors[0].name}</div>
-                                    {point.competitors[0].rating !== null && (
-                                      <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                                        <Star className="w-2.5 h-2.5 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
-                                        {point.competitors[0].rating}
-                                        {point.competitors[0].reviews !== null && <>({point.competitors[0].reviews})</>}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              ) : <span className="text-slate-400 text-sm">—</span>}
-                            </td>
-                            <td className="px-4 md:px-6 py-4 hidden sm:table-cell">
-                              <span className="font-mono text-xs text-slate-500">{point.lat.toFixed(4)}, {point.lng.toFixed(4)}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Empty state (no report yet) */}
-            {!gridResult && !gridLoading && (
-              <>
-                <section className="relative w-full h-[500px] flex items-center justify-center bg-gradient-to-b from-slate-50 to-white rounded-2xl border border-slate-200">
-                  <div className="relative z-10 text-center max-w-lg px-4">
-                    <div className="mb-4 inline-flex items-center justify-center p-3 bg-slate-100 rounded-full border border-slate-200">
-                      <Public className="w-6 h-6 text-slate-500" />
+                {!seoReport && !seoLoading && (
+                  <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-12 border border-slate-200 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
+                      <AutoAwesome className="w-8 h-8 text-purple-500" />
                     </div>
-                    <h2 className="text-2xl font-bold mb-3">{t('reports.localSearchGrid')}</h2>
-                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                      {t('reports.localSearchGridDesc')}
-                    </p>
+                    <h4 className="text-lg font-bold text-slate-800 mb-2">Generate Your SEO Optimization Report</h4>
+                    <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">Click the button above to analyze your business listings with AI.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ========== REAL COMMENT SECTION ========== */}
+        {activeCategory === 'realComment' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold">{t('seo.section.realComment')}</h1>
+                <p className="text-sm text-slate-500 mt-1">{t('seo.section.realCommentDesc')}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+                  <AccountCircle className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-semibold text-green-700">{googleAccounts.filter(a => a.connected).length} {t('realComment.accountsConnected')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Connected Accounts */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold">{t('realComment.connectedAccounts')}</h2>
+                <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">
+                  <Add className="w-4 h-4" />
+                  {t('realComment.connectNew')}
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {googleAccounts.map((account) => (
+                  <div key={account.id} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                      {account.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-slate-900 truncate">{account.name}</p>
+                      <p className="text-xs text-slate-500 truncate">{account.email}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      <button className="text-xs text-red-500 hover:text-red-700 font-semibold">{t('realComment.disconnect')}</button>
+                    </div>
+                  </div>
+                ))}
+                {googleAccounts.length === 0 && (
+                  <div className="col-span-full text-center py-8">
+                    <AccountCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500">{t('realComment.noAccounts')}</p>
+                    <p className="text-xs text-slate-400 mt-1">{t('realComment.noAccountsDesc')}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Review Creator */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h2 className="text-lg font-bold mb-4">{t('realComment.writeReview')}</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-4">
+                  {/* Account Selection */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">{t('realComment.selectAccount')}</label>
+                    <select value={selectedAccount} onChange={(e) => setSelectedAccount(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm">
+                      <option value="">-- Select Account --</option>
+                      {googleAccounts.filter(a => a.connected).map((account) => (
+                        <option key={account.id} value={account.id}>{account.name} ({account.email})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Location Selection */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">{t('realComment.selectLocation')}</label>
+                    <select value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm">
+                      <option value="all">{t('realComment.allLocations')}</option>
+                      <option value="location1">{businessInfo?.name || 'Location 1'}</option>
+                    </select>
+                  </div>
+
+                  {/* Rating */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">{t('realComment.rating')}</label>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button key={star} onClick={() => setReviewRating(star)}
+                          className="p-1 hover:scale-110 transition-transform">
+                          <Star className={`w-8 h-8 ${star <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+                        </button>
+                      ))}
+                      <span className="ml-2 text-sm text-slate-600">{reviewRating} / 5</span>
+                    </div>
+                  </div>
+
+                  {/* AI Generate Button */}
+                  <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AutoAwesome className="w-5 h-5 text-orange-500" />
+                      <span className="font-bold text-sm text-orange-700">{t('realComment.aiGenerate')}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 mb-3">{t('realComment.aiTip')}</p>
                     <button
-                      onClick={handleCreateReport}
-                      disabled={!gridKeyword.trim() || !businessInfo?.lat}
-                      className="bg-primary text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      onClick={handleGenerateAIReview}
+                      disabled={aiGeneratingReview || !selectedAccount}
+                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-2.5 px-4 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all disabled:opacity-50"
                     >
-                      Create report
+                      {aiGeneratingReview ? (
+                        <><Refresh className="w-4 h-4 animate-spin" />{t('realComment.aiGenerating')}</>
+                      ) : (
+                        <><AutoAwesome className="w-4 h-4" />{t('realComment.aiGenerate')}</>
+                      )}
                     </button>
                   </div>
-                </section>
 
-                <section className="border-t border-slate-200 pt-10">
-                  <h2 className="text-lg font-bold mb-2">{t('reports.rankingCompetitors')}</h2>
-                  <p className="text-sm text-slate-500 mb-8">{t('reports.rankingCompetitorsDesc')}</p>
-                  <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-16 flex flex-col items-center justify-center text-center">
-                    <div className="mb-4 inline-flex items-center justify-center p-3 bg-white rounded-full border border-slate-200 shadow-sm">
-                      <Public className="w-6 h-6 text-slate-400" />
+                  {currentPersona && (
+                    <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                      <p className="text-xs text-purple-600 font-semibold">{t('realComment.identityLabel')} <span className="font-bold">{currentPersona.name}</span></p>
                     </div>
-                    <h3 className="text-base font-bold mb-2">{t('reports.localSearchGrid')}</h3>
-                    <p className="text-slate-400 text-xs max-w-md">
-                      {t('reports.noDataYet')}
-                    </p>
+                  )}
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-4">
+                  {/* Review Content */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">{t('realComment.reviewContent')}</label>
+                    <textarea
+                      value={reviewContent}
+                      onChange={(e) => setReviewContent(e.target.value)}
+                      placeholder={t('realComment.reviewPlaceholder')}
+                      rows={6}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
                   </div>
-                </section>
-              </>
-            )}
+
+                  {/* Photos */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-semibold text-slate-700">{t('realComment.photoGallery')}</label>
+                      <button onClick={() => handleAddPhoto(setReviewPhotos)} className="text-xs text-primary font-semibold hover:underline">
+                        + {t('realComment.addPhoto')}
+                      </button>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {reviewPhotos.map((photo, index) => (
+                        <div key={index} className="relative w-20 h-20 rounded-lg overflow-hidden">
+                          <img src={photo} alt="" className="w-full h-full object-cover" />
+                          <button onClick={() => handleRemovePhoto(index, reviewPhotos, setReviewPhotos)}
+                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      {reviewPhotos.length === 0 && (
+                        <button onClick={() => handleAddPhoto(setReviewPhotos)}
+                          className="w-20 h-20 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center text-slate-400 hover:border-primary hover:text-primary transition-colors">
+                          <PhotoCamera className="w-6 h-6" />
+                          <span className="text-[10px] mt-1">Add</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    onClick={handleSaveReview}
+                    disabled={savingReview || !selectedAccount || !reviewContent.trim()}
+                    className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-3 px-4 rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
+                  >
+                    {savingReview ? <><Refresh className="w-4 h-4 animate-spin" />{t('realComment.saving')}</> : <><CheckCircle className="w-4 h-4" />{t('realComment.submitReview')}</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Review History */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h2 className="text-lg font-bold mb-4">
+                <History className="w-5 h-5 inline mr-2 text-slate-400" />
+                {t('realComment.reviewHistory')}
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.account')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.location')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.rating')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.status')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.date')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {reviewHistory.map((task) => (
+                      <tr key={task.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-4 text-sm text-slate-600">{task.accountEmail}</td>
+                        <td className="px-4 py-4 text-sm text-slate-600">{task.location}</td>
+                        <td className="px-4 py-4">
+                          <div className="flex">
+                            {[1,2,3,4,5].map(i => (
+                              <Star key={i} className={`w-4 h-4 ${i <= task.rating ? 'text-amber-400' : 'text-slate-300'}`} />
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            task.status === 'published' ? 'bg-green-100 text-green-700' :
+                            task.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {task.status === 'published' ? t('realComment.published') : task.status === 'pending' ? t('realComment.pending') : t('realComment.failed')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-500">{new Date(task.date).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                    {reviewHistory.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
+                          <History className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                          {t('realComment.noReviewHistory')}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Section: Optimization */}
-        {activeSection === 'optimization' && (
+        {/* ========== REDNOTE SEO SECTION ========== */}
+        {activeCategory === 'rednoteSeo' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                  <AutoAwesome className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900">{t('reports.seoOptimization')}</h2>
-                  <p className="text-sm text-slate-500">{businessInfo?.name}</p>
-                </div>
+              <div>
+                <h1 className="text-2xl font-bold">{t('seo.section.rednoteSeo')}</h1>
+                <p className="text-sm text-slate-500 mt-1">{t('seo.section.rednoteSeoDesc')}</p>
               </div>
               <button
-                onClick={generateSeoReport}
-                disabled={seoLoading}
-                className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-xl shadow-lg transition-all ${
-                  seoReport
-                    ? 'bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50'
-                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-500/20'
-                } disabled:opacity-50`}
+                onClick={() => setRednoteConnected(!rednoteConnected)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${
+                  rednoteConnected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-pink-100 text-pink-700 border border-pink-200'
+                }`}
               >
-                {seoLoading ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
-                    <span className="animate-pulse">Analyzing...</span>
-                  </>
-                ) : seoReport ? (
-                  <>
-                    <Refresh className="w-4 h-4" />
-                    Regenerate Report
-                  </>
+                {rednoteConnected ? (
+                  <><CheckCircle className="w-4 h-4" />{t('rednote.connected')}</>
                 ) : (
-                  <>
-                    <AutoAwesome className="w-4 h-4" />
-                    {t('reports.generateReport')}
-                  </>
+                  <><Add className="w-4 h-4" />{t('rednote.connectAccount')}</>
                 )}
               </button>
             </div>
 
-            {/* Error */}
-            {seoError && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-                <ErrorIcon className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-red-700">{seoError}</p>
-                  <p className="text-xs text-red-500 mt-0.5">Make sure your Gemini API key is configured in Settings.</p>
+            {/* Connection Card */}
+            {!rednoteConnected && (
+              <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl border border-pink-100 p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center mx-auto mb-4">
+                  <Article className="w-8 h-8 text-pink-500" />
                 </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">{t('rednote.noAccount')}</h3>
+                <p className="text-sm text-slate-500 mb-4">{t('rednote.noAccountDesc')}</p>
+                <button onClick={() => setRednoteConnected(true)} className="bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold py-2.5 px-6 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
+                  {t('rednote.connectAccount')}
+                </button>
               </div>
             )}
 
-            {/* Loading skeleton */}
-            {seoLoading && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1,2,3].map(i => (
-                  <div key={i} className="bg-white rounded-2xl p-5 border border-slate-100 animate-pulse">
-                    <div className="h-4 bg-slate-200 rounded w-1/3 mb-4" />
-                    <div className="h-3 bg-slate-100 rounded w-full mb-2" />
-                    <div className="h-3 bg-slate-100 rounded w-5/6 mb-2" />
-                    <div className="h-3 bg-slate-100 rounded w-4/6" />
-                  </div>
-                ))}
-              </div>
-            )}
+            {rednoteConnected && (
+              <>
+                {/* Post Creator */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h2 className="text-lg font-bold mb-4">{t('rednote.createPost')}</h2>
 
-            {/* Report Content */}
-            {seoReport && !seoLoading && (
-              <div className="space-y-5">
-
-                {/* Top Row: Score + Quick Wins */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-                  {/* Score Card */}
-                  <div className={`rounded-2xl p-6 border ${getScoreColor(seoReport.overallScore).border} ${getScoreColor(seoReport.overallScore).bg}`}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Speed className="w-5 h-5" style={{ color: getScoreColor(seoReport.overallScore).color }} />
-                      <h4 className="font-bold text-slate-800">SEO Health Score</h4>
-                      <span className="ml-auto text-xs font-bold px-2 py-1 rounded-full" style={{ backgroundColor: `${getScoreColor(seoReport.overallScore).color}20`, color: getScoreColor(seoReport.overallScore).color }}>
-                        {getScoreColor(seoReport.overallScore).label}
-                      </span>
+                  {/* AI Generate Section */}
+                  <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 border border-pink-100 mb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AutoAwesome className="w-5 h-5 text-pink-500" />
+                      <span className="font-bold text-sm text-pink-700">{t('rednote.aiGeneratePost')}</span>
                     </div>
-                    <div className="flex items-center justify-center mb-4">
-                      <div className="relative w-28 h-28">
-                        <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-                          <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-                          <circle cx="60" cy="60" r="50" fill="none" stroke={getScoreColor(seoReport.overallScore).color} strokeWidth="10"
-                            strokeLinecap="round"
-                            strokeDasharray={`${(seoReport.overallScore / 100) * 314} 314`}
-                            style={{ transition: 'stroke-dasharray 1s ease-out' }}
+                    <p className="text-xs text-slate-600 mb-3">{t('rednote.aiTip')}</p>
+                    <button
+                      onClick={handleGenerateRednotePost}
+                      disabled={aiGeneratingPost}
+                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold py-2.5 px-4 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all disabled:opacity-50"
+                    >
+                      {aiGeneratingPost ? (
+                        <><Refresh className="w-4 h-4 animate-spin" />{t('rednote.aiGenerating')}</>
+                      ) : (
+                        <><AutoAwesome className="w-4 h-4" />{t('rednote.aiGeneratePost')}</>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column */}
+                    <div className="space-y-4">
+                      {/* Title */}
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">{t('rednote.postTitle')}</label>
+                        <input
+                          type="text"
+                          value={rednoteTitle}
+                          onChange={(e) => setRednoteTitle(e.target.value)}
+                          placeholder={t('rednote.postTitlePlaceholder')}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                        />
+                      </div>
+
+                      {/* Location */}
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">{t('rednote.selectLocation')}</label>
+                        <select value={rednoteSelectedLocation} onChange={(e) => setRednoteSelectedLocation(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm">
+                          <option value="all">{t('realComment.allLocations')}</option>
+                          <option value="location1">{businessInfo?.name || 'Location 1'}</option>
+                        </select>
+                      </div>
+
+                      {/* Tags */}
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">{t('rednote.postTags')}</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {rednoteTags.map((tag, index) => (
+                            <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-semibold">
+                              #{tag}
+                              <button onClick={() => setRednoteTags(tags => tags.filter((_, i) => i !== index))} className="hover:text-pink-900">×</button>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={rednoteTagInput}
+                            onChange={(e) => setRednoteTagInput(e.target.value)}
+                            placeholder={t('rednote.postTagsPlaceholder')}
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-sm"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && rednoteTagInput.trim()) {
+                                setRednoteTags(tags => [...tags, rednoteTagInput.trim()]);
+                                setRednoteTagInput('');
+                              }
+                            }}
                           />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-3xl font-extrabold" style={{ color: getScoreColor(seoReport.overallScore).color }}>{seoReport.overallScore}</span>
-                          <span className="text-xs text-slate-400">/ 100</span>
+                          <button onClick={() => { if (rednoteTagInput.trim()) { setRednoteTags(tags => [...tags, rednoteTagInput.trim()]); setRednoteTagInput(''); } }}
+                            className="px-3 py-2 bg-pink-100 text-pink-700 rounded-lg text-sm font-semibold hover:bg-pink-200">
+                            {t('rednote.addTag')}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Photos */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-sm font-semibold text-slate-700">{t('rednote.photos')}</label>
+                          <button onClick={() => handleAddPhoto(setRednotePhotos)} className="text-xs text-primary font-semibold hover:underline">
+                            + {t('rednote.addPhoto')}
+                          </button>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          {rednotePhotos.map((photo, index) => (
+                            <div key={index} className="relative w-20 h-20 rounded-lg overflow-hidden">
+                              <img src={photo} alt="" className="w-full h-full object-cover" />
+                              <button onClick={() => handleRemovePhoto(index, rednotePhotos, setRednotePhotos)}
+                                className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">×</button>
+                            </div>
+                          ))}
+                          {rednotePhotos.length === 0 && (
+                            <button onClick={() => handleAddPhoto(setRednotePhotos)}
+                              className="w-20 h-20 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center text-slate-400 hover:border-pink-400 hover:text-pink-500 transition-colors">
+                              <Image className="w-6 h-6" />
+                              <span className="text-[10px] mt-1">Add</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-600 text-center leading-relaxed">{seoReport.overallSummary}</p>
-                  </div>
 
-                  {/* Quick Wins */}
-                  <div className="bg-white rounded-2xl p-5 border border-slate-100 md:col-span-2 flex flex-col">
-                    <div className="flex items-center gap-2 mb-4">
-                      <LocalFireDepartment className="w-5 h-5 text-orange-500" />
-                      <h4 className="font-bold text-slate-800">Quick Wins</h4>
-                      <span className="ml-auto bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.quickWins?.length || 0} items</span>
-                    </div>
-                    <div className="flex-1 space-y-2 overflow-auto">
-                      {(seoReport.quickWins || []).map((win: any, i: number) => (
-                        <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                          <div className="w-6 h-6 rounded-full bg-white border-2 border-orange-400 flex items-center justify-center mt-0.5 flex-shrink-0">
-                            <span className="text-xs font-bold text-orange-500">{i+1}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-700">{win.action}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs font-bold px-1.5 py-0.5 rounded"
-                                style={{ backgroundColor: win.impact === 'high' ? '#fef2f2' : win.impact === 'medium' ? '#fffbeb' : '#f0fdf4', color: win.impact === 'high' ? '#dc2626' : win.impact === 'medium' ? '#d97706' : '#16a34a' }}>
-                                {win.impact} impact
-                              </span>
-                              <span className="text-xs text-slate-400">effort: {win.effort}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                    {/* Right Column - Content */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">{t('rednote.postContent')}</label>
+                        <textarea
+                          value={rednoteContent}
+                          onChange={(e) => setRednoteContent(e.target.value)}
+                          placeholder={t('rednote.postContentPlaceholder')}
+                          rows={10}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm resize-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                        />
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleSaveRednotePost(false)}
+                          disabled={savingPost || !rednoteTitle.trim() || !rednoteContent.trim()}
+                          className="flex-1 flex items-center justify-center gap-2 bg-slate-100 text-slate-700 font-bold py-2.5 px-4 rounded-lg hover:bg-slate-200 transition-all disabled:opacity-50"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          {t('rednote.saveDraft')}
+                        </button>
+                        <button
+                          onClick={() => handleSaveRednotePost(true)}
+                          disabled={savingPost || !rednoteTitle.trim() || !rednoteContent.trim()}
+                          className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold py-2.5 px-4 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all disabled:opacity-50"
+                        >
+                          {savingPost ? <><Refresh className="w-4 h-4 animate-spin" />{t('rednote.saving')}</> : <><Send className="w-4 h-4" />{t('rednote.publishNow')}</>}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Key Insights */}
-                <div className="bg-white rounded-2xl p-6 border border-slate-100">
-                  <div className="flex items-center gap-2 mb-5">
-                    <Lightbulb className="w-5 h-5 text-amber-500" />
-                    <h4 className="font-bold text-slate-800">Key Optimization Insights</h4>
-                    <span className="ml-auto bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.insights?.length || 0} recommendations</span>
-                  </div>
+                {/* Post History */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h2 className="text-lg font-bold mb-4">
+                    <History className="w-5 h-5 inline mr-2 text-slate-400" />
+                    {t('rednote.postHistory')}
+                  </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {(seoReport.insights || []).map((insight: any, i: number) => {
-                      const prioColor = insight.priority === 'high' ? '#dc2626' : insight.priority === 'medium' ? '#d97706' : '#16a34a';
-                      const isCompleted = insight.completed === true;
-
-                      // Determine completion: check if action already done in-app
-                      const completionStatus = (() => {
-                        if (isCompleted) return { done: true, reason: 'Already completed' };
-                        if (insight.actionType === 'editable' && businessInfo?.name && businessInfo?.address) return { done: true, reason: 'Listings updated' };
-                        if (insight.actionType === 'review' && (seoReport.reviewResponseRate > 50 || seoReport.totalReviews > 0)) return { done: true, reason: 'Reviews active' };
-                        if (insight.actionType === 'citation') return { done: false };
-                        if (insight.actionType === 'post' && seoReport.publishedPosts > 0) return { done: true, reason: 'Posts published' };
-                        return { done: false };
-                      })();
-
-                      return (
-                        <div key={i} className={`rounded-xl border transition-all p-4 flex flex-col ${isCompleted || completionStatus.done ? 'border-green-200 bg-green-50/30' : 'border-slate-200 hover:border-purple-300 hover:shadow-md'}`}>
-                          {/* Card Header */}
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>
-                              <Lightbulb className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <h5 className="font-bold text-slate-800 text-sm leading-tight">{insight.title}</h5>
-                                {(isCompleted || completionStatus.done) && (
-                                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>{insight.priority}</span>
-                                {completionStatus.reason && (
-                                  <span className="text-xs text-green-600 font-medium">{completionStatus.reason}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Description */}
-                          <p className="text-xs text-slate-500 leading-relaxed mb-3 flex-shrink-0">{insight.description}</p>
-
-                          {/* Current vs Suggested Values */}
-                          {insight.currentValue && (
-                            <div className="bg-slate-50 rounded-lg p-2.5 mb-3 text-xs space-y-1.5 flex-shrink-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-slate-400 font-semibold shrink-0">Current:</span>
-                                <span className="text-slate-600 ml-auto text-right">{insight.currentValue}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-purple-500 font-semibold shrink-0">Suggested:</span>
-                                <span className="text-purple-600 ml-auto text-right">{insight.suggestedValue}</span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Action Button */}
-                          {!(isCompleted || completionStatus.done) && (
-                            <button
-                              onClick={() => {
-                                if (insight.actionType === 'editable') setActiveTab('listings');
-                                else if (insight.actionType === 'review') setActiveTab('reviews');
-                                else if (insight.actionType === 'citation') setActiveTab('seo');
-                                else setActiveTab('publishing');
-                              }}
-                              className="mt-auto w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 transition-all"
-                            >
-                              {insight.actionLabel || 'Take Action'} <OpenInNew className="w-3 h-3" />
-                            </button>
-                          )}
-                          {(isCompleted || completionStatus.done) && (
-                            <div className="mt-auto w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-green-100 text-green-700">
-                              <CheckCircle className="w-3.5 h-3.5" /> Done in app
-                            </div>
-                          )}
+                    {postHistory.map((post) => (
+                      <div key={post.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-bold text-sm text-slate-900 line-clamp-1">{post.title}</h3>
+                          <span className={`px-2 py-0.5 rounded text-xs font-semibold shrink-0 ml-2 ${
+                            post.status === 'published' ? 'bg-green-100 text-green-700' :
+                            post.status === 'scheduled' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {post.status === 'published' ? t('rednote.posted') : post.status === 'scheduled' ? t('rednote.scheduled') : t('rednote.draft')}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Competitive Opportunities */}
-                <div className="bg-white rounded-2xl p-6 border border-slate-100">
-                  <div className="flex items-center gap-2 mb-5">
-                    <TrendingUp className="w-5 h-5 text-indigo-500" />
-                    <h4 className="font-bold text-slate-800">Competitive Opportunities</h4>
-                    <span className="ml-auto bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.competitiveInsights?.length || 0} insights</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(seoReport.competitiveInsights || []).map((comp: any, i: number) => {
-                      const prioColor = comp.priority === 'high' ? '#dc2626' : comp.priority === 'medium' ? '#d97706' : '#16a34a';
-                      return (
-                        <div key={i} className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl p-5 border border-slate-200 flex flex-col">
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${prioColor}15` }}>
-                              <Star className="w-4 h-4" style={{ color: prioColor }} />
-                            </div>
-                            <div className="flex-1">
-                              <h5 className="font-bold text-slate-800 text-sm mb-1">{comp.title}</h5>
-                              <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${prioColor}15`, color: prioColor }}>{comp.priority}</span>
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-500 leading-relaxed mb-4">{comp.description}</p>
-                          <div className="mt-auto space-y-2">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Steps:</p>
-                            {comp.actionSteps.map((step: string, j: number) => (
-                              <div key={j} className="flex items-start gap-2">
-                                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{j+1}</span>
-                                <p className="text-xs text-slate-600 leading-snug">{step}</p>
-                              </div>
-                            ))}
-                          </div>
+                        <p className="text-xs text-slate-500 line-clamp-3 mb-2">{post.content}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {post.tags.slice(0, 3).map((tag, i) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 bg-pink-50 text-pink-600 rounded">#{tag}</span>
+                          ))}
                         </div>
-                      );
-                    })}
+                        <p className="text-[10px] text-slate-400 mt-2">{new Date(post.date).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                    {postHistory.length === 0 && (
+                      <div className="col-span-full text-center py-8">
+                        <Article className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                        <p className="text-slate-500">{t('rednote.noPostHistory')}</p>
+                        <p className="text-xs text-slate-400 mt-1">{t('rednote.noPostHistoryDesc')}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Empty state */}
-            {!seoReport && !seoLoading && !seoError && (
-              <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-12 border border-slate-200 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
-                  <AutoAwesome className="w-8 h-8 text-purple-500" />
-                </div>
-                <h4 className="text-lg font-bold text-slate-800 mb-2">Generate Your SEO Optimization Report</h4>
-                <p className="text-sm text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
-                  Click the button above to analyze your business listings with AI. Get personalized recommendations for categories, descriptions, review response, and more.
-                </p>
-                <button
-                  onClick={generateSeoReport}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
-                >
-                  <AutoAwesome className="w-4 h-4" />
-                  {t('reports.generateReport')}
-                </button>
-              </div>
+              </>
             )}
           </div>
         )}
