@@ -235,14 +235,7 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
     }
   }, [seoReport]);
 
-  // Persist grid result to localStorage
-  useEffect(() => {
-    if (gridResult) {
-      localStorage.setItem('local_grid_result', JSON.stringify(gridResult));
-    }
-  }, [gridResult]);
-
-  // Local Search Grid state
+  // Local Search Grid state (MUST be declared before the useEffect below that uses it)
   const [gridKeyword, setGridKeyword] = useState('restaurant near me');
   const [gridSize, setGridSize] = useState(9);
   const [gridRadius, setGridRadius] = useState(5);
@@ -255,6 +248,13 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
   const [gridLoading, setGridLoading] = useState(false);
   const [gridError, setGridError] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<GridPoint | null>(null);
+
+  // Persist grid result to localStorage
+  useEffect(() => {
+    if (gridResult) {
+      localStorage.setItem('local_grid_result', JSON.stringify(gridResult));
+    }
+  }, [gridResult]);
 
   // Real Comment state
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([
