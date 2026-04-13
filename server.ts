@@ -2110,7 +2110,13 @@ async function startServer() {
       const listing = allListings.find((l: any) => l.id === sourceId) || allListings[0] || {};
       const businessName = listing.name || 'Business';
 
-      const chartData = await getReportChartData(req.tenantId, apiKey, days);
+      // Safe tenantId lookup
+      const tenantId = req.tenantId
+        ? req.tenantId
+        : (await prisma.tenant.findFirst())?.id;
+      if (!tenantId) return res.status(404).json({ error: 'Tenant not found' });
+
+      const chartData = await getReportChartData(tenantId, apiKey, days);
       const { daily, monthly, weekdaySearch, weekdayActions } = chartData;
 
       // Totals for donut charts
