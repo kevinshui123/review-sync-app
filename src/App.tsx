@@ -1,4 +1,22 @@
 import React, { useState, useEffect, Component, ReactNode } from 'react';
+import { Sidebar } from './components/Sidebar';
+import { Header } from './components/Header';
+import { Dashboard } from './components/Dashboard';
+import { Listings } from './components/Listings';
+import { Reviews } from './components/Reviews';
+import { BulkEdits } from './components/BulkEdits';
+import { EditsLog } from './components/EditsLog';
+import { Publishing } from './components/Publishing';
+import { Reports } from './components/Reports';
+import { SEO } from './components/SEO';
+import { Settings } from './components/Settings';
+import { Help } from './components/Help';
+import { EditBusinessPage } from './components/EditBusinessPage';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { useLanguage } from './contexts/LanguageContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthPage from './pages/AuthPage';
+import { apiGet } from './utils/api';
 
 interface ErrorBoundaryProps { children: ReactNode; fallback?: ReactNode; t?: (key: string) => string; }
 interface ErrorBoundaryState { hasError: boolean; error?: Error; }
@@ -25,24 +43,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     return this.props.children;
   }
 }
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
-import { Dashboard } from './components/Dashboard';
-import { Listings } from './components/Listings';
-import { Reviews } from './components/Reviews';
-import { BulkEdits } from './components/BulkEdits';
-import { EditsLog } from './components/EditsLog';
-import { Publishing } from './components/Publishing';
-import { Reports } from './components/Reports';
-import { SEO } from './components/SEO';
-import { Settings } from './components/Settings';
-import { Help } from './components/Help';
-import { EditBusinessPage } from './components/EditBusinessPage';
-import { AlertTriangle, Loader2 } from 'lucide-react';
-import { useLanguage } from './contexts/LanguageContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import AuthPage from './pages/AuthPage';
-import { apiGet } from './utils/api';
 
 function AppContent() {
   const { user, isLoading } = useAuth();
