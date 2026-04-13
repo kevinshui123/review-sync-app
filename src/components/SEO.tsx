@@ -1443,10 +1443,6 @@ CONTENT: 这家店真的太绝了！✨ 一进门就被装修风格吸引住了�
   );
 }
 
-              <div className="space-y-6">
-                <h1 className="text-2xl font-bold">
-                  {t('seo.localCitation')} <span className="font-normal text-slate-500">{businessInfo?.name}</span>
-                </h1>
                 <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
                   <h2 className="text-lg font-bold mb-6">{t('seo.baselineInfo')}</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
