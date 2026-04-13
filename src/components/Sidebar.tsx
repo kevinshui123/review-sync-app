@@ -73,10 +73,10 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-blue-900 font-headline tracking-tight">
-              Editorial Intel
+              PinKernel SEO
             </h1>
             <p className="text-[10px] text-slate-500 font-medium tracking-widest uppercase mt-0.5">
-              Premium Curator
+              Local Search Intelligence
             </p>
           </div>
         </div>

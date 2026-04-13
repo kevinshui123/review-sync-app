@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Inventory2, Store, LocationOn, Sync, Close, Link, ArrowBack, Edit, Star, Phone, Language, Lock, PhotoCamera, Tag, AccountCircle, CheckCircle, Add, Delete, AutoAwesome } from '@mui/icons-material';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { Inventory2, Store, LocationOn, Close, Link, ArrowBack, Edit, Star, Phone, Language, Lock, PhotoCamera, Tag, AccountCircle, CheckCircle, Add, Delete, AutoAwesome } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EditBusinessPage } from './EditBusinessPage';
 import { ProfileAnalysisDrawer } from './ProfileAnalysisDrawer';
-import { apiGet, apiPost, apiDelete } from '../utils/api';
+import { apiGet, apiDelete } from '../utils/api';
 
 interface ListingsProps {
   setActiveTab: (tab: string) => void;
@@ -45,8 +44,6 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   const { t } = useLanguage();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [showAnalysisDrawer, setShowAnalysisDrawer] = useState(false);
   const [selectedLocationForAnalysis, setSelectedLocationForAnalysis] = useState<Location | null>(null);
@@ -88,26 +85,6 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
     }
   };
 
-  const handleSyncReviews = async () => {
-    setSyncing(true);
-    setSyncMessage(null);
-
-    try {
-      const res = await apiPost('/api/reviews/sync', undefined);
-      const data = await res.json();
-
-      if (res.ok) {
-        setSyncMessage({ type: 'success', text: data.message || 'Reviews synced successfully!' });
-      } else {
-        setSyncMessage({ type: 'error', text: data.error || 'Failed to sync reviews' });
-      }
-    } catch (error) {
-      setSyncMessage({ type: 'error', text: 'Network error. Please try again.' });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const handleDeleteLocation = async (id: string) => {
     if (!confirm('Are you sure you want to disconnect this listing?')) return;
     try {
@@ -146,42 +123,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
               {locations.length} listing{locations.length !== 1 ? 's' : ''}
             </div>
           </div>
-          <button
-            onClick={handleSyncReviews}
-            disabled={syncing || locations.length === 0}
-            className="ml-auto flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-50"
-          >
-            {syncing ? (
-              <>
-                <RefreshCw className="w-5 h-5 animate-spin" />
-                Syncing...
-              </>
-            ) : (
-              <>
-                <Sync className="w-5 h-5" />
-                Sync Reviews
-              </>
-            )}
-          </button>
         </div>
-
-        {/* Sync Message */}
-        <AnimatePresence>
-          {syncMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
-                syncMessage.type === 'success'
-                  ? 'bg-green-50 text-green-700 border border-green-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
-              }`}
-            >
-              {syncMessage.text}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Content Area */}

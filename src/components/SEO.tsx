@@ -223,9 +223,23 @@ export function SEO({ setActiveTab }: SEOProps) {
     }
   }, [seoReport]);
 
+  // Persist grid result to localStorage
+  useEffect(() => {
+    if (gridResult) {
+      localStorage.setItem('local_grid_result', JSON.stringify(gridResult));
+    }
+  }, [gridResult]);
+
   // Local Search Grid state
   const [gridKeyword, setGridKeyword] = useState('restaurant near me');
-  const [gridResult, setGridResult] = useState<LocalSearchGridResult | null>(null);
+  const [gridSize, setGridSize] = useState(9);
+  const [gridRadius, setGridRadius] = useState(5);
+  const [gridResult, setGridResult] = useState<LocalSearchGridResult | null>(() => {
+    try {
+      const saved = localStorage.getItem('local_grid_result');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [gridLoading, setGridLoading] = useState(false);
   const [gridError, setGridError] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<GridPoint | null>(null);
@@ -262,7 +276,6 @@ export function SEO({ setActiveTab }: SEOProps) {
     if (!gridKeyword.trim() || !businessInfo?.lat || !businessInfo?.lng) return;
     setGridLoading(true);
     setGridError(null);
-    setGridResult(null);
     setSelectedPoint(null);
     try {
       const res = await apiPost('/api/seo/local-search-grid', {
@@ -270,7 +283,8 @@ export function SEO({ setActiveTab }: SEOProps) {
         lat: businessInfo!.lat,
         lng: businessInfo!.lng,
         businessName: businessInfo!.name,
-        gridSize: 9,
+        gridSize: gridSize,
+        radius: gridRadius,
       });
       if (res.ok) {
         const data = await res.json();
@@ -793,7 +807,7 @@ CONTENT: 这家店真的太绝了！✨ 一进门就被装修风格吸引住了�
                   </button>
                 </div>
                 <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-                  <div className="flex gap-3 flex-wrap">
+                  <div className="flex gap-3 flex-wrap items-end">
                     <div className="flex-1 min-w-[200px]">
                       <label className="block text-xs font-semibold text-slate-500 mb-1">
                         <Search className="w-3 h-3 inline mr-1" />{t('reports.keywordQuery')}
@@ -804,12 +818,44 @@ CONTENT: 这家店真的太绝了！✨ 一进门就被装修风格吸引住了�
                         onKeyDown={e => e.key === 'Enter' && businessInfo?.lat && handleCreateReport()}
                       />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <button onClick={handleCreateReport} disabled={gridLoading || !gridKeyword.trim() || !businessInfo?.lat}
-                        className="flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold py-2.5 px-6 rounded-lg">
-                        {gridLoading ? <><Refresh className="w-4 h-4 animate-spin" />{t('reports.scanning')}</> : <><Search className="w-4 h-4" />{t('reports.createReport')}</>}
-                      </button>
+                    {/* Grid Density */}
+                    <div className="w-40">
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">
+                        Grid Density
+                      </label>
+                      <select
+                        value={gridSize}
+                        onChange={(e) => setGridSize(Number(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm"
+                      >
+                        <option value={3}>3×3 (9 pts)</option>
+                        <option value={5}>5×5 (25 pts)</option>
+                        <option value={7}>7×7 (49 pts)</option>
+                        <option value={9}>9×9 (81 pts)</option>
+                      </select>
                     </div>
+                    {/* Scan Radius */}
+                    <div className="w-40">
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">
+                        Scan Radius
+                      </label>
+                      <select
+                        value={gridRadius}
+                        onChange={(e) => setGridRadius(Number(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm"
+                      >
+                        <option value={1}>1 mile</option>
+                        <option value={2}>2 miles</option>
+                        <option value={5}>5 miles</option>
+                        <option value={10}>10 miles</option>
+                        <option value={15}>15 miles</option>
+                        <option value={20}>20 miles</option>
+                      </select>
+                    </div>
+                    <button onClick={handleCreateReport} disabled={gridLoading || !gridKeyword.trim() || !businessInfo?.lat}
+                      className="flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold py-2.5 px-6 rounded-lg">
+                      {gridLoading ? <><Refresh className="w-4 h-4 animate-spin" />{t('reports.scanning')}</> : <><Search className="w-4 h-4" />{t('reports.createReport')}</>}
+                    </button>
                   </div>
                   {(!businessInfo?.lat || !businessInfo?.lng) && (
                     <p className="mt-2 text-xs text-amber-600">{t('reports.noCoords')}</p>
