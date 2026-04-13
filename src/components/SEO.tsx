@@ -1443,11 +1443,6 @@ CONTENT: 这家店真的太绝了！✨ 一进门就被装修风格吸引住了�
   );
 }
 
-        {/* ========== LOCAL SEO SECTION ========== */}
-        {activeCategory === 'localSeo' && (
-          <>
-            {/* Citations Section */}
-            {activeSection === 'citations' && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold">
                   {t('seo.localCitation')} <span className="font-normal text-slate-500">{businessInfo?.name}</span>
