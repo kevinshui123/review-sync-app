@@ -3630,7 +3630,8 @@ The review should sound natural, authentic, and written by a real customer. Keep
         reviews: number | null;
         phone: string;
         bestRank: number;
-        rankAtPoints: number[]; // which grid points this competitor appears at
+        rankAtPoints: number[];
+        thumbnail?: string | null;
       }>();
 
       // Scan each grid point in parallel
@@ -3679,6 +3680,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
                   phone: r.phone || '',
                   bestRank: i + 1,
                   rankAtPoints: [idx],
+                  thumbnail: r.thumbnail || null,
                 });
               }
               // Add to display competitors (top 5 only, no user business)
@@ -3691,6 +3693,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
                   reviews: r.reviews,
                   phone: r.phone,
                   isTarget: false,
+                  thumbnail: r.thumbnail || null,
                 });
               }
             }

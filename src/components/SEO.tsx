@@ -104,10 +104,11 @@ interface GridPoint {
     rank: number;
     name: string;
     address: string;
-    rating: number;
-    reviews: number;
+    rating: number | null;
+    reviews: number | null;
     phone: string;
     isTarget: boolean;
+    thumbnail?: string | null;
   }[];
 }
 
@@ -119,6 +120,7 @@ interface TopCompetitor {
   phone: string;
   bestRank: number;
   rankAtPoints: number[];
+  thumbnail?: string | null;
 }
 
 interface GridSummary {
@@ -744,13 +746,22 @@ export function SEO({ setActiveTab }: SEOProps) {
                         {gridResult.topCompetitors && gridResult.topCompetitors.length > 0 ? (
                           gridResult.topCompetitors.map((comp, i) => (
                             <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                              {/* Rank badge */}
-                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                                comp.bestRank <= 3 ? 'bg-green-100 text-green-700' :
-                                comp.bestRank <= 10 ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-red-100 text-red-700'
-                              }`}>
-                                #{comp.bestRank}
+                              {/* Rank + thumbnail */}
+                              <div className="relative flex-shrink-0">
+                                {comp.thumbnail ? (
+                                  <img src={comp.thumbnail} alt={comp.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-slate-200 border border-slate-200 flex items-center justify-center flex-shrink-0">
+                                    <Place className="w-5 h-5 text-slate-400" />
+                                  </div>
+                                )}
+                                <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                  comp.bestRank <= 3 ? 'bg-green-500 text-white' :
+                                  comp.bestRank <= 10 ? 'bg-yellow-400 text-yellow-900' :
+                                  'bg-red-400 text-white'
+                                }`}>
+                                  {comp.bestRank}
+                                </div>
                               </div>
                               {/* Business info */}
                               <div className="flex-1 min-w-0">
@@ -826,11 +837,25 @@ export function SEO({ setActiveTab }: SEOProps) {
                             <td className="px-6 py-4 text-sm text-slate-600">{point.totalResults}</td>
                             <td className="px-6 py-4">
                               {point.competitors[0] ? (
-                                <div>
-                                  <div className="text-sm font-semibold text-slate-700 truncate max-w-[200px]">{point.competitors[0].name}</div>
-                                  <div className="text-xs text-slate-400 flex items-center gap-1">
-                                    <Star className="w-3 h-3 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
-                                    {point.competitors[0].rating} ({point.competitors[0].reviews} {t('reports.reviews')})
+                                <div className="flex items-center gap-2">
+                                  {point.competitors[0].thumbnail ? (
+                                    <img src={point.competitors[0].thumbnail} alt={point.competitors[0].name} className="w-8 h-8 rounded-full object-cover border border-slate-200 flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                                      <Place className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="text-sm font-semibold text-slate-700 truncate max-w-[180px]">{point.competitors[0].name}</div>
+                                    <div className="text-xs text-slate-400 flex items-center gap-1">
+                                      {point.competitors[0].rating !== null && (
+                                        <>
+                                          <Star className="w-3 h-3 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
+                                          {point.competitors[0].rating}
+                                          {point.competitors[0].reviews !== null && <>({point.competitors[0].reviews})</>}
+                                        </>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               ) : (
