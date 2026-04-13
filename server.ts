@@ -3868,7 +3868,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
   app.post('/api/reviews/generate-reply', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const { reviewId, reviewerName, rating, comment, businessName } = req.body;
-      
+
       if (!reviewId) return res.status(400).json({ error: 'Review ID is required' });
       if (!comment) return res.status(400).json({ error: 'Review comment is required' });
 
@@ -3879,61 +3879,85 @@ The review should sound natural, authentic, and written by a real customer. Keep
       const apiKey = tenant.geminiApiKey || process.env.GEMINI_API_KEY;
       if (!apiKey) return res.status(500).json({ error: 'AI API key not configured. Please add Gemini API key in Settings.' });
 
-      // Get business name from tenant listings if not provided
-      let business = businessName;
-      if (!business) {
-        const listings = await prisma.tenantListing.findFirst({
-          where: { tenantId: req.tenantId!, status: 'active' },
-        });
-        if (listings) {
-          business = listings.name;
-        } else {
-          business = 'our business';
+      // Get business context from tenant listings
+      const listing = await prisma.tenantListing.findFirst({
+        where: { tenantId: req.tenantId!, status: 'active' },
+      });
+
+      // Fetch fresh business data from EmbedSocial for SEO context
+      let businessCategory = 'restaurant';
+      let businessKeywords = '';
+      try {
+        const dbListing = await prisma.tenantListing.findFirst({ where: { tenantId: req.tenantId!, status: 'active' } });
+        if (dbListing) {
+          const esKey = process.env.EMBEDSOCIAL_API_KEY || tenant.embedSocialApiKey;
+          if (esKey && dbListing.embedSocialListingId) {
+            const esRes = await fetch(
+              `https://embedsocial.com/app/api/rest/v1/listings/${dbListing.embedSocialListingId}`,
+              { headers: { Authorization: `Bearer ${esKey}` } }
+            );
+            if (esRes.ok) {
+              const esData = await esRes.json();
+              businessCategory = esData.category || esData.businessType || 'restaurant';
+              businessKeywords = esData.keywords || esData.tags?.join(', ') || '';
+            }
+          }
         }
+      } catch (e) {
+        console.warn('[generate-reply] Could not fetch business category/keywords:', e);
       }
 
-      const prompt = `
-You are a professional customer service AI assistant for a local business named "${business}".
-Generate exactly 3 different reply options for the following customer review.
+      const business = businessName || listing?.name || 'our restaurant';
+      const businessAddress = listing?.address || '';
 
-Customer Name: ${reviewerName || 'Customer'}
-Rating: ${rating || 5} out of 5 stars
-Review Comment: "${comment}"
+      const prompt = `You are an expert customer service and local SEO copywriter for a ${businessCategory} called "${business}" located at "${businessAddress}".
+Your task is to write thoughtful, personalized reply options that ALSO naturally boost local SEO.
 
-Generate 3 replies in JSON format with these exact keys: "professional", "friendly", "empathetic"
-Each reply should be 2-4 sentences. Do not include any placeholders.
+IMPORTANT GUIDELINES:
+- Read the review CAREFULLY and identify: what specific dishes/food were mentioned? What aspect of service was praised or criticized? What emotions does the reviewer express?
+- EVERY reply MUST specifically reference AT LEAST 2-3 specific things the reviewer mentioned (e.g., dish names, ambiance details, staff names, experiences)
+- NATURALLY integrate 2-4 of these SEO keywords/phrases where appropriate: ${businessKeywords || 'fresh ingredients, authentic flavors, friendly service, great value, must-try dishes'}
+- NEVER write generic replies that could apply to any business
+- Minimum 4-6 sentences per reply — longer and more detailed is better than short
+- Each reply should make the reviewer feel truly heard and valued
+- Use specific, concrete language — not vague platitudes
 
-- "professional": Formal, business-like tone. Suitable for corporate or upscale businesses.
-- "friendly": Casual, warm tone. Shows genuine enthusiasm and approachability.
-- "empathetic": Compassionate, understanding tone. Great for acknowledging concerns and showing care.
+Customer Review to Reply To:
+---
+Reviewer: ${reviewerName || 'Customer'}
+Star Rating: ${rating || 5}/5 stars
+Review: "${comment}"
+---
 
-Return ONLY valid JSON like this, nothing else:
+Now write exactly 3 reply options in JSON format:
+- "professional": Formal, warm, business-appropriate. Use this to show professionalism while acknowledging specifics from the review.
+- "friendly": Casual, enthusiastic, conversational. Match the reviewer's energy and use approachable language while mentioning specifics.
+- "empathetic": Emotionally intelligent, compassionate, deeply understanding. Acknowledge the reviewer's feelings and specific experiences with genuine care.
+
+Return ONLY this JSON structure, nothing else:
 {
-  "professional": "Reply text here...",
-  "friendly": "Reply text here...",
-  "empathetic": "Reply text here..."
-}
-`;
+  "professional": "Your 4-6+ sentence professional reply here, referencing specific things from the review...",
+  "friendly": "Your 4-6+ sentence friendly reply here, mentioning specific dishes or experiences...",
+  "empathetic": "Your 4-6+ sentence empathetic reply here, showing genuine understanding of their experience..."
+}`;
 
-      console.log('[generate-reply] Generating 3 AI replies for review:', reviewId);
+      console.log('[generate-reply] Generating replies for review:', reviewId, '| business:', business);
 
-      // Use REST API directly
-      // Use AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
 
       const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.9,
+              temperature: 0.85,
               topK: 40,
               topP: 0.95,
-              maxOutputTokens: 1024,
+              maxOutputTokens: 2048,
             },
           }),
           signal: controller.signal,
@@ -3950,14 +3974,11 @@ Return ONLY valid JSON like this, nothing else:
 
       const geminiData = await geminiResponse.json();
       let replyText = (geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
-      
-      // Parse JSON response robustly
+
       let replies: { professional: string; friendly: string; empathetic: string } | null = null;
-      
-      // Clean up the response - remove markdown code blocks
+
       replyText = replyText.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
-      
-      // Try direct JSON parse first
+
       try {
         const parsed = JSON.parse(replyText);
         if (typeof parsed === 'object' && parsed !== null) {
@@ -3968,16 +3989,15 @@ Return ONLY valid JSON like this, nothing else:
           };
         }
       } catch {
-        // Try to extract a well-formed JSON object (handle cases where Gemini adds text before/after the JSON)
         replies = extractRepliesFromText(replyText);
       }
 
       // Validate and ensure all fields exist
       if (!replies || !replies.professional || !replies.friendly || !replies.empathetic) {
         replies = {
-          professional: replies?.professional || 'Thank you for your feedback! We appreciate your kind words.',
-          friendly: replies?.friendly || 'Thanks so much for the review! We love hearing from you.',
-          empathetic: replies?.empathetic || 'We truly appreciate you taking the time to share your experience.',
+          professional: replies?.professional || `Dear ${reviewerName || 'Valued Customer'}, thank you for taking the time to share your feedback with us. We truly appreciate your kind words and are delighted to hear about your experience at ${business}. Your positive review means the world to our team, and we look forward to welcoming you back soon to enjoy more of our offerings.`,
+          friendly: replies?.friendly || `Hey ${reviewerName || 'there'}! We are so thrilled to read your review and hear about your experience at ${business}! Thank you so much for the wonderful feedback — it really made our day to know you enjoyed your visit. Our team takes great pride in creating memorable dining experiences, and we cannot wait to see you again soon!`,
+          empathetic: replies?.empathetic || `${reviewerName || 'Dear Customer'}, we genuinely appreciate you sharing your experience with us. Thank you for your thoughtful feedback, and we are sorry if anything did not fully meet your expectations — your perspective is incredibly valuable to us as we continuously work to improve. We hope to have the opportunity to provide you with an even better experience next time.`,
         };
       }
 
