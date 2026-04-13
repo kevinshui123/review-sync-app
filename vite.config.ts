@@ -20,17 +20,15 @@ export default defineConfig(({ mode }) => {
       target: 'esnext',
       minify: 'esbuild',
       sourcemap: false,
-      rollupOptions: {
-        output: {
-          manualChunks: undefined,
-        },
-      },
     },
     optimizeDeps: {
       include: [
         'react',
         'react-dom',
         'react/jsx-runtime',
+        'motion/react',
+        'framer-motion',
+        'recharts',
       ],
     },
     server: {
