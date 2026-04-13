@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Inventory2, Store, LocationOn, Close, Link, ArrowBack, Edit, Star, Phone, Language, Lock, PhotoCamera, Tag, AccountCircle, CheckCircle, Add, Delete, AutoAwesome } from '@mui/icons-material';
+import { Inventory2, Store, LocationOn, Close, Link, ArrowBack, Edit, Star, Phone, Language, Lock, PhotoCamera, Tag, AccountCircle, CheckCircle, Add, Delete, AutoAwesome, OpenInNew } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EditBusinessPage } from './EditBusinessPage';
@@ -388,7 +388,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                       onClick={() => window.open('https://business.google.com', '_blank')}
                       className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-primary transition-colors"
                     >
-                      <ExternalLink className="w-5 h-5 text-slate-600" />
+                      <OpenInNew className="w-5 h-5 text-slate-600" />
                       <span className="font-medium text-slate-700">Open in Google</span>
                     </button>
                   </div>
