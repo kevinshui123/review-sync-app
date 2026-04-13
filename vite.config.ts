@@ -18,8 +18,19 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'esnext',
-      minify: false,
+      minify: 'terser',
       sourcemap: false,
+      terserOptions: {
+        compress: {
+          pure_getters: true,
+          unsafe: false,
+          unsafe_comps: false,
+          passes: 1,
+        },
+        mangle: {
+          safari10: true,
+        },
+      },
       rollupOptions: {
         output: {
           manualChunks: (id) => {
