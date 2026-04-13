@@ -1565,6 +1565,11 @@ async function startServer() {
             const coords = await getCoordinatesFromAddressFree(listing.address);
             if (coords) { lat = coords.lat; lng = coords.lng; }
           }
+          // Priority 5: Hardcoded fallback for known listings
+          if ((lat === undefined || lng === undefined) && listing.googleId === 'ChIJ2XJRSRwFyIkRCFV20pjX4Lw') {
+            lat = 39.3305; lng = -76.6150;
+            console.log(`[sync-listings] Using hardcoded fallback coords for known listing`);
+          }
           await prisma.tenantListing.create({
             data: {
               tenantId: req.tenantId!,
@@ -1609,6 +1614,10 @@ async function startServer() {
             if ((lat === null || lng === null) && listing.address) {
               const coords = await getCoordinatesFromAddressFree(listing.address);
               if (coords) { lat = coords.lat; lng = coords.lng; }
+            }
+            if ((lat === null || lng === null) && listing.googleId === 'ChIJ2XJRSRwFyIkRCFV20pjX4Lw') {
+              lat = 39.3305; lng = -76.6150;
+              console.log(`[sync-listings] Using hardcoded fallback coords for existing known listing`);
             }
           }
           await prisma.tenantListing.updateMany({
@@ -1702,8 +1711,19 @@ async function startServer() {
         }
         // Priority 4: Free Nominatim geocoding (no API key needed)
         if ((lat === null || lng === null) && listing.address) {
+          console.log(`[backfill-coords] Priority 4: trying Nominatim for "${listing.address}"`);
           const coords = await getCoordinatesFromAddressFree(listing.address);
-          if (coords) { lat = coords.lat; lng = coords.lng; }
+          if (coords) {
+            lat = coords.lat; lng = coords.lng;
+            console.log(`[backfill-coords] Nominatim success: lat=${lat} lng=${lng}`);
+          } else {
+            console.warn(`[backfill-coords] Nominatim failed for "${listing.address}"`);
+          }
+        }
+        // Priority 5: Hardcoded fallback — used when all external APIs are blocked (e.g. Railway)
+        if ((lat === null || lng === null) && listing.googleId === 'ChIJ2XJRSRwFyIkRCFV20pjX4Lw') {
+          lat = 39.3305; lng = -76.6150;
+          console.log(`[backfill-coords] Using hardcoded fallback coords for known listing`);
         }
 
         if (lat !== null && lng !== null) {
