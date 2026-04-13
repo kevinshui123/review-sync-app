@@ -4010,6 +4010,80 @@ Return ONLY this JSON structure, nothing else:
   });
 
   // ==========================================
+  // Real Comment Submission API
+  // ==========================================
+  app.post('/api/real-comment/submit', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { location, locationId, content, rating, photos, date } = req.body;
+
+      // Validate required fields
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: 'Review content is required' });
+      }
+
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+      }
+
+      // Log the submission for admin to review
+      const reviewSubmission = {
+        id: `rc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        location,
+        locationId,
+        content: content.trim(),
+        rating,
+        photos: photos || [],
+        date: date || new Date().toISOString(),
+        submittedAt: new Date().toISOString(),
+        status: 'pending_review',
+      };
+
+      // Log to console for admin visibility
+      console.log('='.repeat(60));
+      console.log('[REAL COMMENT SUBMISSION]');
+      console.log('='.repeat(60));
+      console.log('ID:', reviewSubmission.id);
+      console.log('Location:', location);
+      console.log('Location ID:', locationId);
+      console.log('Rating:', rating, 'stars');
+      console.log('Date:', date);
+      console.log('Content:', content);
+      console.log('Photos:', photos?.length || 0, 'photo(s)');
+      console.log('Submitted at:', reviewSubmission.submittedAt);
+      console.log('='.repeat(60));
+
+      // Store in memory for now (could be saved to database)
+      if (!global.realCommentSubmissions) {
+        global.realCommentSubmissions = [];
+      }
+      global.realCommentSubmissions.push(reviewSubmission);
+
+      // Return success
+      res.json({
+        success: true,
+        id: reviewSubmission.id,
+        message: 'Review submission received successfully',
+        review: reviewSubmission,
+      });
+    } catch (error: any) {
+      console.error('[real-comment] Submission error:', error);
+      res.status(500).json({ error: 'Failed to submit review: ' + (error.message || 'Unknown error') });
+    }
+  });
+
+  // Get all real comment submissions (for admin review)
+  app.get('/api/real-comment/submissions', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const submissions = global.realCommentSubmissions || [];
+      res.json({ submissions, count: submissions.length });
+    } catch (error: any) {
+      console.error('[real-comment] Fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch submissions' });
+    }
+  });
+  });
+
+  // ==========================================
   // Tenant Listing Management (multi-tenant EmbedSocial)
   // ==========================================
 

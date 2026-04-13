@@ -398,6 +398,10 @@ const translations: Record<Language, Record<string, string>> = {
     'realComment.date': 'Date',
     'realComment.content': 'Content',
     'realComment.noReviewHistory': 'No review history yet',
+    'realComment.createReview': 'Create Review',
+    'realComment.submitting': 'Submitting...',
+    'realComment.completed': 'Completed',
+    'realComment.successSubmitted': 'Review submitted successfully!',
 
     // Real Comment AI Generation
     'realComment.aiGenerate': 'AI Generate Review',
@@ -987,6 +991,10 @@ const translations: Record<Language, Record<string, string>> = {
     'realComment.date': '日期',
     'realComment.content': '内容',
     'realComment.noReviewHistory': '暂无评价历史',
+    'realComment.createReview': '创建评价',
+    'realComment.submitting': '提交中...',
+    'realComment.completed': '已完成',
+    'realComment.successSubmitted': '评价提交成功！',
 
     // Real Comment AI Generation
     'realComment.aiGenerate': 'AI 生成评价',

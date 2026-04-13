@@ -9,6 +9,10 @@ import { EditsLog } from './components/EditsLog';
 import { Publishing } from './components/Publishing';
 import { Reports } from './components/Reports';
 import { SEO } from './components/SEO';
+import { LocalSearchGrid } from './components/LocalSearchGrid';
+import { LocalCitations } from './components/LocalCitations';
+import { Optimization } from './components/Optimization';
+import { RealComment } from './components/RealComment';
 import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
@@ -92,12 +96,12 @@ function AppContent() {
       case 'edits-log': return t('nav.editsLog');
       case 'publishing': return t('nav.publishing');
       case 'reports': return t('nav.reports');
-      case 'seo':
-      case 'seo-grid':
-      case 'seo-citations':
-      case 'seo-optimization': return t('nav.localSeo');
+      case 'seo': return t('nav.localSeo');
+      case 'seo-grid': return t('seo.localSearchGrid');
+      case 'seo-citations': return t('seo.localCitations');
+      case 'seo-optimization': return t('seo.optimization');
       case 'seo-real-comment': return t('nav.realComment');
-      case 'seo-rednote': return t('nav.rednoteSeo');
+      case 'seo-rednote-seo': return t('nav.rednoteSeo');
       case 'settings': return t('nav.settings');
       case 'help': return t('nav.help');
       default: return t('nav.dashboard');
@@ -210,18 +214,17 @@ function AppContent() {
               {activeTab === 'edits-log' && <EditsLog setActiveTab={setActiveTab} />}
               {activeTab === 'publishing' && <Publishing setActiveTab={setActiveTab} />}
               {activeTab === 'reports' && <Reports setActiveTab={setActiveTab} />}
-              {(activeTab === 'seo' || activeTab === 'seo-grid' || activeTab === 'seo-citations' || activeTab === 'seo-optimization') && (
+              {/* SEO Local Search Grid */}
+              {activeTab === 'seo-grid' && <LocalSearchGrid setActiveTab={setActiveTab} />}
+              {/* SEO Local Citations */}
+              {activeTab === 'seo-citations' && <LocalCitations />}
+              {/* SEO Optimization */}
+              {activeTab === 'seo-optimization' && <Optimization />}
+              {/* SEO top level - redirect to grid */}
+              {activeTab === 'seo' && (
                 <SEO
                   setActiveTab={setActiveTab}
-                  activeSection={
-                    activeTab === 'seo' || activeTab === 'seo-grid' || activeTab === 'seo-citations' || activeTab === 'seo-optimization'
-                      ? 'localSeo'
-                      : activeTab === 'seo-real-comment'
-                      ? 'realComment'
-                      : activeTab === 'seo-rednote-seo'
-                      ? 'rednoteSeo'
-                      : 'localSeo'
-                  }
+                  activeSection="localSeo"
                   setActiveSection={(section) => {
                     if (section === 'localSeo') setActiveTab('seo-grid');
                     else if (section === 'realComment') setActiveTab('seo-real-comment');
@@ -229,17 +232,8 @@ function AppContent() {
                   }}
                 />
               )}
-              {activeTab === 'seo-real-comment' && (
-                <SEO
-                  setActiveTab={setActiveTab}
-                  activeSection="realComment"
-                  setActiveSection={(section) => {
-                    if (section === 'localSeo') setActiveTab('seo-grid');
-                    else if (section === 'realComment') setActiveTab('seo-real-comment');
-                    else if (section === 'rednoteSeo') setActiveTab('seo-rednote-seo');
-                  }}
-                />
-              )}
+              {/* SEO Real Comment */}
+              {activeTab === 'seo-real-comment' && <RealComment />}
               {activeTab === 'seo-rednote-seo' && (
                 <SEO
                   setActiveTab={setActiveTab}

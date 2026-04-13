@@ -204,7 +204,7 @@ const REVIEW_SCENARIOS = [
 export function SEO({ setActiveTab, activeSection: externalActiveSection, setActiveSection: extSetActiveSection }: SEOProps) {
   const { t, language } = useLanguage();
   const [internalActiveSection, setInternalActiveSection] = useState('grid');
-
+  
   // Use external state if provided, otherwise use internal state
   const activeSection = externalActiveSection || internalActiveSection;
   const setActiveSection = (section: string) => {
@@ -810,14 +810,14 @@ CONTENT: ?????????? ???????????????????????
                 <Map className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-slate-700 mb-2">{t('reports.localSearchGrid')}</h3>
                 <p className="text-sm text-slate-500 mb-6">Enter a keyword and click Create Report to analyze your local search rankings.</p>
-              </div>
-            )}
+          </div>
+        )}
 
-            {/* Citations Section */}
-            <div className="space-y-6">
-              <h1 className="text-2xl font-bold">
+        {/* Citations Section */}
+          <div className="space-y-6">
+            <h1 className="text-2xl font-bold">
                 {t('seo.localSeo')} <span className="font-normal text-slate-500">{businessInfo?.name}</span>
-              </h1>
+            </h1>
             <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
               <h2 className="text-lg font-bold mb-6">{t('seo.baselineInfo')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -898,90 +898,90 @@ CONTENT: ?????????? ???????????????????????
                 </tbody>
               </table>
             </section>
-            </div>
+          </div>
 
             {/* Optimization Content */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-                    <AutoAwesome className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">{t('reports.seoOptimization')}</h2>
-                    <p className="text-sm text-slate-500">{businessInfo?.name}</p>
-                  </div>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                  <AutoAwesome className="w-5 h-5 text-white" />
                 </div>
-                <button onClick={generateSeoReport} disabled={seoLoading}
-                  className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-xl ${
-                    seoReport ? 'bg-white border-2 border-purple-600 text-purple-600' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
-                  } disabled:opacity-50`}>
-                  {seoLoading ? <><Refresh className="w-4 h-4 animate-spin" />Analyzing...</> :
-                   seoReport ? <><Refresh className="w-4 h-4" />Regenerate</> :
-                   <><AutoAwesome className="w-4 h-4" />{t('reports.generateReport')}</>}
-                </button>
+                <div>
+                  <h2 className="text-2xl font-bold">{t('reports.seoOptimization')}</h2>
+                  <p className="text-sm text-slate-500">{businessInfo?.name}</p>
+                </div>
               </div>
-              {seoError && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-                  <ErrorIcon className="w-5 h-5 inline mr-2" />{seoError}
-                </div>
-              )}
-              {seoReport && !seoLoading && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className={`rounded-2xl p-6 border ${getScoreColor(seoReport.overallScore).border} ${getScoreColor(seoReport.overallScore).bg}`}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Speed className="w-5 h-5" style={{ color: getScoreColor(seoReport.overallScore).color }} />
-                      <h4 className="font-bold">SEO Health Score</h4>
-                      <span className="ml-auto text-xs font-bold px-2 py-1 rounded-full" style={{ backgroundColor: `${getScoreColor(seoReport.overallScore).color}20`, color: getScoreColor(seoReport.overallScore).color }}>
-                        {getScoreColor(seoReport.overallScore).label}
-                      </span>
-                    </div>
-                    <div className="flex justify-center mb-4">
-                      <div className="relative w-24 h-24">
-                        <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-                          <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-                          <circle cx="60" cy="60" r="50" fill="none" stroke={getScoreColor(seoReport.overallScore).color} strokeWidth="10"
-                            strokeLinecap="round" strokeDasharray={`${(seoReport.overallScore / 100) * 314} 314`} />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-2xl font-extrabold" style={{ color: getScoreColor(seoReport.overallScore).color }}>{seoReport.overallScore}</span>
-                          <span className="text-xs text-slate-400">/ 100</span>
-                        </div>
+              <button onClick={generateSeoReport} disabled={seoLoading}
+                className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-xl ${
+                  seoReport ? 'bg-white border-2 border-purple-600 text-purple-600' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
+                } disabled:opacity-50`}>
+                {seoLoading ? <><Refresh className="w-4 h-4 animate-spin" />Analyzing...</> :
+                 seoReport ? <><Refresh className="w-4 h-4" />Regenerate</> :
+                 <><AutoAwesome className="w-4 h-4" />{t('reports.generateReport')}</>}
+              </button>
+            </div>
+            {seoError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                <ErrorIcon className="w-5 h-5 inline mr-2" />{seoError}
+              </div>
+            )}
+            {seoReport && !seoLoading && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className={`rounded-2xl p-6 border ${getScoreColor(seoReport.overallScore).border} ${getScoreColor(seoReport.overallScore).bg}`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Speed className="w-5 h-5" style={{ color: getScoreColor(seoReport.overallScore).color }} />
+                    <h4 className="font-bold">SEO Health Score</h4>
+                    <span className="ml-auto text-xs font-bold px-2 py-1 rounded-full" style={{ backgroundColor: `${getScoreColor(seoReport.overallScore).color}20`, color: getScoreColor(seoReport.overallScore).color }}>
+                      {getScoreColor(seoReport.overallScore).label}
+                    </span>
+                  </div>
+                  <div className="flex justify-center mb-4">
+                    <div className="relative w-24 h-24">
+                      <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                        <circle cx="60" cy="60" r="50" fill="none" stroke={getScoreColor(seoReport.overallScore).color} strokeWidth="10"
+                          strokeLinecap="round" strokeDasharray={`${(seoReport.overallScore / 100) * 314} 314`} />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-extrabold" style={{ color: getScoreColor(seoReport.overallScore).color }}>{seoReport.overallScore}</span>
+                        <span className="text-xs text-slate-400">/ 100</span>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-600 text-center">{seoReport.overallSummary}</p>
                   </div>
-                  <div className="bg-white rounded-2xl p-5 border border-slate-100 md:col-span-2">
-                    <div className="flex items-center gap-2 mb-4">
-                      <LocalFireDepartment className="w-5 h-5 text-orange-500" />
-                      <h4 className="font-bold">Quick Wins</h4>
-                      <span className="ml-auto bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.quickWins?.length || 0} items</span>
-                    </div>
-                    <div className="space-y-2 max-h-48 overflow-auto">
-                      {(seoReport.quickWins || []).map((win: any, i: number) => (
-                        <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
-                          <div className="w-6 h-6 rounded-full bg-white border-2 border-orange-400 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-bold text-orange-500">{i+1}</span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">{win.action}</p>
-                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${win.impact === 'high' ? 'bg-red-100 text-red-600' : win.impact === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{win.impact}</span>
-                          </div>
+                  <p className="text-sm text-slate-600 text-center">{seoReport.overallSummary}</p>
+                </div>
+                <div className="bg-white rounded-2xl p-5 border border-slate-100 md:col-span-2">
+                  <div className="flex items-center gap-2 mb-4">
+                    <LocalFireDepartment className="w-5 h-5 text-orange-500" />
+                    <h4 className="font-bold">Quick Wins</h4>
+                    <span className="ml-auto bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">{seoReport.quickWins?.length || 0} items</span>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-auto">
+                    {(seoReport.quickWins || []).map((win: any, i: number) => (
+                      <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+                        <div className="w-6 h-6 rounded-full bg-white border-2 border-orange-400 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-orange-500">{i+1}</span>
                         </div>
-                      ))}
-                    </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-700">{win.action}</p>
+                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${win.impact === 'high' ? 'bg-red-100 text-red-600' : win.impact === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>{win.impact}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
-              {!seoReport && !seoLoading && (
-                <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-12 border border-slate-200 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
-                    <AutoAwesome className="w-8 h-8 text-purple-500" />
-                  </div>
-                  <h4 className="text-lg font-bold text-slate-800 mb-2">Generate Your SEO Optimization Report</h4>
-                  <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">Click the button above to analyze your business listings with AI.</p>
+              </div>
+            )}
+            {!seoReport && !seoLoading && (
+              <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-12 border border-slate-200 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
+                  <AutoAwesome className="w-8 h-8 text-purple-500" />
                 </div>
-              )}
+                <h4 className="text-lg font-bold text-slate-800 mb-2">Generate Your SEO Optimization Report</h4>
+                <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">Click the button above to analyze your business listings with AI.</p>
+              </div>
+            )}
             </div>
           </div>
         )}
