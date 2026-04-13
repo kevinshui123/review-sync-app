@@ -92,7 +92,12 @@ function AppContent() {
       case 'edits-log': return t('nav.editsLog');
       case 'publishing': return t('nav.publishing');
       case 'reports': return t('nav.reports');
-      case 'seo': return t('nav.seo');
+      case 'seo':
+      case 'seo-grid':
+      case 'seo-citations':
+      case 'seo-optimization':
+      case 'seo-real-comment':
+      case 'seo-rednote': return t('nav.seo');
       case 'settings': return t('nav.settings');
       case 'help': return t('nav.help');
       default: return t('nav.dashboard');
@@ -205,7 +210,13 @@ function AppContent() {
               {activeTab === 'edits-log' && <EditsLog setActiveTab={setActiveTab} />}
               {activeTab === 'publishing' && <Publishing setActiveTab={setActiveTab} />}
               {activeTab === 'reports' && <Reports setActiveTab={setActiveTab} />}
-              {activeTab === 'seo' && <SEO setActiveTab={setActiveTab} />}
+              {(activeTab === 'seo' || activeTab.startsWith('seo-')) && (
+                <SEO
+                  setActiveTab={setActiveTab}
+                  activeSection={activeTab === 'seo' ? 'grid' : activeTab.replace('seo-', '')}
+                  setActiveSection={(section) => setActiveTab(`seo-${section}`)}
+                />
+              )}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
             </div>

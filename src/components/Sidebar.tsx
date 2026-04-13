@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dashboard,
   PushPin,
@@ -13,6 +13,14 @@ import {
   Bolt,
   AutoAwesome,
   Logout,
+  Map,
+  Description,
+  LocalOffer,
+  Star,
+  Article,
+  ExpandMore,
+  ExpandLess,
+  AccountCircle,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -24,7 +32,22 @@ interface SidebarProps {
   setIsOpen: (isOpen: boolean) => void;
 }
 
-const NAV_ITEMS: Array<{ id: string; labelKey: string; icon: React.ElementType; hasSubmenu?: boolean; badge?: string }> = [
+interface NavItem {
+  id: string;
+  labelKey: string;
+  icon: React.ElementType;
+  badge?: string;
+}
+
+interface SubNavItem {
+  id: string;
+  labelKey: string;
+  icon: React.ElementType;
+  parent: string;
+  badge?: string;
+}
+
+const MAIN_NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: Dashboard },
   { id: 'listings', labelKey: 'nav.listings', icon: PushPin },
   { id: 'reviews', labelKey: 'nav.reviews', icon: RateReview },
@@ -32,20 +55,47 @@ const NAV_ITEMS: Array<{ id: string; labelKey: string; icon: React.ElementType; 
   { id: 'edits-log', labelKey: 'nav.editsLog', icon: History },
   { id: 'publishing', labelKey: 'nav.publishing', icon: CalendarToday },
   { id: 'reports', labelKey: 'nav.reports', icon: BarChart },
-  { id: 'seo', labelKey: 'nav.seo', icon: Public, hasSubmenu: true },
+];
+
+const SEO_NAV_ITEMS: SubNavItem[] = [
+  { id: 'seo-grid', labelKey: 'seo.localSearchGrid', icon: Map, parent: 'seo' },
+  { id: 'seo-citations', labelKey: 'seo.localCitations', icon: Description, parent: 'seo', badge: 'BETA' },
+  { id: 'seo-optimization', labelKey: 'seo.optimization', icon: LocalOffer, parent: 'seo' },
+  { id: 'seo-real-comment', labelKey: 'seo.section.realComment', icon: Star, parent: 'seo', badge: 'NEW' },
+  { id: 'seo-rednote', labelKey: 'seo.section.rednoteSeo', icon: Article, parent: 'seo' },
 ];
 
 export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarProps) {
   const { t } = useLanguage();
+  const [seoExpanded, setSeoExpanded] = useState(true);
+
+  // Check if current active tab is part of SEO
+  const isSeoActive = activeTab.startsWith('seo-');
+  const seoParentActive = activeTab === 'seo' || isSeoActive;
+
+  const handleNavClick = (id: string) => {
+    setActiveTab(id);
+    setIsOpen(false);
+  };
+
+  const handleSeoClick = () => {
+    if (seoExpanded) {
+      // If already expanded, collapse it but don't navigate
+      setSeoExpanded(false);
+    } else {
+      // If collapsed, expand and go to first SEO item
+      setSeoExpanded(true);
+      if (!isSeoActive) {
+        setActiveTab('seo-grid');
+      }
+    }
+  };
 
   const navItem = (id: string, labelKey: string, Icon: React.ElementType, isActive: boolean, badge?: string) => {
     return (
       <button
         key={id}
-        onClick={() => {
-          setActiveTab(id);
-          setIsOpen(false);
-        }}
+        onClick={() => handleNavClick(id)}
         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
           isActive
             ? 'bg-primary text-white font-semibold shadow-sm'
@@ -55,8 +105,35 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
         <Icon className="w-5 h-5" />
         <span className="text-sm font-medium flex-1">{t(labelKey)}</span>
         {badge && (
-          <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[9px] font-bold rounded-full">
+          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
+            isActive ? 'bg-white/20 text-white' : 'bg-orange-500 text-white'
+          }`}>
             {badge}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const subNavItem = (item: SubNavItem, isActive: boolean) => {
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.id}
+        onClick={() => handleNavClick(item.id)}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 pl-12 rounded-lg transition-all duration-200 text-xs ${
+          isActive
+            ? 'bg-primary/10 text-primary font-semibold'
+            : 'text-slate-500 hover:bg-slate-50 hover:text-primary'
+        }`}
+      >
+        <Icon className="w-4 h-4" />
+        <span className="text-sm font-medium flex-1">{t(item.labelKey)}</span>
+        {item.badge && (
+          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
+            isActive ? 'bg-primary/20 text-primary' : 'bg-orange-500 text-white'
+          }`}>
+            {item.badge}
           </span>
         )}
       </button>
@@ -91,10 +168,50 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
       </div>
 
       {/* Main navigation */}
-      <nav className="flex-1 space-y-1 px-2">
-        {NAV_ITEMS.map(({ id, labelKey, icon, badge }) =>
-          navItem(id, labelKey, icon, activeTab === id, badge)
+      <nav className="flex-1 space-y-1 px-2 overflow-y-auto">
+        {/* Main nav items */}
+        {MAIN_NAV_ITEMS.map(({ id, labelKey, icon }) =>
+          navItem(id, labelKey, icon, activeTab === id)
         )}
+
+        {/* SEO Section with sub-items */}
+        <div className="pt-2">
+          <button
+            onClick={handleSeoClick}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+              seoParentActive
+                ? 'bg-primary text-white font-semibold shadow-sm'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-primary'
+            }`}
+          >
+            <Public className="w-5 h-5" />
+            <span className="text-sm font-medium flex-1">{t('nav.seo')}</span>
+            {seoExpanded ? (
+              <ExpandLess className="w-4 h-4" />
+            ) : (
+              <ExpandMore className="w-4 h-4" />
+            )}
+          </button>
+
+          {/* SEO Sub-items */}
+          <AnimatePresence>
+            {seoExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-1 space-y-0.5">
+                  {SEO_NAV_ITEMS.map((item) =>
+                    subNavItem(item, activeTab === item.id)
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </nav>
 
       {/* Bottom links */}
