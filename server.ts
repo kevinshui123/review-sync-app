@@ -4176,7 +4176,7 @@ IMPORTANT RULES:
 11. "overallScore" should reflect the business's local SEO health based on available data`;
 
       const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-3.1-pro:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
