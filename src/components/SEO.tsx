@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search,
   Notifications,
@@ -25,8 +25,47 @@ import {
   LocalFireDepartment,
   Error as ErrorIcon,
 } from '@mui/icons-material';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix default marker icon for Leaflet in bundled environments
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+function getRankColor(rank: number | null): string {
+  if (rank === null) return '#94a3b8';
+  if (rank <= 3) return '#22c55e';
+  if (rank <= 10) return '#facc15';
+  return '#f87171';
+}
+
+function getRankBg(rank: number | null): string {
+  if (rank === null) return 'rgba(148,163,184,0.15)';
+  if (rank <= 3) return 'rgba(34,197,94,0.15)';
+  if (rank <= 10) return 'rgba(250,204,21,0.15)';
+  return 'rgba(248,113,113,0.15)';
+}
+
+function rankLabel(rank: number | null, t: (key: string) => string): string {
+  if (rank === null) return t('reports.notFound');
+  return `#${rank}`;
+}
+
+// Component to fly map to selected point
+function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(center, zoom, { duration: 0.8 });
+  }, [center, zoom, map]);
+  return null;
+}
 
 interface SEOProps {
   setActiveTab: (tab: string) => void;
@@ -570,91 +609,62 @@ export function SEO({ setActiveTab }: SEOProps) {
                     </div>
                   </div>
 
-                  {/* SVG Grid Map */}
-                  <div className="overflow-x-auto">
-                    <div className="min-w-[600px]">
-                      <svg
-                        viewBox="0 0 600 600"
-                        className="w-full"
-                        style={{ background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}
-                      >
-                        {/* Grid lines */}
-                        {[200, 400].map(pos => (
-                          <React.Fragment key={pos}>
-                            <line x1={pos} y1="0" x2={pos} y2="600" stroke="#e2e8f0" strokeWidth="1" />
-                            <line x1="0" y1={pos} x2="600" y2={pos} stroke="#e2e8f0" strokeWidth="1" />
-                          </React.Fragment>
-                        ))}
-
-                        {/* Grid cells */}
-                        {gridResult.points.map((point) => {
-                          const col = point.idx % 3;
-                          const row = Math.floor(point.idx / 3);
-                          const x = col * 200 + 10;
-                          const y = row * 200 + 10;
-                          const w = 180;
-                          const h = 180;
-                          const isSelected = selectedPoint?.idx === point.idx;
-
-                          let bgColor = '#f1f5f9';
-                          let textColor = '#94a3b8';
-                          let rankLabel = t('reports.notFound');
-
-                          if (point.businessRank !== null) {
-                            if (point.businessRank <= 3) { bgColor = '#22c55e'; textColor = 'white'; }
-                            else if (point.businessRank <= 10) { bgColor = '#facc15'; textColor = '#713f12'; }
-                            else { bgColor = '#f87171'; textColor = 'white'; }
-                            rankLabel = `#${point.businessRank}`;
-                          }
-
-                          return (
-                            <g
-                              key={point.idx}
-                              onClick={() => setSelectedPoint(point)}
-                              style={{ cursor: 'pointer' }}
+                  {/* Real Leaflet Map */}
+                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
+                    <MapContainer
+                      center={[businessInfo!.lat!, businessInfo!.lng!]}
+                      zoom={14}
+                      style={{ height: '480px', width: '100%', borderRadius: '12px' }}
+                      zoomControl={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      {gridResult.points.map((point) => {
+                        const color = getRankColor(point.businessRank);
+                        const isSelected = selectedPoint?.idx === point.idx;
+                        const r = point.businessRank === null ? 14 : isSelected ? 20 : 16;
+                        return (
+                          <CircleMarker
+                            key={point.idx}
+                            center={[point.lat, point.lng]}
+                            radius={r}
+                            pathOptions={{
+                              color: isSelected ? '#2563eb' : color,
+                              fillColor: color,
+                              fillOpacity: 0.7,
+                              weight: isSelected ? 3 : 2,
+                            }}
+                            eventHandlers={{ click: () => setSelectedPoint(point) }}
+                          >
+                            <Tooltip
+                              permanent={false}
+                              direction="top"
+                              offset={[0, -r]}
                             >
-                              <rect
-                                x={x} y={y} width={w} height={h}
-                                rx="12"
-                                fill={bgColor}
-                                stroke={isSelected ? '#2563eb' : 'transparent'}
-                                strokeWidth={isSelected ? 3 : 0}
-                                opacity={0.9}
-                              />
-                              <text
-                                x={x + w / 2} y={y + h / 2 - 10}
-                                textAnchor="middle"
-                                fill={textColor}
-                                fontSize="36"
-                                fontWeight="800"
-                              >
-                                {rankLabel}
-                              </text>
-                              <text
-                                x={x + w / 2} y={y + h / 2 + 15}
-                                textAnchor="middle"
-                                fill={textColor}
-                                fontSize="11"
-                                fontWeight="500"
-                                opacity="0.8"
-                              >
-                                {point.businessRank !== null
-                                  ? `${point.totalResults} ${t('reports.results')}`
-                                  : t('reports.noData2')
-                                }
-                              </text>
-                              {isSelected && (
-                                <circle cx={x + w / 2} cy={y + h / 2 - 10} r="5" fill="white" opacity="0.5" />
-                              )}
-                            </g>
-                          );
-                        })}
-
-                        {/* Center marker */}
-                        <circle cx="300" cy="300" r="8" fill="#2563eb" />
-                        <circle cx="300" cy="300" r="4" fill="white" />
-                      </svg>
-                    </div>
+                              <div className="text-center">
+                                <div className="font-bold text-base" style={{ color }}>{rankLabel(point.businessRank, t)}</div>
+                                <div className="text-xs opacity-70">{point.totalResults} results</div>
+                              </div>
+                            </Tooltip>
+                          </CircleMarker>
+                        );
+                      })}
+                      {/* Center business marker */}
+                      <CircleMarker
+                        center={[businessInfo!.lat!, businessInfo!.lng!]}
+                        radius={10}
+                        pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 1, weight: 3 }}
+                      >
+                        <Tooltip permanent direction="bottom" offset={[0, 10]}>
+                          <span className="font-bold text-blue-700">{businessInfo?.name}</span>
+                        </Tooltip>
+                      </CircleMarker>
+                      {selectedPoint && (
+                        <MapController center={[selectedPoint.lat, selectedPoint.lng]} zoom={15} />
+                      )}
+                    </MapContainer>
                   </div>
                 </div>
 
