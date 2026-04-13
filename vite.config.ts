@@ -17,38 +17,23 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      target: 'esnext',
+      target: 'es2015',
       minify: 'terser',
       sourcemap: false,
       terserOptions: {
         compress: {
-          pure_getters: true,
+          pure_getters: false,
           unsafe: false,
           unsafe_comps: false,
           passes: 1,
+          hoist_vars: false,
+          hoist_funs: false,
         },
-        mangle: {
-          safari10: true,
-        },
-      },
-      rollupOptions: {
-        output: {
-          manualChunks: (id) => {
-            if (id.includes('node_modules/recharts')) return 'recharts';
-            if (id.includes('node_modules/lucide-react')) return 'icons';
-            if (id.includes('node_modules/@mui/icons-material')) return 'mui-icons';
-          },
+        mangle: false,
+        format: {
+          ecma: 2015,
         },
       },
-    },
-    optimizeDeps: {
-      include: [
-        'react',
-        'react-dom',
-        'react/jsx-runtime',
-        'recharts',
-        'lucide-react',
-      ],
     },
     server: {
       host: '0.0.0.0',
