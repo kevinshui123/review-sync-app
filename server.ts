@@ -3603,10 +3603,35 @@ The review should sound natural, authentic, and written by a real customer. Keep
 
       const serpApiKey = process.env.SERPAPI_KEY || '603217379ed95d286aef18d62c3d3ade08714b176e486c26933ce51aa1186010';
 
+      // Normalize business name: strip location suffixes like "-Baltimore" for matching
+      const normalizedBizName = businessName
+        .replace(/[-–] *(Baltimore|MD|New York|NYC|Los Angeles|LA|Chicago|CA|TX|Florida|FL|Texas|Georgia|GA|Washington|VA|MD|NC|SC|NJ|PA|OH|MI|IL|MA|CT|CO| AZ|AZ|NV|OR|WA)/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+      function matchesBusiness(title: string | undefined): boolean {
+        if (!title) return false;
+        const t = title.toLowerCase();
+        // Exact or partial match (handles "Mahjong mini bowl-Baltimore" vs "Mahjong mini bowl")
+        return t.includes(normalizedBizName) || normalizedBizName.includes(t);
+      }
+
       // Build grid points (3x3 grid around center point)
       const gridOffsets9: number[][] = [[-0.005, -0.005], [-0.005, 0], [-0.005, 0.005], [0, -0.005], [0, 0], [0, 0.005], [0.005, -0.005], [0.005, 0], [0.005, 0.005]];
       const gridOffsets16: number[][] = [[-0.008, -0.008], [-0.008, 0], [-0.008, 0.008], [0, -0.008], [0, 0], [0, 0.008], [0.008, -0.008], [0.008, 0], [0.008, 0.008]];
       const gridOffsets = gridSize === 16 ? gridOffsets16 : gridOffsets9;
+
+      // Collect all competitors across ALL points (deduplicated, for top competitors section)
+      const competitorMap = new Map<string, {
+        name: string;
+        address: string;
+        rating: number | null;
+        reviews: number | null;
+        phone: string;
+        bestRank: number;
+        rankAtPoints: number[]; // which grid points this competitor appears at
+      }>();
 
       // Scan each grid point in parallel
       const scanPoint = async (offset: number[], idx: number) => {
@@ -3618,7 +3643,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
           url.searchParams.append('engine', 'google_maps');
           url.searchParams.append('q', keyword);
           url.searchParams.append('ll', `@${pointLat},${pointLng},15z`);
-          url.searchParams.append('type', 'search');
+          url.searchParams.append('dataType', 'places');
           url.searchParams.append('api_key', serpApiKey);
           url.searchParams.append('num', '20');
 
@@ -3627,29 +3652,57 @@ The review should sound natural, authentic, and written by a real customer. Keep
 
           if (!response.ok) throw new Error(data.error || 'SerpApi error');
 
-          const localResults = data.local_results || [];
+          const localResults = data.local_results || data.places_results || [];
           let businessRank = null;
-          const competitors = localResults.slice(0, 5).map((r: any, i: number) => {
-            const isTarget = r.title?.toLowerCase().includes(businessName.toLowerCase());
-            if (isTarget) businessRank = i + 1;
-            return {
-              rank: i + 1,
-              name: r.title,
-              address: r.address,
-              rating: r.rating,
-              reviews: r.reviews,
-              phone: r.phone,
-              isTarget,
-            };
-          });
+          const competitors = [];
 
-          // If business not found in top 20, try to find it
+          for (let i = 0; i < localResults.length; i++) {
+            const r = localResults[i];
+            const isTarget = matchesBusiness(r.title);
+            if (isTarget && businessRank === null) {
+              businessRank = i + 1;
+            }
+
+            // Only add actual competitors (exclude user's own business from display list)
+            if (!isTarget) {
+              const key = r.title || `competitor-${i}`;
+              const existing = competitorMap.get(key);
+              if (existing) {
+                if (i + 1 < existing.bestRank) existing.bestRank = i + 1;
+                existing.rankAtPoints.push(idx);
+              } else {
+                competitorMap.set(key, {
+                  name: r.title || 'Unknown',
+                  address: r.address || '',
+                  rating: r.rating ?? null,
+                  reviews: r.reviews ?? null,
+                  phone: r.phone || '',
+                  bestRank: i + 1,
+                  rankAtPoints: [idx],
+                });
+              }
+              // Add to display competitors (top 5 only, no user business)
+              if (competitors.length < 5) {
+                competitors.push({
+                  rank: i + 1,
+                  name: r.title,
+                  address: r.address,
+                  rating: r.rating,
+                  reviews: r.reviews,
+                  phone: r.phone,
+                  isTarget: false,
+                });
+              }
+            }
+          }
+
+          // If business not found in top 20, try full scan
           if (businessRank === null) {
-            const targetIdx = localResults.findIndex((r: any) =>
-              r.title?.toLowerCase().includes(businessName.toLowerCase()),
-            );
+            const targetIdx = localResults.findIndex((r: any) => matchesBusiness(r.title));
             if (targetIdx !== -1) businessRank = targetIdx + 1;
           }
+
+          console.log(`[local-search-grid] Point ${idx} (${pointLat.toFixed(4)},${pointLng.toFixed(4)}): ${localResults.length} results, bizRank=${businessRank}`);
 
           return {
             idx,
@@ -3657,7 +3710,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
             lng: pointLng,
             businessRank,
             totalResults: localResults.length,
-            competitors,
+            competitors: competitors.slice(0, 5), // top 5 per point for display
             hasData: localResults.length > 0,
           };
         } catch (err) {
@@ -3677,6 +3730,10 @@ The review should sound natural, authentic, and written by a real customer. Keep
       // Run all grid scans in parallel
       const results = await Promise.all(gridOffsets.map((offset, i) => scanPoint(offset, i)));
 
+      // Build aggregated top competitors (sorted by best rank across all points)
+      const allCompetitors = Array.from(competitorMap.values())
+        .sort((a, b) => a.bestRank - b.bestRank);
+
       // Calculate summary stats
       const ranked = results.filter(r => r.businessRank !== null);
       const avgRank = ranked.length > 0
@@ -3687,11 +3744,14 @@ The review should sound natural, authentic, and written by a real customer. Keep
       const top10Count = ranked.filter(r => r.businessRank <= 10).length;
       const top10Percent = ranked.length > 0 ? Math.round((top10Count / ranked.length) * 100) : 0;
 
+      console.log(`[local-search-grid] Complete: ranked=${ranked.length}/${results.length}, avgRank=${avgRank}, competitors=${allCompetitors.length}`);
+
       res.json({
         keyword,
         center: { lat: parseFloat(lat), lng: parseFloat(lng) },
         gridSize,
         points: results,
+        topCompetitors: allCompetitors.slice(0, 20), // top 20 unique competitors
         summary: {
           totalPoints: results.length,
           pointsWithData: results.filter(r => r.hasData).length,

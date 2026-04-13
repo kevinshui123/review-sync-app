@@ -111,6 +111,16 @@ interface GridPoint {
   }[];
 }
 
+interface TopCompetitor {
+  name: string;
+  address: string;
+  rating: number | null;
+  reviews: number | null;
+  phone: string;
+  bestRank: number;
+  rankAtPoints: number[];
+}
+
 interface GridSummary {
   totalPoints: number;
   pointsWithData: number;
@@ -125,6 +135,7 @@ interface LocalSearchGridResult {
   center: { lat: number; lng: number };
   gridSize: number;
   points: GridPoint[];
+  topCompetitors: TopCompetitor[];
   summary: GridSummary;
 }
 
@@ -696,37 +707,73 @@ export function SEO({ setActiveTab }: SEOProps) {
                       </div>
                     </div>
 
-                    {/* Competitors at this point */}
+                    {/* Your Performance at This Point */}
                     <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-                      <h3 className="text-base font-bold mb-4">{t('reports.topCompetitors')}</h3>
-                      <div className="space-y-2">
-                        {selectedPoint.competitors.length > 0 ? (
-                          selectedPoint.competitors.slice(0, 5).map(comp => (
-                            <div key={comp.rank} className={`flex items-center gap-3 p-3 rounded-xl ${comp.isTarget ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50'}`}>
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                                comp.isTarget ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-600'
+                      <h3 className="text-base font-bold mb-4">{t('reports.gridPointDetails')} #{selectedPoint.idx + 1}</h3>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">{t('reports.yourRankHere')}</span>
+                          <span className={`font-bold ${selectedPoint.businessRank !== null ? (selectedPoint.businessRank <= 3 ? 'text-green-600' : selectedPoint.businessRank <= 10 ? 'text-yellow-600' : 'text-red-600') : 'text-slate-400'}`}>
+                            {selectedPoint.businessRank !== null ? `#${selectedPoint.businessRank}` : t('reports.notFound')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">{t('reports.totalResults')}</span>
+                          <span className="font-semibold">{selectedPoint.totalResults}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">{t('reports.coordinates')}</span>
+                          <span className="font-mono text-xs">{selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">{t('reports.competitorsVisible')}</span>
+                          <span className="font-semibold">{selectedPoint.competitors.length}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Top Competitors across all points */}
+                    <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base font-bold">{t('reports.topCompetitors')}</h3>
+                        {gridResult.topCompetitors && (
+                          <span className="text-xs text-slate-400">{gridResult.topCompetitors.length} competitors found</span>
+                        )}
+                      </div>
+                      <div className="space-y-2 max-h-80 overflow-y-auto">
+                        {gridResult.topCompetitors && gridResult.topCompetitors.length > 0 ? (
+                          gridResult.topCompetitors.map((comp, i) => (
+                            <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                              {/* Rank badge */}
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                                comp.bestRank <= 3 ? 'bg-green-100 text-green-700' :
+                                comp.bestRank <= 10 ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-red-100 text-red-700'
                               }`}>
-                                {comp.rank}
+                                #{comp.bestRank}
                               </div>
+                              {/* Business info */}
                               <div className="flex-1 min-w-0">
-                                <div className={`text-sm font-bold truncate ${comp.isTarget ? 'text-primary' : 'text-slate-700'}`}>
-                                  {comp.name} {comp.isTarget && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1">{t('reports.you')}</span>}
-                                </div>
+                                <div className="text-sm font-bold text-slate-800 truncate">{comp.name}</div>
                                 <div className="text-xs text-slate-400 truncate">{comp.address}</div>
                               </div>
-                              {comp.rating && (
-                                <div className="flex items-center gap-1 text-sm flex-shrink-0">
-                                  <Star className="w-3.5 h-3.5 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
-                                  <span className="font-semibold text-slate-700">{comp.rating}</span>
-                                  {comp.reviews !== undefined && (
-                                    <span className="text-xs text-slate-400">({comp.reviews})</span>
-                                  )}
-                                </div>
-                              )}
+                              {/* Stats */}
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                {comp.rating !== null && (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Star className="w-3.5 h-3.5 text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }} />
+                                    <span className="font-semibold text-slate-700">{comp.rating}</span>
+                                    {comp.reviews !== null && (
+                                      <span className="text-xs text-slate-400">({comp.reviews})</span>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="text-xs text-slate-400">{comp.rankAtPoints.length}pt</div>
+                              </div>
                             </div>
                           ))
                         ) : (
-                          <p className="text-sm text-slate-400 text-center py-4">{t('reports.noCompetitorData')}</p>
+                          <p className="text-sm text-slate-400 text-center py-4">No competitor data yet</p>
                         )}
                       </div>
                     </div>
