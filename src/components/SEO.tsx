@@ -344,55 +344,33 @@ export function SEO({ setActiveTab }: SEOProps) {
         })}
       </div>
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* SEO Submenu - desktop sidebar */}
-        <aside className="hidden md:flex w-64 bg-white border-r border-slate-100 p-4 space-y-6 overflow-y-auto shrink-0">
-          {/* Profile Card */}
-          <div className="border border-slate-200 rounded p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                <Public className="w-5 h-5 text-red-500" />
-              </div>
-              <div className="truncate">
-                <p className="text-sm font-bold truncate">{businessInfo?.name || 'Business'}</p>
-                <p className="text-[10px] text-slate-500 truncate">{businessInfo?.address?.split(',')[0] || 'Location'}</p>
-              </div>
-            </div>
-            <span className="text-slate-400">▼</span>
-          </div>
-
-          {/* Keywords Section */}
-          <div className="space-y-1">
-            <div className="px-2 py-2">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('seo.keywords')}</h3>
-            </div>
-            <nav className="space-y-1">
-              {sections.map((section) => {
-                const Icon = section.icon;
-                const isActive = activeSection === section.id;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-blue-50 text-primary font-semibold'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-sm">{section.label}</span>
-                    {section.badge && (
-                      <span className="ml-auto bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold">
-                        {section.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        </aside>
+      <div className="flex items-center gap-1 px-3 py-2 bg-white border-b border-slate-100 overflow-x-auto shrink-0">
+        {sections.map((section) => {
+          const Icon = section.icon;
+          const isActive = activeSection === section.id;
+          return (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0 ${
+                isActive
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {section.label}
+              {section.badge && (
+                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {section.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -1324,7 +1302,6 @@ export function SEO({ setActiveTab }: SEOProps) {
           </div>
         )}
       </main>
-      </div>
     </div>
   );
 }
