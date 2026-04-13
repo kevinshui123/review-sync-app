@@ -201,20 +201,21 @@ const REVIEW_SCENARIOS = [
   'comparing with competitors',
 ];
 
-export function SEO({ setActiveTab, activeSection: externalActiveSection, setActiveSection: setExternalActiveSection }: SEOProps) {
+export function SEO({ setActiveTab, activeSection: externalActiveSection, setActiveSection: extSetActiveSection }: SEOProps) {
   const { t, language } = useLanguage();
   const [internalActiveSection, setInternalActiveSection] = useState('grid');
   const [activeCategory, setActiveCategory] = useState<'localSeo' | 'realComment' | 'rednoteSeo'>('localSeo');
-  
+
   // Use external state if provided, otherwise use internal state
   const activeSection = externalActiveSection || internalActiveSection;
   const setActiveSection = (section: string) => {
-    if (setExternalActiveSection) {
-      setExternalActiveSection(section);
+    if (extSetActiveSection) {
+      extSetActiveSection(section);
     } else {
       setInternalActiveSection(section);
     }
   };
+
   const [citations, setCitations] = useState<Citation[]>([]);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -672,10 +673,10 @@ CONTENT: ?????????? ???????????????????????
                     onChange={(e) => setGridSize(Number(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm"
                   >
-                    <option value={3}>3×3 (9 pts)</option>
-                    <option value={5}>5×5 (25 pts)</option>
-                    <option value={7}>7×7 (49 pts)</option>
-                    <option value={9}>9×9 (81 pts)</option>
+                    <option value={3}>3?3 (9 pts)</option>
+                    <option value={5}>5?5 (25 pts)</option>
+                    <option value={7}>7?7 (49 pts)</option>
+                    <option value={9}>9?9 (81 pts)</option>
                   </select>
                 </div>
                 {/* Scan Radius */}
@@ -1137,7 +1138,7 @@ CONTENT: ?????????? ???????????????????????
                         <div key={index} className="relative w-20 h-20 rounded-lg overflow-hidden">
                           <img src={photo} alt="" className="w-full h-full object-cover" />
                           <button onClick={() => handleRemovePhoto(index, reviewPhotos, setReviewPhotos)}
-                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">×</button>
+                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">?</button>
                         </div>
                       ))}
                       {reviewPhotos.length === 0 && (
@@ -1311,7 +1312,7 @@ CONTENT: ?????????? ???????????????????????
                           {rednoteTags.map((tag, index) => (
                             <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-semibold">
                               #{tag}
-                              <button onClick={() => setRednoteTags(tags => tags.filter((_, i) => i !== index))} className="hover:text-pink-900">×</button>
+                              <button onClick={() => setRednoteTags(tags => tags.filter((_, i) => i !== index))} className="hover:text-pink-900">?</button>
                             </span>
                           ))}
                         </div>
@@ -1349,7 +1350,7 @@ CONTENT: ?????????? ???????????????????????
                             <div key={index} className="relative w-20 h-20 rounded-lg overflow-hidden">
                               <img src={photo} alt="" className="w-full h-full object-cover" />
                               <button onClick={() => handleRemovePhoto(index, rednotePhotos, setRednotePhotos)}
-                                className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">×</button>
+                                className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">?</button>
                             </div>
                           ))}
                           {rednotePhotos.length === 0 && (
