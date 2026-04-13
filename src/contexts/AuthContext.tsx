@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = async (authToken: string) => {
     try {
-      const res = await apiGet('/api/auth/me', { requireAuth: false });
+      const res = await apiGet('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
