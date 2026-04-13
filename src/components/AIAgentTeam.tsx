@@ -11,7 +11,6 @@ import {
   AutoAwesome,
   CheckCircle,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import type { AIAgent } from '../types/automation';
 import { AIAgentEditor } from './AIAgentEditor';
 
@@ -117,10 +116,8 @@ export function AIAgentTeam({ agents, onRefresh }: AIAgentTeamProps) {
             {agents.map((agent, index) => {
               const toneStyle = getToneColor(agent.tone);
               return (
-                <motion.div
+                <div
                   key={agent.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
                   className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all"
                 >
                   {/* Agent Header */}
@@ -199,7 +196,7 @@ export function AIAgentTeam({ agents, onRefresh }: AIAgentTeamProps) {
                       </span>
                     )}
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -222,60 +219,50 @@ export function AIAgentTeam({ agents, onRefresh }: AIAgentTeamProps) {
       </div>
 
       {/* Agent Editor Modal */}
-      <AnimatePresence>
-        {showEditor && (
-          <AIAgentEditor
-            agent={editingAgent}
-            onClose={() => { setShowEditor(false); setEditingAgent(null); }}
-            onSave={() => { setShowEditor(false); setEditingAgent(null); onRefresh(); }}
-          />
-        )}
-      </AnimatePresence>
+      {showEditor && (
+        <AIAgentEditor
+          agent={editingAgent}
+          onClose={() => { setShowEditor(false); setEditingAgent(null); }}
+          onSave={() => { setShowEditor(false); setEditingAgent(null); onRefresh(); }}
+        />
+      )}
 
       {/* Delete Confirmation */}
-      <AnimatePresence>
-        {confirmDelete && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 z-50"
-              onClick={() => setConfirmDelete(null)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl p-6 shadow-2xl z-50 w-full max-w-md"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <Delete className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">Delete Agent</h3>
-                  <p className="text-sm text-slate-500">This action cannot be undone</p>
-                </div>
+      {confirmDelete && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-50 animate-fade-in"
+            onClick={() => setConfirmDelete(null)}
+          />
+          <div
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl p-6 shadow-2xl z-50 w-full max-w-md animate-scale-in"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Delete className="w-6 h-6 text-red-600" />
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(confirmDelete)}
-                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all"
-                >
-                  Delete
-                </button>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Delete Agent</h3>
+                <p className="text-sm text-slate-500">This action cannot be undone</p>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDelete)}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

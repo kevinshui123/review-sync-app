@@ -4,6 +4,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import './index.css';
+import './styles/animations.css';
 
 const theme = createTheme({
   palette: {

@@ -10,7 +10,6 @@ import {
   Close,
   Edit,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import { apiGet, apiFetch } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -148,11 +147,7 @@ export function BulkEdits({ setActiveTab }: BulkEditsProps) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="p-6 lg:p-8 max-w-5xl mx-auto"
+    <div className="animate-slide-up p-6 lg:p-8 max-w-5xl mx-auto"
     >
       {/* Header */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -171,45 +166,31 @@ export function BulkEdits({ setActiveTab }: BulkEditsProps) {
       </div>
 
       {/* Results Modal */}
-      <AnimatePresence>
-        {showResults && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-            onClick={resetWizard}
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl"
-              onClick={e => e.stopPropagation()}
-            >
-              <h2 className="text-xl font-bold mb-6">Update Results</h2>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                  <span className="font-semibold text-green-700">{saveResults.success.length} updated successfully</span>
-                </div>
-                {saveResults.failed.length > 0 && (
-                  <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl">
-                    <Close className="w-6 h-6 text-red-600" />
-                    <span className="font-semibold text-red-700">{saveResults.failed.length} failed</span>
-                  </div>
-                )}
+      {showResults && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={resetWizard}>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold mb-6">Update Results</h2>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                <span className="font-semibold text-green-700">{saveResults.success.length} updated successfully</span>
               </div>
-              <button
-                onClick={resetWizard}
-                className="w-full mt-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all"
-              >
-                Done
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {saveResults.failed.length > 0 && (
+                <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl">
+                  <Close className="w-6 h-6 text-red-600" />
+                  <span className="font-semibold text-red-700">{saveResults.failed.length} failed</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={resetWizard}
+              className="w-full mt-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Wizard Steps */}
       <div className="space-y-8">
@@ -444,6 +425,6 @@ export function BulkEdits({ setActiveTab }: BulkEditsProps) {
           </div>
         </section>
       </div>
-    </motion.div>
+    </div>
   );
 }

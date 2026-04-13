@@ -11,7 +11,6 @@ import {
   Add,
   Delete,
 } from '@mui/icons-material';
-import { motion } from 'motion/react';
 import { apiPost, apiPut } from '../utils/api';
 import type { AIAgent } from '../types/automation';
 
@@ -142,20 +141,14 @@ export function AIAgentEditor({ agent, onClose, onSave }: AIAgentEditorProps) {
   return (
     <>
       {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 z-50"
+      <div
+        className="fixed inset-0 bg-black/40 z-50 animate-fade-in"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white rounded-3xl shadow-2xl z-50 flex flex-col max-h-[90vh]"
+      <div
+        className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white rounded-3xl shadow-2xl z-50 flex flex-col max-h-[90vh] animate-scale-in"
       >
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-5 border-b border-slate-200">
@@ -258,10 +251,7 @@ export function AIAgentEditor({ agent, onClose, onSave }: AIAgentEditorProps) {
 
           {/* Custom Personality (for custom tone) */}
           {tone === 'custom' && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
+            <div
               className="space-y-4 p-4 bg-orange-50 rounded-xl border border-orange-100"
             >
               <h4 className="font-semibold text-slate-900">Custom Personality Configuration</h4>
@@ -297,7 +287,7 @@ export function AIAgentEditor({ agent, onClose, onSave }: AIAgentEditorProps) {
                 />
                 {errors.customInstructions && <p className="text-xs text-red-500 mt-1">{errors.customInstructions}</p>}
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* Expertise */}
@@ -424,7 +414,7 @@ export function AIAgentEditor({ agent, onClose, onSave }: AIAgentEditorProps) {
             </button>
           </div>
         </div>
-      </motion.div>
+      </div>
     </>
   );
 }

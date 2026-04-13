@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Inventory2, Store, LocationOn, Close, Link, ArrowBack, Edit, Star, Phone, Language, Lock, PhotoCamera, Tag, AccountCircle, CheckCircle, Add, Delete, AutoAwesome, OpenInNew } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EditBusinessPage } from './EditBusinessPage';
 import { ProfileAnalysisDrawer } from './ProfileAnalysisDrawer';
@@ -107,11 +106,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="min-h-screen pb-10"
+    <div className="animate-slide-up min-h-screen"
     >
       {/* Page Header */}
       <div className="px-10 pt-8 pb-4">
@@ -256,23 +251,15 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
       />
 
       {/* View Details Drawer */}
-      <AnimatePresence>
-        {showDetailDrawer && selectedLocation && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 z-40"
-              onClick={() => setShowDetailDrawer(false)}
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 bottom-0 w-full max-w-[480px] bg-white shadow-2xl z-50 flex flex-col"
-            >
+      {showDetailDrawer && selectedLocation && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40 animate-fade-in"
+            onClick={() => setShowDetailDrawer(false)}
+          />
+          <div
+            className="fixed right-0 top-0 bottom-0 w-full max-w-[480px] bg-white shadow-2xl z-50 flex flex-col animate-slide-right"
+          >
               <div className="flex-shrink-0 bg-gradient-to-r from-primary to-primary/80 px-6 py-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -394,10 +381,9 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

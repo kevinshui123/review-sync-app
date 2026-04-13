@@ -24,7 +24,6 @@ import {
   Visibility,
   ArrowForward,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import { apiPost } from '../utils/api';
 
 interface Location {
@@ -195,21 +194,14 @@ export function ProfileAnalysisDrawer({ isOpen, onClose, location }: ProfileAnal
   return (
     <>
       {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 z-50"
+      <div
+        className="fixed inset-0 bg-black/40 z-50 animate-fade-in"
         onClick={handleClose}
       />
 
       {/* Drawer */}
-      <motion.div
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed right-0 top-0 bottom-0 w-full max-w-[520px] bg-white shadow-2xl z-50 flex flex-col"
+      <div
+        className="fixed right-0 top-0 bottom-0 w-full max-w-[520px] bg-white shadow-2xl z-50 flex flex-col animate-slide-right"
       >
         {/* Header */}
         <div className="flex-shrink-0 bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5">
@@ -265,11 +257,8 @@ export function ProfileAnalysisDrawer({ isOpen, onClose, location }: ProfileAnal
                 <p className="text-sm text-slate-500 mt-1">This may take a few seconds</p>
               </div>
               <div className="w-full max-w-sm bg-slate-100 rounded-full h-2 mt-4 overflow-hidden">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
-                  initial={{ width: '0%' }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: 3, ease: 'easeInOut' }}
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 animate-expand"
                 />
               </div>
             </div>
@@ -296,13 +285,9 @@ export function ProfileAnalysisDrawer({ isOpen, onClose, location }: ProfileAnal
 
           {/* Report Content */}
           {!loading && !error && report && (
-            <AnimatePresence mode="wait">
-              <motion.div
+              <div
                 key={activeTab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-6"
+                className="space-y-6 animate-fade-in"
               >
                 {/* Overview Tab */}
                 {activeTab === 'overview' && (
@@ -579,9 +564,8 @@ export function ProfileAnalysisDrawer({ isOpen, onClose, location }: ProfileAnal
                     </div>
                   </div>
                 )}
-              </motion.div>
-            </AnimatePresence>
-          )}
+              </div>
+            )}
 
           {/* Empty State (not loading, no report, no error) */}
           {!loading && !report && !error && (
@@ -625,7 +609,7 @@ export function ProfileAnalysisDrawer({ isOpen, onClose, location }: ProfileAnal
             </div>
           </div>
         )}
-      </motion.div>
+      </div>
     </>
   );
 }

@@ -13,7 +13,6 @@ import {
   Store,
   AutoAwesome,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export function Help() {
@@ -117,11 +116,7 @@ export function Help() {
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="p-6 lg:p-8 max-w-4xl mx-auto"
+    <div className="animate-slide-up p-6 lg:p-8 max-w-4xl mx-auto"
     >
       {/* Header */}
       <div className="mb-10 text-center">
@@ -194,25 +189,15 @@ export function Help() {
                   <ExpandMore className="w-5 h-5 text-slate-400 flex-shrink-0" />
                 )}
               </button>
-              <AnimatePresence>
-                {expandedFaq === i && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 pb-4 pt-3 text-sm text-slate-600 border-t border-slate-100">
-                      {faq.answer}
-                    </div>
-                  </motion.div>
+              {expandedFaq === i && (
+                  <div className="px-4 pb-4 pt-3 text-sm text-slate-600 border-t border-slate-100 transition-all duration-200 max-h-96 opacity-100">
+                    {faq.answer}
+                  </div>
                 )}
-              </AnimatePresence>
             </div>
           ))}
         </div>
       </section>
-    </motion.div>
+    </div>
   );
 }

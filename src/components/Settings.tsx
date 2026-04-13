@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Settings as SettingsIcon, Save, Key, AlertCircle, Loader2, CheckCircle2, Users, Plus, Trash2, Sparkles, ExternalLink, Copy, Store, Unlink, RotateCw } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
 
@@ -214,11 +213,7 @@ export function Settings() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="p-4 md:p-8 space-y-10 max-w-[1000px] mx-auto w-full pb-20"
+    <div className="animate-slide-up p-4 md:p-8 space-y-10 max-w-[1000px] mx-auto w-full pb-20"
     >
       <div className="space-y-2 border-b border-outline-variant/10 pb-10">
         <div className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
@@ -490,6 +485,6 @@ export function Settings() {
           </div>
         </section>
       </div>
-    </motion.div>
+    </div>
   );
 }

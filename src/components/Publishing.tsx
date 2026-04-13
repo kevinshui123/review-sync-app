@@ -13,7 +13,6 @@ import {
   Image,
   Link as LinkIcon,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { addActivityLog } from './EditsLog';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -245,29 +244,18 @@ export function Publishing({ setActiveTab }: PublishingProps) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="flex flex-col min-h-screen"
+    <div className="animate-slide-up flex flex-col min-h-screen"
     >
       {/* Create Post Modal */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowCreateModal(false)}
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl animate-scale-in"
+            onClick={e => e.stopPropagation()}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl"
-              onClick={e => e.stopPropagation()}
-            >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-slate-900">Create New Post</h2>
                 <button
@@ -330,28 +318,21 @@ export function Publishing({ setActiveTab }: PublishingProps) {
                   {creating ? t('publishing.creating') : newPost.scheduledOn ? t('publishing.schedulePost') : t('publishing.saveDraft')}
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
 
       {/* Toast Notification */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-xl shadow-lg text-sm font-medium max-w-md ${
-              toast.type === 'success'
-                ? 'bg-green-50 text-green-800 border border-green-200'
-                : 'bg-red-50 text-red-800 border border-red-200'
-            }`}
-          >
-            {toast.text}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {toast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-xl shadow-lg text-sm font-medium max-w-md animate-slide-up ${
+          toast.type === 'success'
+            ? 'bg-green-50 text-green-800 border border-green-200'
+            : 'bg-red-50 text-red-800 border border-red-200'
+        }`}
+        >
+          {toast.text}
+        </div>
+      )}
 
       {/* Sub Header / Controls */}
       <div className="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border-b border-slate-100">
@@ -496,6 +477,6 @@ export function Publishing({ setActiveTab }: PublishingProps) {
       >
         <Add className="w-6 h-6" />
       </button>
-    </motion.div>
+    </div>
   );
 }

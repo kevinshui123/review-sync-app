@@ -22,7 +22,6 @@ import {
   ExpandLess,
   AccountCircle,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface SidebarProps {
@@ -211,15 +210,8 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
                       </button>
 
                       {/* Local SEO sub-items: Grid, Citations, Optimization */}
-                      <AnimatePresence>
-                        {seoLocalExpanded && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden"
-                          >
+                      {seoLocalExpanded && (
+                          <div className="transition-all duration-200 overflow-hidden">
                             <div className="pt-1 space-y-0.5">
                               {SEO_LOCAL_ITEMS.map((item) => {
                                 const SubIcon = item.icon;
@@ -247,9 +239,8 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
                                 );
                               })}
                             </div>
-                          </motion.div>
+                          </div>
                         )}
-                      </AnimatePresence>
                     </>
                   ) : (
                     /* Real Comment and Rednote SEO - top-level items */
@@ -299,28 +290,19 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
       </aside>
 
       {/* Mobile overlay */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/50 z-50 lg:hidden backdrop-blur-sm"
-            />
-            <motion.aside
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-              className="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-50 lg:hidden"
-            >
-              {sidebarContent}
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+      {isOpen && (
+        <>
+          <div
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/50 z-50 lg:hidden backdrop-blur-sm animate-fade-in"
+          />
+          <aside
+            className="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-50 lg:hidden animate-slide-left"
+          >
+            {sidebarContent}
+          </aside>
+        </>
+      )}
     </>
   );
 }

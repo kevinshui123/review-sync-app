@@ -12,7 +12,6 @@ import {
   Edit,
   Bolt,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'motion/react';
 import type { AutomationRule, AIAgent, AutomationType, TriggerType, RatingFilter, ReplyMode } from '../types/automation';
 import { apiGet } from '../utils/api';
 
@@ -132,20 +131,14 @@ export function NewAutomationModal({ automation, agents, onClose, onSave }: NewA
   return (
     <>
       {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 z-50"
+      <div
+        className="fixed inset-0 bg-black/40 z-50 animate-fade-in"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white rounded-3xl shadow-2xl z-50 flex flex-col max-h-[90vh]"
+      <div
+        className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white rounded-3xl shadow-2xl z-50 flex flex-col max-h-[90vh] animate-scale-in"
       >
         {/* Header */}
         <div className="flex-shrink-0 px-6 py-5 border-b border-slate-200">
@@ -174,15 +167,11 @@ export function NewAutomationModal({ automation, agents, onClose, onSave }: NewA
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          <AnimatePresence mode="wait">
             {/* Step 1: Choose Type */}
             {step === 1 && (
-              <motion.div
+              <div
                 key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
+                className="space-y-6 animate-fade-in"
               >
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 mb-2">Choose automation type</h3>
@@ -264,17 +253,14 @@ export function NewAutomationModal({ automation, agents, onClose, onSave }: NewA
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   />
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {/* Step 2: Configure */}
             {step === 2 && (
-              <motion.div
+              <div
                 key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
+                className="space-y-6 animate-fade-in"
               >
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 mb-2">Configure trigger</h3>
@@ -377,17 +363,14 @@ export function NewAutomationModal({ automation, agents, onClose, onSave }: NewA
                     ))}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {/* Step 3: Reply Mode */}
             {step === 3 && (
-              <motion.div
+              <div
                 key="step3"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
+                className="space-y-6 animate-fade-in"
               >
                 {type === 'reply-on-reviews' ? (
                   <>
@@ -526,9 +509,8 @@ export function NewAutomationModal({ automation, agents, onClose, onSave }: NewA
                     </p>
                   </div>
                 )}
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
         </div>
 
         {/* Footer */}
@@ -578,7 +560,7 @@ export function NewAutomationModal({ automation, agents, onClose, onSave }: NewA
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </>
   );
 }

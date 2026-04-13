@@ -11,7 +11,6 @@ import {
   Edit,
   Delete,
 } from '@mui/icons-material';
-import { motion } from 'motion/react';
 import { apiGet } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -183,11 +182,7 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="flex flex-1 overflow-hidden flex-col"
+    <div className="animate-slide-up flex flex-1 overflow-hidden flex-col"
     >
       {/* Mobile: Horizontal filter tabs */}
       <div className="md:hidden shrink-0 bg-white border-b border-slate-100 px-4 py-3 flex overflow-x-auto gap-2 scrollbar-hide">
@@ -323,6 +318,6 @@ export function EditsLog({ setActiveTab }: EditsLogProps) {
         </div>
       </section>
       </div>
-    </motion.div>
+    </div>
   );
 }
