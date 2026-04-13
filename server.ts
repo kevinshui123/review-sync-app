@@ -4176,7 +4176,7 @@ IMPORTANT RULES:
 11. "overallScore" should reflect the business's local SEO health based on available data`;
 
       const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-3.1-pro:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -4189,8 +4189,8 @@ IMPORTANT RULES:
 
       if (!geminiResponse.ok) {
         const errorText = await geminiResponse.text();
-        console.error('[seo-optimization] Gemini API error:', errorText);
-        return res.status(500).json({ error: 'AI analysis failed', details: errorText });
+        console.error('[seo-optimization] Gemini API error:', geminiResponse.status, errorText);
+        return res.status(500).json({ error: 'AI analysis failed', details: errorText, status: geminiResponse.status });
       }
 
       const geminiData = await geminiResponse.json();
