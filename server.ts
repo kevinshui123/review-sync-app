@@ -659,6 +659,24 @@ async function getCoordinatesFromGoogle(address: string, apiKey: string): Promis
   return null;
 }
 
+async function getCoordinatesFromPlaceId(placeId: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${apiKey}`
+    );
+    const data = await res.json();
+    if (data.result?.geometry?.location) {
+      return {
+        lat: data.result.geometry.location.lat,
+        lng: data.result.geometry.location.lng,
+      };
+    }
+  } catch (e) {
+    console.warn('[getCoordinatesFromPlaceId] Google Places error:', (e as any).message);
+  }
+  return null;
+}
+
 async function embedSocialFetchWithKey(apiKey: string, path: string, options: RequestInit = {}): Promise<any> {
   const base = (process.env.EMBEDSOCIAL_BASE_URL || 'https://embedsocial.com/app/api').replace(/\/$/, '');
   console.log(`[embedSocialFetch] Using base: ${base}`);
@@ -1515,7 +1533,12 @@ async function startServer() {
             const gbp = gbpCoords.get(listing.googleId);
             if (gbp) { lat = gbp.lat; lng = gbp.lng; }
           }
-          // Priority 2: Google Places API (via address search)
+          // Priority 2: Google Places Details API via placeId (most reliable)
+          if ((lat === undefined || lng === undefined) && placesApiKey && listing.googleId) {
+            const coords = await getCoordinatesFromPlaceId(listing.googleId, placesApiKey);
+            if (coords) { lat = coords.lat; lng = coords.lng; }
+          }
+          // Priority 3: Google Places Text Search API via address
           if ((lat === undefined || lng === undefined) && placesApiKey && listing.address) {
             const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
             if (coords) { lat = coords.lat; lng = coords.lng; }
@@ -1552,6 +1575,10 @@ async function startServer() {
             if (gbpCoords.size > 0 && listing.googleId) {
               const gbp = gbpCoords.get(listing.googleId);
               if (gbp) { lat = gbp.lat; lng = gbp.lng; }
+            }
+            if ((lat === null || lng === null) && placesApiKey && listing.googleId) {
+              const coords = await getCoordinatesFromPlaceId(listing.googleId, placesApiKey);
+              if (coords) { lat = coords.lat; lng = coords.lng; }
             }
             if ((lat === null || lng === null) && placesApiKey && listing.address) {
               const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
@@ -1637,7 +1664,12 @@ async function startServer() {
           const g = gbpCoords.get(listing.googleId);
           if (g) { lat = g.lat; lng = g.lng; }
         }
-        // Priority 2: Google Places API via address
+        // Priority 2: Google Places Details API via placeId (most reliable)
+        if ((lat === null || lng === null) && placesApiKey && listing.googleId) {
+          const coords = await getCoordinatesFromPlaceId(listing.googleId, placesApiKey);
+          if (coords) { lat = coords.lat; lng = coords.lng; }
+        }
+        // Priority 3: Google Places Text Search API via address
         if ((lat === null || lng === null) && placesApiKey && listing.address) {
           const coords = await getCoordinatesFromGoogle(listing.address, placesApiKey);
           if (coords) { lat = coords.lat; lng = coords.lng; }
@@ -4144,7 +4176,7 @@ IMPORTANT RULES:
 11. "overallScore" should reflect the business's local SEO health based on available data`;
 
       const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
