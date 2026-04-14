@@ -311,7 +311,7 @@ export function Optimization() {
       <div className="flex flex-col items-center justify-center h-96 gap-4">
         <div className="relative">
           <div className="w-16 h-16 border-4 border-slate-100 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-transparent border-t-purple-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
         </div>
         <p className="text-sm text-slate-500 font-medium">加载中...</p>
       </div>
@@ -324,7 +324,7 @@ export function Optimization() {
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 via-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-purple-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-md">
               <AutoAwesome className="w-7 h-7 text-white" />
             </div>
             <div>
@@ -337,8 +337,8 @@ export function Optimization() {
             disabled={seoLoading}
             className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-2xl transition-all duration-300 shadow-lg ${
               seoReport
-                ? 'bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50'
-                : 'bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-purple-500/30'
+                ? 'bg-white border-2 border-primary text-primary hover:bg-blue-50'
+                : 'bg-primary text-white hover:opacity-90'
             } disabled:opacity-50`}
           >
             {seoLoading ? (
@@ -383,7 +383,7 @@ export function Optimization() {
                 onClick={() => setActiveSection(tab.id as any)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   activeSection === tab.id
-                    ? 'bg-white text-purple-600 shadow-md'
+                    ? 'bg-white text-primary shadow-md'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -391,7 +391,7 @@ export function Optimization() {
                 {tab.label}
                 {tab.count !== undefined && tab.count > 0 && (
                   <span className={`px-2 py-0.5 rounded-full text-xs ${
-                    activeSection === tab.id ? 'bg-purple-100 text-purple-600' : 'bg-slate-200 text-slate-500'
+                    activeSection === tab.id ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'
                   }`}>
                     {tab.count}
                   </span>
@@ -448,8 +448,8 @@ export function Optimization() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center">
-                      <Lightbulb className="w-5 h-5 text-purple-500" />
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                      <Lightbulb className="w-5 h-5 text-blue-500" />
                     </div>
                     <span className="text-sm font-medium text-slate-500">优化建议</span>
                   </div>
@@ -511,11 +511,10 @@ export function Optimization() {
                       </div>
                     ))}
                   </div>
-                  {seoReport.quickWins.length > 3 && (
-                    <button
-                      onClick={() => setActiveSection('quickwins')}
-                      className="mt-4 text-sm text-orange-600 font-medium hover:underline"
-                    >
+          <button
+            onClick={() => setActiveSection('quickwins')}
+            className="mt-4 text-sm text-blue-600 font-medium hover:underline"
+          >
                       查看全部 {seoReport.quickWins.length} 项 →
                     </button>
                   )}
@@ -542,7 +541,7 @@ export function Optimization() {
                         filterPriority === p
                           ? p === 'high' ? 'bg-red-500 text-white' :
                             p === 'medium' ? 'bg-amber-500 text-white' :
-                            p === 'low' ? 'bg-blue-500 text-white' : 'bg-purple-600 text-white'
+                            p === 'low' ? 'bg-blue-500 text-white' : 'bg-primary text-white'
                           : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                       }`}
                     >
@@ -573,7 +572,7 @@ export function Optimization() {
                       <div
                         key={index}
                         className={`bg-white rounded-2xl border border-slate-200 overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-slate-200/50 ${
-                          isExpanded ? 'ring-2 ring-purple-500/30' : ''
+                          isExpanded ? 'ring-2 ring-blue-500/30' : ''
                         }`}
                       >
                         <div
@@ -613,9 +612,9 @@ export function Optimization() {
                                   <div className="text-xs text-slate-400 font-medium mb-1">当前状态</div>
                                   <div className="text-sm font-semibold text-slate-700">{insight.currentValue}</div>
                                 </div>
-                                <div className="bg-purple-50 rounded-xl p-4">
-                                  <div className="text-xs text-purple-400 font-medium mb-1">建议目标</div>
-                                  <div className="text-sm font-semibold text-purple-700">{insight.suggestedValue}</div>
+                                <div className="bg-blue-50 rounded-xl p-4">
+                                  <div className="text-xs text-blue-400 font-medium mb-1">建议目标</div>
+                                  <div className="text-sm font-semibold text-blue-700">{insight.suggestedValue}</div>
                                 </div>
                               </div>
                             )}
@@ -635,7 +634,7 @@ export function Optimization() {
                                 e.stopPropagation();
                                 handleActionClick(insight);
                               }}
-                              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl hover:shadow-purple-500/30 transition-all w-full justify-center"
+                              className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all w-full justify-center"
                             >
                               {getActionTypeIcon(insight.actionType)}
                               {insight.actionLabel || '采取行动'}
@@ -695,7 +694,7 @@ export function Optimization() {
                               <div className="space-y-2">
                                 {insight.actionSteps.map((step, stepIndex) => (
                                   <div key={stepIndex} className="flex items-start gap-3">
-                                    <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                                       {stepIndex + 1}
                                     </span>
                                     <span className="text-sm text-slate-600">{step}</span>
@@ -764,9 +763,9 @@ export function Optimization() {
       )}
 
       {!seoReport && !seoLoading && (
-        <div className="bg-gradient-to-br from-slate-50 via-purple-50/30 to-indigo-50/30 rounded-3xl p-16 border border-slate-200 text-center">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-purple-100 via-violet-100 to-indigo-100 flex items-center justify-center mx-auto mb-6 shadow-xl">
-            <AutoAwesome className="w-10 h-10 text-purple-500" />
+        <div className="bg-slate-50 rounded-3xl p-16 border border-slate-200 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <AutoAwesome className="w-10 h-10 text-primary" />
           </div>
           <h3 className="text-2xl font-bold text-slate-900 mb-3">生成您的 SEO 优化报告</h3>
           <p className="text-slate-500 max-w-lg mx-auto mb-8 leading-relaxed">
@@ -783,7 +782,7 @@ export function Optimization() {
               { icon: <Verified className="w-5 h-5" />, label: '信息验证' },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
-                <span className="text-purple-500">{item.icon}</span>
+                <span className="text-blue-500">{item.icon}</span>
                 <span className="text-sm font-medium text-slate-600">{item.label}</span>
               </div>
             ))}

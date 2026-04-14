@@ -904,8 +904,8 @@ CONTENT: ?????????? ???????????????????????
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-                  <AutoAwesome className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Lightbulb className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">{t('reports.seoOptimization')}</h2>
@@ -913,12 +913,12 @@ CONTENT: ?????????? ???????????????????????
                 </div>
               </div>
               <button onClick={generateSeoReport} disabled={seoLoading}
-                className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-xl ${
-                  seoReport ? 'bg-white border-2 border-purple-600 text-purple-600' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
+                className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-xl transition-all ${
+                  seoReport ? 'bg-white border-2 border-primary text-primary hover:bg-blue-50' : 'bg-primary text-white hover:bg-primary/90'
                 } disabled:opacity-50`}>
                 {seoLoading ? <><Refresh className="w-4 h-4 animate-spin" />Analyzing...</> :
                  seoReport ? <><Refresh className="w-4 h-4" />Regenerate</> :
-                 <><AutoAwesome className="w-4 h-4" />{t('reports.generateReport')}</>}
+                 <><Lightbulb className="w-4 h-4" />{t('reports.generateReport')}</>}
               </button>
             </div>
             {seoError && (
@@ -974,9 +974,9 @@ CONTENT: ?????????? ???????????????????????
               </div>
             )}
             {!seoReport && !seoLoading && (
-              <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-2xl p-12 border border-slate-200 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
-                  <AutoAwesome className="w-8 h-8 text-purple-500" />
+              <div className="bg-slate-50 rounded-2xl p-12 border border-slate-200 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Lightbulb className="w-8 h-8 text-primary" />
                 </div>
                 <h4 className="text-lg font-bold text-slate-800 mb-2">Generate Your SEO Optimization Report</h4>
                 <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">Click the button above to analyze your business listings with AI.</p>
@@ -1014,7 +1014,7 @@ CONTENT: ?????????? ???????????????????????
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {googleAccounts.map((account) => (
                   <div key={account.id} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-white font-bold">
                       {account.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1037,7 +1037,7 @@ CONTENT: ?????????? ???????????????????????
               </div>
             </div>
 
-            {/* Review Creator */}
+            {/* Real Comment Creator */}
             <div className="bg-white rounded-xl border border-slate-200 p-6">
               <h2 className="text-lg font-bold mb-4">{t('realComment.writeReview')}</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1080,16 +1080,16 @@ CONTENT: ?????????? ???????????????????????
                   </div>
 
                   {/* AI Generate Button */}
-                  <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-100">
+                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
                     <div className="flex items-center gap-2 mb-2">
-                      <AutoAwesome className="w-5 h-5 text-orange-500" />
-                      <span className="font-bold text-sm text-orange-700">{t('realComment.aiGenerate')}</span>
+                      <AutoAwesome className="w-5 h-5 text-blue-500" />
+                      <span className="font-bold text-sm text-blue-700">{t('realComment.aiGenerate')}</span>
                     </div>
                     <p className="text-xs text-slate-600 mb-3">{t('realComment.aiTip')}</p>
                     <button
                       onClick={handleGenerateAIReview}
                       disabled={aiGeneratingReview || !selectedAccount}
-                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-2.5 px-4 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-2.5 px-4 rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
                     >
                       {aiGeneratingReview ? (
                         <><Refresh className="w-4 h-4 animate-spin" />{t('realComment.aiGenerating')}</>
@@ -1100,8 +1100,8 @@ CONTENT: ?????????? ???????????????????????
                   </div>
 
                   {currentPersona && (
-                    <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
-                      <p className="text-xs text-purple-600 font-semibold">{t('realComment.identityLabel')} <span className="font-bold">{currentPersona.name}</span></p>
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                      <p className="text-xs text-blue-600 font-semibold">{t('realComment.identityLabel')} <span className="font-bold">{currentPersona.name}</span></p>
                     </div>
                   )}
                 </div>
@@ -1237,13 +1237,13 @@ CONTENT: ?????????? ???????????????????????
 
             {/* Connection Card */}
             {!rednoteConnected && (
-              <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl border border-pink-100 p-8 text-center">
-                <div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center mx-auto mb-4">
-                  <Article className="w-8 h-8 text-pink-500" />
+              <div className="bg-blue-50 rounded-xl border border-blue-100 p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                  <Article className="w-8 h-8 text-blue-500" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-800 mb-2">{t('rednote.noAccount')}</h3>
                 <p className="text-sm text-slate-500 mb-4">{t('rednote.noAccountDesc')}</p>
-                <button onClick={() => setRednoteConnected(true)} className="bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold py-2.5 px-6 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all">
+                <button onClick={() => setRednoteConnected(true)} className="bg-primary text-white font-bold py-2.5 px-6 rounded-lg hover:bg-primary/90 transition-all">
                   {t('rednote.connectAccount')}
                 </button>
               </div>
@@ -1256,16 +1256,16 @@ CONTENT: ?????????? ???????????????????????
                   <h2 className="text-lg font-bold mb-4">{t('rednote.createPost')}</h2>
 
                   {/* AI Generate Section */}
-                  <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 border border-pink-100 mb-6">
+                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <AutoAwesome className="w-5 h-5 text-pink-500" />
-                      <span className="font-bold text-sm text-pink-700">{t('rednote.aiGeneratePost')}</span>
+                      <AutoAwesome className="w-5 h-5 text-blue-500" />
+                      <span className="font-bold text-sm text-blue-700">{t('rednote.aiGeneratePost')}</span>
                     </div>
                     <p className="text-xs text-slate-600 mb-3">{t('rednote.aiTip')}</p>
                     <button
                       onClick={handleGenerateRednotePost}
                       disabled={aiGeneratingPost}
-                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold py-2.5 px-4 rounded-lg hover:from-pink-600 hover:to-purple-600 transition-all disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-2.5 px-4 rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
                     >
                       {aiGeneratingPost ? (
                         <><Refresh className="w-4 h-4 animate-spin" />{t('rednote.aiGenerating')}</>

@@ -73,24 +73,59 @@
   font-variation-settings: 'FILL' 1;
 }
 
+/* Core Design System - Clean & Professional */
+
 body {
   background-color: var(--color-surface);
   color: var(--color-on-surface);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, .font-headline {
   font-family: var(--font-headline);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-.glass-panel {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+/* Consistent Card Style */
+.card-base {
+  @apply bg-white rounded-xl border border-slate-200/60;
 }
 
-.sunlight-shadow {
-  box-shadow: 0px 12px 32px rgba(25, 28, 29, 0.06);
+/* Consistent Button Styles */
+.btn-base {
+  @apply px-5 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200;
+}
+
+.btn-primary {
+  @apply btn-base bg-primary text-white hover:bg-primary/90 active:scale-[0.98];
+}
+
+.btn-secondary {
+  @apply btn-base bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-[0.98];
+}
+
+/* Status Badge */
+.badge {
+  @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
+}
+
+.badge-success {
+  @apply badge bg-emerald-50 text-emerald-700;
+}
+
+.badge-warning {
+  @apply badge bg-amber-50 text-amber-700;
+}
+
+.badge-error {
+  @apply badge bg-red-50 text-red-700;
+}
+
+.badge-info {
+  @apply badge bg-blue-50 text-blue-700;
 }
 
 /* Custom Scrollbar */
