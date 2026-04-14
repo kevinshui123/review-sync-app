@@ -167,6 +167,9 @@ function AppContent() {
     }
   };
 
+  // Define muiTheme early to avoid "cannot access before initialization" error
+  const muiTheme = appTheme === 'dark' ? darkTheme : lightTheme;
+
   // Wait for client-side hydration to complete
   if (!mounted) {
     return (
@@ -230,8 +233,6 @@ function AppContent() {
   const handleThemeChange = (newTheme: 'light' | 'dark') => {
     setAppTheme(newTheme);
   };
-
-  const muiTheme = appTheme === 'dark' ? darkTheme : lightTheme;
 
   // Not configured
   if (isConfigured === null) {
