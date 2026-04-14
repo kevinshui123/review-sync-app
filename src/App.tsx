@@ -355,14 +355,14 @@ function AppContent() {
               )}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
-                </div>
-              </ErrorBoundary>
-            </main>
-          </div>
-        </div>
-      </ThemeProvider>
+            </div>
+          </ErrorBoundary>
+        </main>
+      </div>
     </div>
-  );
+  </div>
+  </ThemeProvider>
+);
 }
 
 export default function App() {

@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { Multer } from 'multer';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 export interface AuthRequest extends Request {
   userId?: string;
   tenantId?: string;
+  file?: Express.Multer.File;
 }
 
 export function generateToken(userId: string, tenantId?: string): string {

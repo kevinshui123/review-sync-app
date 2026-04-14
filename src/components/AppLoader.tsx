@@ -352,6 +352,7 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
         /* ============================================
            LEGACY PAGE LOADER STYLES
            ============================================ */
+      `}</style>
     </div>
   );
 }
