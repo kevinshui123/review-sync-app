@@ -46,9 +46,12 @@ const darkTheme = createTheme({
 // Export themes for use elsewhere
 export { lightTheme, darkTheme };
 
+// Default theme
+const defaultTheme = lightTheme;
+
 createRoot(document.getElementById('root')!).render(
   <LanguageProvider>
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={defaultTheme}>
       <CssBaseline />
       <App />
     </ThemeProvider>
