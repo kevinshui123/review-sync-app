@@ -219,7 +219,7 @@ function AppContent() {
     return (
       <ThemeProvider theme={muiTheme}>
         <CssBaseline />
-        <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
+        <div style={{ backgroundColor: '#0f172a', minHeight: '100vh' }}>
           <LandingPage onShowAuth={() => setShowAuth(true)} />
         </div>
       </ThemeProvider>

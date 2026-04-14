@@ -306,6 +306,13 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           display: flex;
           flex-direction: column;
           min-height: 0;
+          padding-left: 256px;
+        }
+
+        @media (max-width: 1023px) {
+          .page-content {
+            padding-left: 0;
+          }
         }
 
         /* Config Warning Banner */
