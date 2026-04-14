@@ -12,180 +12,13 @@ import {
   Search,
   Lightbulb,
   Star,
+  ChevronRight,
+  ChevronLeft,
+  X,
+  ZoomIn,
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-
-interface ScreenshotItem {
-  id: string;
-  titleZh: string;
-  titleEn: string;
-  descZh: string;
-  descEn: string;
-  imagePath: string;
-  icon: React.ReactNode;
-  color: string;
-  featuresZh: string[];
-  featuresEn: string[];
-}
-
-const SCREENSHOTS: ScreenshotItem[] = [
-  {
-    id: 'dashboard',
-    titleZh: '数据概览 Dashboard',
-    titleEn: 'Dashboard Overview',
-    descZh: '一站式查看所有门店的核心业务数据，快速掌握经营状况',
-    descEn: 'View core business data for all locations in one place',
-    imagePath: '/images/screenshots/dashboard.png',
-    icon: <LayoutDashboard size={18} />,
-    color: '#1e3a5f',
-    featuresZh: ['KPI指标卡片', '趋势图表', '健康评分', '最新评论'],
-    featuresEn: ['KPI Cards', 'Trend Charts', 'Health Score', 'Recent Reviews'],
-  },
-  {
-    id: 'reviews',
-    titleZh: '评价管理 Reviews',
-    titleEn: 'Reviews Management',
-    descZh: '集中管理所有平台的客户评价，提升在线口碑',
-    descEn: 'Centralized customer review management across all platforms',
-    imagePath: '/images/screenshots/reviews.png',
-    icon: <MessageSquare size={18} />,
-    color: '#f59e0b',
-    featuresZh: ['评价流展示', 'AI智能回复', '筛选与搜索', '统一收件箱'],
-    featuresEn: ['Review Stream', 'AI Smart Reply', 'Filter & Search', 'Unified Inbox'],
-  },
-  {
-    id: 'listings',
-    titleZh: '商家列表 Listings',
-    titleEn: 'Listings Management',
-    descZh: '统一管理所有门店的Google商业信息，保持数据一致性',
-    descEn: 'Manage Google business info for all locations with data consistency',
-    imagePath: '/images/screenshots/listings.png',
-    icon: <MapPin size={18} />,
-    color: '#0ea5e9',
-    featuresZh: ['门店表格', '编辑信息', '档案分析', '同步管理'],
-    featuresEn: ['Location Table', 'Edit Info', 'Profile Analysis', 'Sync Management'],
-  },
-  {
-    id: 'automations',
-    titleZh: '自动化规则 Automations',
-    titleEn: 'Automation Rules',
-    descZh: '设置自动化规则，让AI自动处理新评价',
-    descEn: 'Set up automation rules and let AI handle new reviews automatically',
-    imagePath: '/images/screenshots/automations.png',
-    icon: <Zap size={18} />,
-    color: '#8b5cf6',
-    featuresZh: ['快速开始向导', 'AI助手管理', '规则状态追踪', '一键启动'],
-    featuresEn: ['Quick Start Wizard', 'AI Agent Management', 'Rule Status Tracking', 'One-click Launch'],
-  },
-  {
-    id: 'bulk-edits',
-    titleZh: '批量编辑 Bulk Edits',
-    titleEn: 'Bulk Edits',
-    descZh: '一次操作更新多个门店信息，大幅提升工作效率',
-    descEn: 'Update multiple locations in one operation',
-    imagePath: '/images/screenshots/bulk-edits.png',
-    icon: <Edit3 size={18} />,
-    color: '#ec4899',
-    featuresZh: ['三步向导', '批量选择门店', '批量更新字段', '审核确认'],
-    featuresEn: ['Three-step Wizard', 'Bulk Location Select', 'Bulk Field Update', 'Review & Confirm'],
-  },
-  {
-    id: 'activity-log',
-    titleZh: '操作日志 Activity Log',
-    titleEn: 'Activity Log',
-    descZh: '记录所有操作历史，便于追溯和审计',
-    descEn: 'Record all operation history for traceability and auditing',
-    imagePath: '/images/screenshots/activity-log.png',
-    icon: <History size={18} />,
-    color: '#10b981',
-    featuresZh: ['活动时间线', '日志筛选', '操作追溯', '状态追踪'],
-    featuresEn: ['Activity Timeline', 'Log Filters', 'Operation Trace', 'Status Tracking'],
-  },
-  {
-    id: 'publishing',
-    titleZh: '内容发布 Publishing',
-    titleEn: 'Content Publishing',
-    descZh: '创建和管理Google商家帖子，保持活跃的在线存在感',
-    descEn: 'Create and manage Google Business posts',
-    imagePath: '/images/screenshots/publishing.png',
-    icon: <Calendar size={18} />,
-    color: '#f97316',
-    featuresZh: ['日历视图', '帖子编辑器', '定时发布', '快捷操作'],
-    featuresEn: ['Calendar View', 'Post Composer', 'Schedule Post', 'Quick Actions'],
-  },
-  {
-    id: 'reports',
-    titleZh: '数据报告 Reports',
-    titleEn: 'GBP Performance Reports',
-    descZh: '深度分析业务数据，导出专业报告辅助决策',
-    descEn: 'Deep analysis of business data with professional reports',
-    imagePath: '/images/screenshots/reports.png',
-    icon: <BarChart3 size={18} />,
-    color: '#6366f1',
-    featuresZh: ['绩效分析', '时间趋势', 'PDF导出', '数据对比'],
-    featuresEn: ['Performance Analysis', 'Time Trends', 'PDF Export', 'Data Comparison'],
-  },
-  {
-    id: 'search-overview',
-    titleZh: '搜索概览 Search Overview',
-    titleEn: 'Search Performance Overview',
-    descZh: '可视化展示搜索和用户行为数据',
-    descEn: 'Visualize search and user behavior data',
-    imagePath: '/images/screenshots/search-overview.png',
-    icon: <TrendingUp size={18} />,
-    color: '#3b82f6',
-    featuresZh: ['环形图表', '搜索份额', '行为分析', '数据可视化'],
-    featuresEn: ['Ring Charts', 'Search Share', 'Behavior Analysis', 'Data Visualization'],
-  },
-  {
-    id: 'local-seo',
-    titleZh: '本地SEO Local SEO',
-    titleEn: 'Local Search Grid',
-    descZh: '可视化分析门店在不同地理位置的搜索排名情况',
-    descEn: 'Visual analysis of location search rankings across geography',
-    imagePath: '/images/screenshots/local-seo.png',
-    icon: <Search size={18} />,
-    color: '#06b6d4',
-    featuresZh: ['网格扫描', '排名可视化', '地图展示', '竞品分析'],
-    featuresEn: ['Grid Scan', 'Rank Visualization', 'Map Display', 'Competitor Analysis'],
-  },
-  {
-    id: 'optimization',
-    titleZh: '优化中心 Optimization',
-    titleEn: 'Optimization Center',
-    descZh: 'AI驱动的SEO健康度分析和优化建议',
-    descEn: 'AI-powered SEO health analysis and optimization suggestions',
-    imagePath: '/images/screenshots/optimization.png',
-    icon: <Lightbulb size={18} />,
-    color: '#eab308',
-    featuresZh: ['健康评分', '快速优化项', '推荐建议', '竞争洞察'],
-    featuresEn: ['Health Score', 'Quick Wins', 'Recommendations', 'Competitive Insights'],
-  },
-  {
-    id: 'optimization-detail',
-    titleZh: '优化建议 Optimization Details',
-    titleEn: 'Optimization Recommendations',
-    descZh: '详细的优化步骤和行动指南',
-    descEn: 'Detailed optimization steps and action guide',
-    imagePath: '/images/screenshots/optimization-detail.png',
-    icon: <Lightbulb size={18} />,
-    color: '#84cc16',
-    featuresZh: ['行动步骤', '影响评估', '投入产出', '详细指导'],
-    featuresEn: ['Action Steps', 'Impact Assessment', 'Effort vs Impact', 'Detailed Guide'],
-  },
-  {
-    id: 'real-reviews',
-    titleZh: '真实评论 Real Reviews',
-    titleEn: 'Real Reviews Generation',
-    descZh: '帮助企业获取更多真实的Google评价',
-    descEn: 'Help businesses get more authentic Google reviews',
-    imagePath: '/images/screenshots/real-reviews.png',
-    icon: <Star size={18} />,
-    color: '#ef4444',
-    featuresZh: ['AI生成评论', '身份选择', '评分设定', '历史管理'],
-    featuresEn: ['AI Review Generation', 'Identity Selection', 'Rating Setting', 'History Management'],
-  },
-];
+import { AppPreview, PREVIEW_CONFIGS } from './AppPreview';
 
 interface ScreenshotGalleryProps {
   categoryId?: string;
@@ -198,41 +31,30 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
   const [activeIndex, setActiveIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
-  const galleryRef = useRef<HTMLDivElement>(null);
+  const thumbsRef = useRef<HTMLDivElement>(null);
 
-  const filteredScreenshots = categoryId
-    ? SCREENSHOTS.filter(s => s.id === categoryId)
+  const filteredItems = categoryId
+    ? PREVIEW_CONFIGS.filter(s => s.id === categoryId)
     : limit
-    ? SCREENSHOTS.slice(0, limit)
-    : SCREENSHOTS;
-
-  useEffect(() => {
-    filteredScreenshots.forEach(screenshot => {
-      const img = new Image();
-      img.src = screenshot.imagePath;
-      img.onload = () => {
-        setLoadedImages(prev => new Set(prev).add(screenshot.id));
-      };
-    });
-  }, []);
+    ? PREVIEW_CONFIGS.slice(0, limit)
+    : PREVIEW_CONFIGS;
 
   const handleSlideChange = (newIndex: number) => {
-    if (isTransitioning) return;
+    if (isTransitioning || newIndex === activeIndex) return;
     setIsTransitioning(true);
     setTimeout(() => {
       setActiveIndex(newIndex);
       setIsTransitioning(false);
-    }, 200);
+    }, 150);
   };
 
   const handlePrev = () => {
-    const newIndex = activeIndex > 0 ? activeIndex - 1 : filteredScreenshots.length - 1;
+    const newIndex = activeIndex > 0 ? activeIndex - 1 : filteredItems.length - 1;
     handleSlideChange(newIndex);
   };
 
   const handleNext = () => {
-    const newIndex = activeIndex < filteredScreenshots.length - 1 ? activeIndex + 1 : 0;
+    const newIndex = activeIndex < filteredItems.length - 1 ? activeIndex + 1 : 0;
     handleSlideChange(newIndex);
   };
 
@@ -248,13 +70,21 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showLightbox, activeIndex]);
 
-  if (filteredScreenshots.length === 0) return null;
+  useEffect(() => {
+    if (thumbsRef.current) {
+      const activeThumb = thumbsRef.current.children[activeIndex] as HTMLElement;
+      if (activeThumb) {
+        activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeIndex]);
 
-  const current = filteredScreenshots[activeIndex];
-  const isImageLoaded = loadedImages.has(current.id);
+  if (filteredItems.length === 0) return null;
+
+  const current = filteredItems[activeIndex];
 
   return (
-    <div className="screenshot-gallery" ref={galleryRef}>
+    <div className="screenshot-gallery">
       {/* Main Preview */}
       <div
         className={`screenshot-preview ${isTransitioning ? 'transitioning' : ''}`}
@@ -262,94 +92,92 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === 'Enter' && setShowLightbox(true)}
+        aria-label={isZh ? current.titleZh : current.titleEn}
       >
-        <div className="screenshot-preview-header">
-          <div className="screenshot-preview-dots">
+        {/* Browser Chrome */}
+        <div className="screenshot-browser-chrome">
+          <div className="browser-dots">
             <span className="dot dot-red" />
             <span className="dot dot-yellow" />
             <span className="dot dot-green" />
           </div>
-          <div className="screenshot-preview-badge" style={{ backgroundColor: current.color }}>
-            {current.icon}
-            <span>{isZh ? current.titleZh : current.titleEn}</span>
+          <div className="browser-title">
+            <span className="browser-url">pinkernelseo.com/{current.id}</span>
+          </div>
+          <div className="browser-actions">
+            <span className="browser-action" />
+            <span className="browser-action" />
+            <span className="browser-action" />
           </div>
         </div>
 
-        <div className="screenshot-image-container">
-          {isImageLoaded ? (
-            <img
-              src={current.imagePath}
-              alt={isZh ? current.titleZh : current.titleEn}
-              className="screenshot-image"
-            />
-          ) : (
-            <div className="screenshot-placeholder">
-              <div className="screenshot-placeholder-inner">
-                <div className="screenshot-placeholder-icon" style={{ color: current.color }}>
-                  {current.icon}
-                </div>
-                <span>{isZh ? '加载中...' : 'Loading...'}</span>
-                <div className="screenshot-loading-bar">
-                  <div className="screenshot-loading-progress" />
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="screenshot-zoom-hint">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35M11 8v6M8 11h6" />
-            </svg>
-            <span>{isZh ? '点击放大' : 'Click to enlarge'}</span>
-          </div>
+        {/* Preview Content */}
+        <div className="screenshot-content">
+          <AppPreview previewId={current.id} className="screenshot-app-preview" />
+        </div>
+
+        {/* Zoom Hint */}
+        <div className="screenshot-zoom-hint">
+          <ZoomIn size={14} />
+          <span>{isZh ? '点击放大' : 'Click to enlarge'}</span>
         </div>
       </div>
 
-      {/* Thumbnail Strip */}
-      <div className="screenshot-thumbs-strip">
+      {/* Navigation */}
+      <div className="screenshot-navigation">
         <button
-          className="screenshot-thumbs-nav prev"
+          className="screenshot-nav-btn"
           onClick={handlePrev}
           aria-label={isZh ? '上一个' : 'Previous'}
         >
-          ‹
+          <ChevronLeft size={18} />
         </button>
 
-        <div className="screenshot-thumbs">
-          {filteredScreenshots.map((screenshot, index) => (
-            <button
-              key={screenshot.id}
-              className={`screenshot-thumb ${index === activeIndex ? 'active' : ''}`}
-              onClick={() => handleSlideChange(index)}
-              style={{ '--thumb-color': screenshot.color } as React.CSSProperties}
-              aria-label={isZh ? screenshot.titleZh : screenshot.titleEn}
-            >
-              <div className="screenshot-thumb-icon" style={{ color: screenshot.color }}>
-                {screenshot.icon}
-              </div>
-              <span className="screenshot-thumb-label">
-                {isZh ? screenshot.titleZh : screenshot.titleEn}
-              </span>
-            </button>
-          ))}
+        <div className="screenshot-nav-indicator">
+          <span className="nav-current">{activeIndex + 1}</span>
+          <span className="nav-sep">/</span>
+          <span className="nav-total">{filteredItems.length}</span>
         </div>
 
         <button
-          className="screenshot-thumbs-nav next"
+          className="screenshot-nav-btn"
           onClick={handleNext}
           aria-label={isZh ? '下一个' : 'Next'}
         >
-          ›
+          <ChevronRight size={18} />
         </button>
       </div>
 
-      {/* Features Pills */}
+      {/* Thumbnail Strip */}
+      <div className="screenshot-thumbs" ref={thumbsRef}>
+        {filteredItems.map((item, index) => (
+          <button
+            key={item.id}
+            className={`screenshot-thumb ${index === activeIndex ? 'active' : ''}`}
+            onClick={() => handleSlideChange(index)}
+            style={{ '--thumb-color': item.color } as React.CSSProperties}
+            aria-label={isZh ? item.titleZh : item.titleEn}
+          >
+            <div
+              className="screenshot-thumb-icon"
+              style={{ color: item.color, backgroundColor: `${item.color}15` }}
+            >
+              {item.icon}
+            </div>
+            <span className="screenshot-thumb-label">
+              {isZh ? item.titleZh : item.titleEn}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Features */}
       <div className="screenshot-features">
         {(isZh ? current.featuresZh : current.featuresEn).map((feature, i) => (
           <span
             key={i}
             className="screenshot-feature-pill"
-            style={{ animationDelay: `${i * 50}ms` }}
+            style={{ animationDelay: `${i * 50}ms`, '--pill-color': current.color } as React.CSSProperties}
           >
             {current.icon}
             {feature}
@@ -371,7 +199,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
               onClick={() => setShowLightbox(false)}
               aria-label={isZh ? '关闭' : 'Close'}
             >
-              ×
+              <X size={20} />
             </button>
 
             <button
@@ -379,21 +207,11 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
               onClick={handlePrev}
               aria-label={isZh ? '上一个' : 'Previous'}
             >
-              ‹
+              <ChevronLeft size={24} />
             </button>
 
-            <div className="screenshot-lightbox-image-wrapper">
-              {isImageLoaded ? (
-                <img
-                  src={current.imagePath}
-                  alt={isZh ? current.titleZh : current.titleEn}
-                  className="screenshot-lightbox-image"
-                />
-              ) : (
-                <div className="screenshot-lightbox-placeholder">
-                  <div style={{ color: current.color }}>{current.icon}</div>
-                </div>
-              )}
+            <div className="screenshot-lightbox-preview">
+              <AppPreview previewId={current.id} className="screenshot-lightbox-app" />
             </div>
 
             <button
@@ -401,17 +219,20 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
               onClick={handleNext}
               aria-label={isZh ? '下一个' : 'Next'}
             >
-              ›
+              <ChevronRight size={24} />
             </button>
 
             <div className="screenshot-lightbox-info">
-              <div className="screenshot-lightbox-badge" style={{ backgroundColor: current.color }}>
+              <div
+                className="screenshot-lightbox-badge"
+                style={{ backgroundColor: current.color }}
+              >
                 {current.icon}
                 <span>{isZh ? current.titleZh : current.titleEn}</span>
               </div>
               <p className="screenshot-lightbox-desc">{isZh ? current.descZh : current.descEn}</p>
               <span className="screenshot-lightbox-counter">
-                {activeIndex + 1} / {filteredScreenshots.length}
+                {activeIndex + 1} / {filteredItems.length}
               </span>
             </div>
           </div>
@@ -422,41 +243,44 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
         .screenshot-gallery {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 16px;
         }
 
         /* Main Preview */
         .screenshot-preview {
           position: relative;
           background: white;
-          border-radius: 16px;
+          border-radius: 12px;
           overflow: hidden;
           cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .screenshot-preview:hover {
           transform: translateY(-2px);
-          box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.12);
+          border-color: #cbd5e1;
         }
 
         .screenshot-preview.transitioning {
-          opacity: 0.7;
-          transform: scale(0.98);
+          opacity: 0.6;
         }
 
-        .screenshot-preview-header {
+        /* Browser Chrome */
+        .screenshot-browser-chrome {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 12px 16px;
+          gap: 10px;
+          padding: 10px 14px;
           background: #1e1e1e;
+          border-bottom: 1px solid #333;
         }
 
-        .screenshot-preview-dots {
+        .browser-dots {
           display: flex;
-          gap: 6px;
+          gap: 5px;
         }
 
         .dot {
@@ -469,97 +293,47 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
         .dot-yellow { background: #febc2e; }
         .dot-green { background: #28c840; }
 
-        .screenshot-preview-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 12px;
-          border-radius: 6px;
-          color: white;
-          font-size: 12px;
-          font-weight: 600;
-          margin-left: auto;
+        .browser-title {
+          flex: 1;
+          display: flex;
+          justify-content: center;
         }
 
-        .screenshot-image-container {
+        .browser-url {
+          padding: 4px 12px;
+          background: #2a2a2a;
+          border: 1px solid #3a3a3a;
+          border-radius: 5px;
+          font-size: 10px;
+          color: #888;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .browser-actions {
+          display: flex;
+          gap: 4px;
+        }
+
+        .browser-action {
+          width: 14px;
+          height: 14px;
+          border-radius: 3px;
+          background: #444;
+        }
+
+        /* Preview Content */
+        .screenshot-content {
           position: relative;
-          aspect-ratio: 16/10;
-          background: #f8fafc;
-          overflow: hidden;
         }
 
-        .screenshot-image {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        .screenshot-app-preview {
+          height: 320px;
+          border-radius: 0;
+          border: none;
+          box-shadow: none;
         }
 
-        .screenshot-preview:hover .screenshot-image {
-          transform: scale(1.02);
-        }
-
-        .screenshot-placeholder {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        }
-
-        .screenshot-placeholder-inner {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-          text-align: center;
-          padding: 24px;
-        }
-
-        .screenshot-placeholder-icon {
-          width: 56px;
-          height: 56px;
-          border-radius: 14px;
-          background: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.05); opacity: 0.8; }
-        }
-
-        .screenshot-placeholder-inner span {
-          font-size: 13px;
-          color: #64748b;
-        }
-
-        .screenshot-loading-bar {
-          width: 120px;
-          height: 3px;
-          background: #e2e8f0;
-          border-radius: 2px;
-          overflow: hidden;
-        }
-
-        .screenshot-loading-progress {
-          width: 30%;
-          height: 100%;
-          background: #4facfe;
-          border-radius: 2px;
-          animation: loading 1s ease-in-out infinite;
-        }
-
-        @keyframes loading {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(400%); }
-        }
-
+        /* Zoom Hint */
         .screenshot-zoom-hint {
           position: absolute;
           bottom: 12px;
@@ -568,7 +342,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           align-items: center;
           gap: 6px;
           padding: 6px 10px;
-          background: rgba(0, 0, 0, 0.6);
+          background: rgba(0, 0, 0, 0.7);
           backdrop-filter: blur(8px);
           border-radius: 6px;
           color: white;
@@ -577,6 +351,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           opacity: 0;
           transform: translateY(4px);
           transition: all 0.2s;
+          pointer-events: none;
         }
 
         .screenshot-preview:hover .screenshot-zoom-hint {
@@ -584,13 +359,56 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           transform: translateY(0);
         }
 
-        /* Thumbnails Strip */
-        .screenshot-thumbs-strip {
+        /* Navigation */
+        .screenshot-navigation {
           display: flex;
           align-items: center;
-          gap: 8px;
+          justify-content: center;
+          gap: 16px;
         }
 
+        .screenshot-nav-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+          background: white;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.15s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .screenshot-nav-btn:hover {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+          color: #1e3a5f;
+        }
+
+        .screenshot-nav-indicator {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .nav-current {
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .nav-sep {
+          color: #cbd5e1;
+        }
+
+        .nav-total {
+          color: #94a3b8;
+        }
+
+        /* Thumbnails */
         .screenshot-thumbs {
           display: flex;
           gap: 6px;
@@ -602,28 +420,6 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
 
         .screenshot-thumbs::-webkit-scrollbar {
           display: none;
-        }
-
-        .screenshot-thumbs-nav {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          border: 1px solid #e2e8f0;
-          background: white;
-          color: #64748b;
-          font-size: 18px;
-          cursor: pointer;
-          transition: all 0.15s;
-          flex-shrink: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .screenshot-thumbs-nav:hover {
-          background: #f8fafc;
-          border-color: #cbd5e1;
-          color: #1e3a5f;
         }
 
         .screenshot-thumb {
@@ -656,7 +452,6 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           width: 32px;
           height: 32px;
           border-radius: 6px;
-          background: color-mix(in srgb, var(--thumb-color) 10%, white);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -670,7 +465,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           white-space: nowrap;
         }
 
-        /* Features Pills */
+        /* Features */
         .screenshot-features {
           display: flex;
           flex-wrap: wrap;
@@ -683,13 +478,19 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           align-items: center;
           gap: 6px;
           padding: 6px 12px;
-          background: #f1f5f9;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 20px;
           font-size: 12px;
           font-weight: 500;
           color: #475569;
           animation: fadeInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
           opacity: 0;
+        }
+
+        .screenshot-feature-pill svg {
+          opacity: 0.5;
+          color: var(--pill-color, #64748b);
         }
 
         @keyframes fadeInUp {
@@ -703,21 +504,17 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           }
         }
 
-        .screenshot-feature-pill svg {
-          opacity: 0.6;
-        }
-
         /* Lightbox */
         .screenshot-lightbox {
           position: fixed;
           inset: 0;
           background: rgba(0, 0, 0, 0.92);
-          backdrop-filter: blur(8px);
+          backdrop-filter: blur(12px);
           z-index: 1000;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 40px;
+          padding: 32px;
           animation: fadeIn 0.2s ease-out;
         }
 
@@ -728,7 +525,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
 
         .screenshot-lightbox-content {
           position: relative;
-          max-width: 1200px;
+          max-width: 900px;
           width: 100%;
           display: flex;
           flex-direction: column;
@@ -737,7 +534,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
 
         .screenshot-lightbox-close {
           position: absolute;
-          top: -50px;
+          top: -48px;
           right: 0;
           width: 40px;
           height: 40px;
@@ -745,7 +542,6 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           background: rgba(255, 255, 255, 0.1);
           border: 1px solid rgba(255, 255, 255, 0.2);
           color: white;
-          font-size: 24px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -756,7 +552,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
 
         .screenshot-lightbox-close:hover {
           background: rgba(255, 255, 255, 0.2);
-          transform: scale(1.1);
+          transform: scale(1.05);
         }
 
         .screenshot-lightbox-nav {
@@ -769,7 +565,6 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           background: rgba(255, 255, 255, 0.1);
           border: 1px solid rgba(255, 255, 255, 0.2);
           color: white;
-          font-size: 24px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -780,7 +575,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
 
         .screenshot-lightbox-nav:hover {
           background: rgba(255, 255, 255, 0.2);
-          transform: translateY(-50%) scale(1.1);
+          transform: translateY(-50%) scale(1.05);
         }
 
         .screenshot-lightbox-nav.prev {
@@ -791,33 +586,17 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           right: -60px;
         }
 
-        .screenshot-lightbox-image-wrapper {
-          position: relative;
+        .screenshot-lightbox-preview {
           border-radius: 12px;
           overflow: hidden;
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        .screenshot-lightbox-image {
-          width: 100%;
-          height: auto;
-          max-height: 70vh;
-          object-fit: contain;
-          display: block;
-        }
-
-        .screenshot-lightbox-placeholder {
-          aspect-ratio: 16/10;
-          background: #1e1e1e;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .screenshot-lightbox-placeholder svg {
-          width: 64px;
-          height: 64px;
-          opacity: 0.5;
+        .screenshot-lightbox-app {
+          height: 480px;
+          border-radius: 0;
+          border: none;
+          box-shadow: none;
         }
 
         .screenshot-lightbox-info {
@@ -825,7 +604,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
 
         .screenshot-lightbox-badge {
@@ -854,7 +633,7 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
 
         /* Responsive */
         @media (max-width: 768px) {
-          .screenshot-thumbs-strip {
+          .screenshot-thumbs {
             gap: 4px;
           }
 
@@ -874,7 +653,6 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
           .screenshot-lightbox-nav {
             width: 36px;
             height: 36px;
-            font-size: 18px;
           }
 
           .screenshot-lightbox-nav.prev {
@@ -893,22 +671,18 @@ export function ScreenshotGallery({ categoryId, limit }: ScreenshotGalleryProps)
 
         @media (prefers-reduced-motion: reduce) {
           .screenshot-preview,
-          .screenshot-image,
           .screenshot-zoom-hint,
           .screenshot-thumb,
           .screenshot-lightbox,
           .screenshot-lightbox-nav,
-          .screenshot-lightbox-close {
+          .screenshot-lightbox-close,
+          .screenshot-feature-pill {
             transition: none;
             animation: none;
           }
 
-          .screenshot-placeholder-icon {
-            animation: none;
-          }
-
-          .screenshot-loading-progress {
-            animation: none;
+          .screenshot-feature-pill {
+            opacity: 1;
           }
         }
       `}</style>
@@ -920,20 +694,10 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
   const { language } = useLanguage();
   const isZh = language === 'zh';
   const [activeIndex, setActiveIndex] = useState(0);
-  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const thumbsRef = useRef<HTMLDivElement>(null);
 
-  const items = limit ? SCREENSHOTS.slice(0, limit) : SCREENSHOTS;
-
-  useEffect(() => {
-    items.forEach(item => {
-      const img = new Image();
-      img.src = item.imagePath;
-      img.onload = () => {
-        setLoadedImages(prev => new Set(prev).add(item.id));
-      };
-    });
-  }, []);
+  const items = limit ? PREVIEW_CONFIGS.slice(0, limit) : PREVIEW_CONFIGS;
 
   const handleSlideChange = (newIndex: number) => {
     if (isTransitioning || newIndex === activeIndex) return;
@@ -941,18 +705,29 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
     setTimeout(() => {
       setActiveIndex(newIndex);
       setIsTransitioning(false);
-    }, 200);
+    }, 150);
   };
 
+  useEffect(() => {
+    if (thumbsRef.current) {
+      const activeThumb = thumbsRef.current.children[activeIndex] as HTMLElement;
+      if (activeThumb) {
+        activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeIndex]);
+
   const current = items[activeIndex];
-  const isImageLoaded = loadedImages.has(current.id);
 
   return (
     <div className="screenshot-showcase">
       {/* Header */}
       <div className="screenshot-showcase-header">
         <div className="screenshot-showcase-title-row">
-          <div className="screenshot-showcase-icon" style={{ backgroundColor: current.color }}>
+          <div
+            className="screenshot-showcase-icon"
+            style={{ backgroundColor: current.color }}
+          >
             {current.icon}
           </div>
           <div>
@@ -966,7 +741,7 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
             onClick={() => handleSlideChange(activeIndex > 0 ? activeIndex - 1 : items.length - 1)}
             aria-label={isZh ? '上一个' : 'Previous'}
           >
-            ‹
+            <ChevronLeft size={16} />
           </button>
           <span>{activeIndex + 1} / {items.length}</span>
           <button
@@ -974,43 +749,33 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
             onClick={() => handleSlideChange(activeIndex < items.length - 1 ? activeIndex + 1 : 0)}
             aria-label={isZh ? '下一个' : 'Next'}
           >
-            ›
+            <ChevronRight size={16} />
           </button>
         </div>
       </div>
 
       {/* Preview */}
       <div className={`screenshot-showcase-preview ${isTransitioning ? 'transitioning' : ''}`}>
-        <div className="screenshot-showcase-browser-chrome">
-          <div className="screenshot-showcase-browser-dots">
-            <span /><span /><span />
+        {/* Browser Chrome */}
+        <div className="screenshot-browser-chrome">
+          <div className="browser-dots">
+            <span className="dot dot-red" />
+            <span className="dot dot-yellow" />
+            <span className="dot dot-green" />
           </div>
-          <div className="screenshot-showcase-browser-url">
-            pinkernelseo.com / {current.id}
+          <div className="browser-title">
+            <span className="browser-url">pinkernelseo.com/{current.id}</span>
           </div>
-          <div className="screenshot-showcase-browser-actions">
+          <div className="browser-actions">
             <span className="browser-action" />
             <span className="browser-action" />
             <span className="browser-action" />
           </div>
         </div>
 
-        <div className="screenshot-showcase-image">
-          {isImageLoaded ? (
-            <img
-              src={current.imagePath}
-              alt={isZh ? current.titleZh : current.titleEn}
-              className="screenshot-showcase-img"
-            />
-          ) : (
-            <div className="screenshot-showcase-placeholder">
-              <div className="screenshot-showcase-placeholder-icon" style={{ color: current.color }}>
-                {React.cloneElement(current.icon as React.ReactElement, { size: 48 })}
-              </div>
-              <span>{isZh ? '功能界面截图' : 'Feature Screenshot'}</span>
-              <span className="screenshot-showcase-placeholder-id">{current.id}</span>
-            </div>
-          )}
+        {/* Preview Content */}
+        <div className="screenshot-showcase-content">
+          <AppPreview previewId={current.id} className="screenshot-showcase-app" />
         </div>
       </div>
 
@@ -1020,7 +785,7 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
           <span
             key={i}
             className="screenshot-showcase-feature"
-            style={{ animationDelay: `${i * 60}ms` }}
+            style={{ animationDelay: `${i * 60}ms`, '--feat-color': current.color } as React.CSSProperties}
           >
             {current.icon}
             {feature}
@@ -1028,8 +793,8 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
         ))}
       </div>
 
-      {/* Thumbnails Strip */}
-      <div className="screenshot-showcase-thumbs">
+      {/* Thumbnails */}
+      <div className="screenshot-showcase-thumbs" ref={thumbsRef}>
         {items.map((item, index) => (
           <button
             key={item.id}
@@ -1038,7 +803,10 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
             style={{ '--thumb-color': item.color } as React.CSSProperties}
             aria-label={isZh ? item.titleZh : item.titleEn}
           >
-            <div className="screenshot-showcase-thumb-icon" style={{ color: item.color }}>
+            <div
+              className="screenshot-showcase-thumb-icon"
+              style={{ color: item.color, backgroundColor: `${item.color}15` }}
+            >
               {item.icon}
             </div>
             <span>{isZh ? item.titleZh : item.titleEn}</span>
@@ -1050,7 +818,7 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
         .screenshot-showcase {
           background: white;
           border: 1px solid #e2e8f0;
-          border-radius: 20px;
+          border-radius: 16px;
           overflow: hidden;
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
@@ -1059,7 +827,7 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 20px 24px;
+          padding: 16px 20px;
           background: linear-gradient(to right, #f8fafc, #ffffff);
           border-bottom: 1px solid #f1f5f9;
         }
@@ -1067,23 +835,23 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
         .screenshot-showcase-title-row {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 12px;
         }
 
         .screenshot-showcase-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .screenshot-showcase-title-row h3 {
-          font-family: 'Manrope', sans-serif;
-          font-size: 16px;
+          font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 15px;
           font-weight: 700;
           color: #0f172a;
           margin: 0 0 2px;
@@ -1104,19 +872,18 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
         .screenshot-showcase-nav span {
           font-size: 12px;
           color: #94a3b8;
-          min-width: 44px;
+          min-width: 40px;
           text-align: center;
           font-weight: 500;
         }
 
         .screenshot-showcase-nav-btn {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
           border: 1px solid #e2e8f0;
           background: white;
           color: #64748b;
-          font-size: 18px;
           cursor: pointer;
           transition: all 0.15s;
           display: flex;
@@ -1133,114 +900,84 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
         /* Preview */
         .screenshot-showcase-preview {
           position: relative;
-          transition: opacity 0.2s, transform 0.2s;
+          transition: opacity 0.15s, transform 0.15s;
         }
 
         .screenshot-showcase-preview.transitioning {
-          opacity: 0.7;
-          transform: scale(0.99);
+          opacity: 0.6;
         }
 
-        .screenshot-showcase-browser-chrome {
+        /* Browser Chrome */
+        .screenshot-browser-chrome {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 10px 16px;
+          gap: 10px;
+          padding: 8px 12px;
           background: #1e1e1e;
           border-bottom: 1px solid #333;
         }
 
-        .screenshot-showcase-browser-dots {
+        .browser-dots {
           display: flex;
           gap: 5px;
         }
 
-        .screenshot-showcase-browser-dots span {
+        .dot {
           width: 9px;
           height: 9px;
           border-radius: 50%;
-          background: #555;
         }
 
-        .screenshot-showcase-browser-dots span:nth-child(1) { background: #ff5f57; }
-        .screenshot-showcase-browser-dots span:nth-child(2) { background: #febc2e; }
-        .screenshot-showcase-browser-dots span:nth-child(3) { background: #28c840; }
+        .dot-red { background: #ff5f57; }
+        .dot-yellow { background: #febc2e; }
+        .dot-green { background: #28c840; }
 
-        .screenshot-showcase-browser-url {
+        .browser-title {
           flex: 1;
+          display: flex;
+          justify-content: center;
+        }
+
+        .browser-url {
+          padding: 3px 10px;
           background: #2a2a2a;
           border: 1px solid #3a3a3a;
-          border-radius: 5px;
-          padding: 5px 12px;
-          font-size: 11px;
+          border-radius: 4px;
+          font-size: 9px;
           color: #888;
-          text-align: center;
-          font-family: 'SF Mono', Monaco, monospace;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
 
-        .screenshot-showcase-browser-actions {
+        .browser-actions {
           display: flex;
-          gap: 4px;
+          gap: 3px;
         }
 
         .browser-action {
-          width: 16px;
-          height: 16px;
-          border-radius: 3px;
+          width: 12px;
+          height: 12px;
+          border-radius: 2px;
           background: #444;
         }
 
-        .screenshot-showcase-image {
-          position: relative;
-          aspect-ratio: 16/10;
+        /* Content */
+        .screenshot-showcase-content {
           background: #f8fafc;
-          overflow: hidden;
         }
 
-        .screenshot-showcase-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .screenshot-showcase:hover .screenshot-showcase-img {
-          transform: scale(1.02);
-        }
-
-        .screenshot-showcase-placeholder {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        }
-
-        .screenshot-showcase-placeholder-icon {
-          opacity: 0.25;
-        }
-
-        .screenshot-showcase-placeholder span {
-          font-size: 13px;
-          color: #94a3b8;
-          font-weight: 500;
-        }
-
-        .screenshot-showcase-placeholder-id {
-          font-family: 'SF Mono', Monaco, monospace !important;
-          font-size: 11px !important;
-          color: #cbd5e1 !important;
+        .screenshot-showcase-app {
+          height: 280px;
+          border-radius: 0;
+          border: none;
+          box-shadow: none;
         }
 
         /* Features */
         .screenshot-showcase-features {
           display: flex;
           flex-wrap: wrap;
-          gap: 8px;
-          padding: 16px 24px;
+          gap: 6px;
+          padding: 12px 16px;
           border-top: 1px solid #f1f5f9;
           background: #fafbfc;
         }
@@ -1248,16 +985,21 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
         .screenshot-showcase-feature {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 6px 12px;
+          gap: 5px;
+          padding: 5px 10px;
           background: white;
           border: 1px solid #e2e8f0;
-          border-radius: 20px;
-          font-size: 12px;
+          border-radius: 16px;
+          font-size: 11px;
           font-weight: 500;
           color: #475569;
           animation: fadeInScale 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
           opacity: 0;
+        }
+
+        .screenshot-showcase-feature svg {
+          opacity: 0.4;
+          color: var(--feat-color, #64748b);
         }
 
         @keyframes fadeInScale {
@@ -1271,15 +1013,11 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
           }
         }
 
-        .screenshot-showcase-feature svg {
-          opacity: 0.5;
-        }
-
-        /* Thumbs */
+        /* Thumbnails */
         .screenshot-showcase-thumbs {
           display: flex;
-          gap: 6px;
-          padding: 12px 16px;
+          gap: 4px;
+          padding: 10px 12px;
           background: white;
           border-top: 1px solid #f1f5f9;
           overflow-x: auto;
@@ -1295,15 +1033,15 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 4px;
-          padding: 8px 10px;
+          gap: 3px;
+          padding: 6px 8px;
           border: 1px solid #e2e8f0;
-          border-radius: 8px;
+          border-radius: 6px;
           background: white;
           cursor: pointer;
           transition: all 0.15s;
           flex-shrink: 0;
-          min-width: 72px;
+          min-width: 64px;
         }
 
         .screenshot-showcase-thumb:hover {
@@ -1317,17 +1055,16 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
         }
 
         .screenshot-showcase-thumb-icon {
-          width: 30px;
-          height: 30px;
-          border-radius: 6px;
-          background: color-mix(in srgb, var(--thumb-color) 10%, white);
+          width: 26px;
+          height: 26px;
+          border-radius: 5px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
         .screenshot-showcase-thumb span {
-          font-size: 9px;
+          font-size: 8px;
           font-weight: 600;
           color: #64748b;
           text-align: center;
@@ -1338,7 +1075,7 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
         @media (max-width: 640px) {
           .screenshot-showcase-header {
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             align-items: flex-start;
           }
 
@@ -1351,20 +1088,19 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
           }
 
           .screenshot-showcase-thumb {
-            min-width: 50px;
-            padding: 8px;
+            min-width: 44px;
+            padding: 6px;
           }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .screenshot-showcase-preview,
-          .screenshot-showcase-img {
+          .screenshot-showcase-feature {
             transition: none;
             animation: none;
           }
 
           .screenshot-showcase-feature {
-            animation: none;
             opacity: 1;
           }
         }
@@ -1373,4 +1109,4 @@ export function ScreenshotShowcase({ limit }: { limit?: number }) {
   );
 }
 
-export { SCREENSHOTS };
+export { PREVIEW_CONFIGS };
