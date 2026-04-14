@@ -601,11 +601,13 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
           overflow: hidden;
           background: var(--color-surface);
           padding-left: 256px;
+          max-height: calc(100vh - 160px);
         }
 
         @media (max-width: 1023px) {
           .reviews-list {
             padding-left: 0;
+            max-height: none;
           }
         }
 
@@ -653,11 +655,31 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
 
         .review-cards {
           flex: 1;
+          max-height: calc(100vh - 280px);
           overflow-y: auto;
           padding: 12px;
           display: flex;
           flex-direction: column;
           gap: 8px;
+          scrollbar-width: thin;
+          scrollbar-color: var(--color-border) transparent;
+        }
+
+        .review-cards::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .review-cards::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .review-cards::-webkit-scrollbar-thumb {
+          background: var(--color-border);
+          border-radius: 3px;
+        }
+
+        .review-cards::-webkit-scrollbar-thumb:hover {
+          background: var(--color-border-strong);
         }
 
         .review-card {
