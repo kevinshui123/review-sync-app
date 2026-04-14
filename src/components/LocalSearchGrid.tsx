@@ -322,15 +322,16 @@ export function LocalSearchGrid() {
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .lsg-container { padding: 24px; }
+        .lsg-container { padding: 24px; overflow-x: hidden; max-width: 100%; }
         .lsg-header { margin-bottom: 20px; }
         .lsg-title {
           font-family: var(--font-headline); font-size: 20px; font-weight: 700; color: var(--color-text-primary);
           letter-spacing: -0.02em; margin: 0;
         }
-        .lsg-form { margin-bottom: 20px; padding: 20px; }
+        .lsg-form { margin-bottom: 20px; padding: 20px; overflow-x: auto; }
         .lsg-form-grid {
           display: grid; grid-template-columns: 1fr 140px 140px auto; gap: 12px; align-items: end;
+          min-width: 0;
         }
         @media (max-width: 768px) { .lsg-form-grid { grid-template-columns: 1fr; } }
         .form-group { display: flex; flex-direction: column; gap: 6px; }
