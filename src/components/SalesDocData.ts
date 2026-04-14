@@ -3,8 +3,11 @@ export interface Feature {
   name: string;
   nameEn: string;
   description: string;
+  descriptionEn: string;
   usage: string[];
+  usageEn: string[];
   tips?: string[];
+  tipsEn?: string[];
   relatedFeatures?: string[];
 }
 
@@ -14,6 +17,7 @@ export interface SubCategory {
   nameEn: string;
   icon: string;
   description: string;
+  descriptionEn: string;
   features: Feature[];
 }
 
@@ -24,6 +28,7 @@ export interface Category {
   icon: string;
   color: string;
   description: string;
+  descriptionEn: string;
   subcategories: SubCategory[];
 }
 
@@ -35,6 +40,7 @@ export const CATEGORIES: Category[] = [
     icon: 'Dashboard',
     color: '#1e3a5f',
     description: '一站式查看所有门店的核心业务数据，快速掌握经营状况',
+    descriptionEn: 'View core business data for all locations in one place, quickly understand operations',
     subcategories: [
       {
         id: 'overview',
@@ -42,58 +48,91 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Overview',
         icon: 'Overview',
         description: '展示所有门店的整体数据摘要和关键指标',
+        descriptionEn: 'Display overall data summary and key metrics for all locations',
         features: [
           {
             id: 'kpi-cards',
             name: 'KPI指标卡片',
             nameEn: 'KPI Cards',
             description: '在仪表盘顶部以卡片形式展示6个核心KPI指标：搜索展示次数、地图查看次数、网站点击次数、导航请求次数、电话拨打次数、已发布帖子数。每个卡片配有图标、当前数值和与上一周期的变化百分比。',
+            descriptionEn: 'Display 6 core KPI metrics at the top of the dashboard: search views, map views, website clicks, direction requests, phone calls, and published posts. Each card shows icon, current value, and percentage change vs previous period.',
             usage: [
               '进入系统后默认显示仪表盘页面',
               '在顶部筛选器中选择时间范围（7天/30天/90天/12个月）',
               '选择特定门店或查看所有门店汇总数据',
               '点击刷新按钮手动更新数据',
             ],
+            usageEn: [
+              'Dashboard is shown by default after entering the system',
+              'Select time range (7/30/90 days, 12 months) in the top filter',
+              'Select specific location or view all locations aggregated',
+              'Click refresh to manually update data',
+            ],
             tips: ['颜色编码：深蓝色=搜索展示、紫色=地图查看、绿色=网站点击、橙色=导航、红色=电话、深蓝=帖子'],
+            tipsEn: ['Color coding: Dark blue=Search, Purple=Map, Green=Clicks, Orange=Directions, Red=Phone, Navy=Posts'],
           },
           {
             id: 'trend-charts',
             name: '趋势图表',
             nameEn: 'Trend Charts',
             description: '使用面积图和组合图表展示关键指标随时间的变化趋势。包括搜索展示趋势（搜索+地图双线图）和用户行为趋势（网站点击+导航+电话三线图），支持鼠标悬停查看详细数值。',
+            descriptionEn: 'Use area charts and combo charts to display trends of key metrics over time. Includes search views trend (search + map dual-line chart) and user behavior trend (website clicks + directions + phone triple-line chart), with hover tooltips for detailed values.',
             usage: [
               '在趋势图区域查看数据随时间的变化',
               '将鼠标悬停在数据点上查看具体数值',
               '使用时间范围筛选器调整显示的时间段',
               '图表自动响应窗口宽度调整尺寸',
             ],
+            usageEn: [
+              'View data trends in the trend chart area',
+              'Hover over data points to see specific values',
+              'Use time range filter to adjust the displayed period',
+              'Charts automatically resize based on window width',
+            ],
             tips: ['双线面积图可以直观对比搜索展示和地图查看的关系'],
+            tipsEn: ['Dual-line area charts let you compare search and map views intuitively'],
           },
           {
             id: 'health-score',
             name: '门店健康评分',
             nameEn: 'Location Health Score',
             description: '综合评估所有门店的Google商业信息完整度评分，基于商家名称、地址、电话号码、网站和评价等因素计算。分数越高表示商业信息越完善，在Google搜索结果中的表现越好。',
+            descriptionEn: 'Comprehensive health score for all locations based on Google business info completeness. Calculated from business name, address, phone, website, and reviews. Higher scores mean more complete business info and better Google search performance.',
             usage: [
               '在仪表盘底部左侧查看整体健康评分',
               '健康评分范围为0-100分',
               '绿色表示80分以上，黄色表示60-79分，红色表示60分以下',
               '点击具体门店可查看详细的健康状况',
             ],
+            usageEn: [
+              'View overall health score in the bottom-left of dashboard',
+              'Health score ranges from 0-100',
+              'Green = 80+, Yellow = 60-79, Red = below 60',
+              'Click specific location to view detailed health status',
+            ],
             tips: ['定期检查健康评分，确保商业信息始终保持最新'],
+            tipsEn: ['Check health score regularly to keep business info up to date'],
           },
           {
             id: 'recent-reviews',
             name: '最新评价动态',
             nameEn: 'Recent Reviews',
             description: '实时展示来自Google和其他平台的最新客户评价，支持筛选查看所有/正面/负面评价，并显示已回复和待回复状态，帮助企业及时响应客户反馈。',
+            descriptionEn: 'Real-time display of latest customer reviews from Google and other platforms. Supports filtering by all/positive/negative reviews, shows replied/pending status to help businesses respond to customer feedback promptly.',
             usage: [
               '在仪表盘右侧面板查看最新评价列表',
               '使用筛选按钮切换查看全部/正面/负面评价',
               '点击评价卡片查看完整内容和回复状态',
               '点击"回复"按钮直接跳转到评价管理页面',
             ],
+            usageEn: [
+              'View latest reviews in the right panel of dashboard',
+              'Use filter buttons to switch between all/positive/negative reviews',
+              'Click review card to view full content and reply status',
+              'Click "Reply" to jump to review management page',
+            ],
             tips: ['及时回复负面评价可以显著改善品牌形象'],
+            tipsEn: ['Responding to negative reviews promptly can significantly improve brand image'],
           },
         ],
       },
@@ -106,6 +145,7 @@ export const CATEGORIES: Category[] = [
     icon: 'Listings',
     color: '#0ea5e9',
     description: '统一管理所有门店的Google商业信息，保持数据一致性',
+    descriptionEn: 'Manage Google business info for all locations with data consistency',
     subcategories: [
       {
         id: 'location-list',
@@ -113,30 +153,46 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Location List',
         icon: 'LocationList',
         description: '以表格形式展示所有已连接的门店，显示关键信息和同步状态',
+        descriptionEn: 'Display all connected locations in a table with key info and sync status',
         features: [
           {
             id: 'location-table',
             name: '门店信息表格',
             nameEn: 'Location Table',
             description: '展示所有已连接Google商业资料的门店列表，包括门店名称、地址、连接账户、状态、评分、评价数量和最后同步时间。支持按名称搜索和排序。',
+            descriptionEn: 'Display all connected Google Business locations including name, address, connected account, status, rating, review count, and last sync time. Supports search and sort by name.',
             usage: [
               '进入"商家列表"页面查看所有门店',
               '点击门店行查看详细信息侧边栏',
               '点击"编辑"按钮进入编辑页面修改门店信息',
               '点击"断开连接"移除不再需要的门店',
             ],
+            usageEn: [
+              'Go to "Listings" page to view all locations',
+              'Click location row to open detail sidebar',
+              'Click "Edit" button to go to edit page',
+              'Click "Disconnect" to remove unneeded locations',
+            ],
             tips: ['使用搜索框快速定位特定门店'],
+            tipsEn: ['Use search box to quickly locate specific locations'],
           },
           {
             id: 'location-detail',
             name: '门店详情',
             nameEn: 'Location Detail Drawer',
             description: '从右侧滑出的详细信息面板，展示门店的完整Google商业信息，包括商家名称、地址、电话号码、网站链接，以及评分和评价统计。',
+            descriptionEn: 'Slide-out detail panel from the right showing complete Google business info including name, address, phone, website link, rating, and review statistics.',
             usage: [
               '点击门店行中的"详情"按钮打开详情面板',
               '在详情面板中查看完整的商家信息',
               '点击"查看评价"跳转到评价管理页面',
               '点击"在Google中打开"直接跳转到Google商业页面',
+            ],
+            usageEn: [
+              'Click "Details" on location row to open detail panel',
+              'View complete business info in detail panel',
+              'Click "View Reviews" to jump to review management',
+              'Click "Open in Google" to go directly to Google Business',
             ],
           },
           {
@@ -144,13 +200,21 @@ export const CATEGORIES: Category[] = [
             name: '商业档案分析',
             nameEn: 'Profile Analysis',
             description: 'AI驱动的商业档案健康度分析，自动检测缺失的信息项并提供优化建议，帮助提升Google搜索排名和客户转化率。',
+            descriptionEn: 'AI-powered business profile health analysis, automatically detects missing info and provides optimization suggestions to help improve Google search ranking and customer conversion.',
             usage: [
               '在门店详情面板中点击"AI分析"按钮',
               '等待AI完成档案分析（约10-30秒）',
               '查看分析结果中的缺失项和建议',
               '根据建议逐一完善商业信息',
             ],
+            usageEn: [
+              'Click "AI Analysis" button in location detail panel',
+              'Wait for AI to complete profile analysis (10-30 seconds)',
+              'View missing items and suggestions in results',
+              'Complete business info following suggestions',
+            ],
             tips: ['完整的商业档案可使客户转化率提升高达50%'],
+            tipsEn: ['Complete business profiles can increase customer conversion by up to 50%'],
           },
         ],
       },
@@ -160,30 +224,46 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Edit Business Info',
         icon: 'EditBusiness',
         description: '编辑和更新单个门店的Google商业信息内容',
+        descriptionEn: 'Edit and update Google business info for a single location',
         features: [
           {
             id: 'basic-info-edit',
             name: '基础信息编辑',
             nameEn: 'Basic Info Editing',
             description: '编辑商家名称、类别、地址、电话号码等基础商业信息。所有修改将同步到Google商业资料，确保客户获取准确信息。',
+            descriptionEn: 'Edit basic business info like name, category, address, phone number. All changes sync to Google Business Profile to ensure customers get accurate info.',
             usage: [
               '在门店列表中点击"编辑"进入编辑页面',
               '填写或修改商家基础信息表单',
               '点击"保存更改"提交修改',
               '系统自动将更改同步到Google',
             ],
+            usageEn: [
+              'Click "Edit" on location list to enter edit page',
+              'Fill in or modify business info form',
+              'Click "Save Changes" to submit modifications',
+              'System automatically syncs changes to Google',
+            ],
             tips: ['商家名称和类别对搜索排名影响最大，应优先确保准确'],
+            tipsEn: ['Business name and category have the biggest impact on search ranking'],
           },
           {
             id: 'hours-edit',
             name: '营业时间编辑',
             nameEn: 'Hours Editing',
             description: '设置和更新每周每天的营业时间，包括常规营业时间、特殊假期休息时间等。准确的营业时间可减少客户因到店发现关门而产生的负面评价。',
+            descriptionEn: 'Set and update weekly business hours including regular hours and holiday closures. Accurate hours reduce negative reviews from customers finding closed doors.',
             usage: [
               '在编辑页面找到"营业时间"部分',
               '为每天设置营业时间或标记休息',
               '添加节假日特殊营业时间',
               '保存后系统自动更新Google商业资料',
+            ],
+            usageEn: [
+              'Find "Business Hours" section on edit page',
+              'Set hours or mark closure for each day',
+              'Add special holiday hours',
+              'System auto-updates Google after saving',
             ],
           },
           {
@@ -191,13 +271,21 @@ export const CATEGORIES: Category[] = [
             name: '商家照片管理',
             nameEn: 'Photos Management',
             description: '上传和管理商家照片，包括门面照片、内部环境、产品服务展示等。高质量的图片可显著提升客户的到店意愿。',
+            descriptionEn: 'Upload and manage business photos including storefront, interior, products, and services. High-quality photos significantly increase customer visit intent.',
             usage: [
               '在编辑页面找到"照片"部分',
               '点击"上传照片"添加新图片',
               '可以设置封面照片和分类管理',
               '支持批量上传多张照片',
             ],
+            usageEn: [
+              'Find "Photos" section on edit page',
+              'Click "Upload Photos" to add new images',
+              'Can set cover photo and organize by category',
+              'Supports batch upload of multiple photos',
+            ],
             tips: ['建议上传至少10张高质量照片，覆盖不同产品和服务'],
+            tipsEn: ['Recommended to upload at least 10 high-quality photos covering different products/services'],
           },
         ],
       },
@@ -210,6 +298,7 @@ export const CATEGORIES: Category[] = [
     icon: 'Reviews',
     color: '#f59e0b',
     description: '集中管理所有平台的客户评价，提升在线口碑',
+    descriptionEn: 'Centralized management of customer reviews across all platforms',
     subcategories: [
       {
         id: 'review-list',
@@ -217,17 +306,25 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Review List',
         icon: 'ReviewList',
         description: '集中展示来自Google等平台的所有客户评价',
+        descriptionEn: 'Centralized display of all customer reviews from Google and other platforms',
         features: [
           {
             id: 'review-stream',
             name: '评价流',
             nameEn: 'Review Stream',
             description: '以信息流形式展示所有评价，支持按评分、门店、来源平台等多维度筛选，并按时间排序让最新评价优先展示。',
+            descriptionEn: 'Display all reviews in a stream format, supports multi-dimensional filtering by rating, location, platform, and time-sorted with newest first.',
             usage: [
               '进入"评价"页面查看所有评价',
               '使用左侧筛选栏按状态筛选（全部/待回复/已回复）',
               '使用顶部搜索框搜索评价内容或用户名',
               '选择排序方式（新到旧/旧到新/高评分/低评分）',
+            ],
+            usageEn: [
+              'Go to "Reviews" page to view all reviews',
+              'Use left filter bar to filter by status (All/Pending/Replied)',
+              'Use top search box to search review content or username',
+              'Choose sort order (Newest/Oldest/High/Low rating)',
             ],
           },
           {
@@ -235,11 +332,18 @@ export const CATEGORIES: Category[] = [
             name: '评价详情',
             nameEn: 'Review Detail Panel',
             description: '在右侧面板展示选中评价的完整内容，包括评价文本、评分、来源平台、发布时间，以及已回复内容预览。',
+            descriptionEn: 'Display full content of selected review in right panel including text, rating, platform, post time, and reply preview.',
             usage: [
               '点击评价卡片查看完整详情',
               '在详情面板中阅读完整评价内容',
               '查看该评价是否已有回复',
               '使用AI生成回复或手动撰写回复',
+            ],
+            usageEn: [
+              'Click review card to view full details',
+              'Read complete review content in detail panel',
+              'Check if review already has a reply',
+              'Use AI to generate or manually write reply',
             ],
           },
           {
@@ -247,13 +351,21 @@ export const CATEGORIES: Category[] = [
             name: '撰写回复',
             nameEn: 'Draft Reply',
             description: '为评价撰写专业回复，支持手动输入或AI辅助生成。回复可选择三种语气风格：专业、友好、同理心，满足不同场景需求。',
+            descriptionEn: 'Write professional replies to reviews, supports manual input or AI-assisted generation. Choose from three tone styles: Professional, Friendly, Empathetic for different scenarios.',
             usage: [
               '在评价详情面板底部文本框中输入回复内容',
               '或点击"AI回复"按钮生成建议回复',
               '从三种语气中选择合适的风格',
               '点击"发送回复"将回复提交到Google',
             ],
+            usageEn: [
+              'Enter reply content in text box at bottom of review detail panel',
+              'Or click "AI Reply" button to generate suggested reply',
+              'Choose appropriate tone from three styles',
+              'Click "Send Reply" to submit reply to Google',
+            ],
             tips: ['AI生成的回复可根据语气风格进一步编辑调整'],
+            tipsEn: ['AI-generated replies can be further edited based on tone style'],
           },
         ],
       },
@@ -263,30 +375,46 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Auto Replies',
         icon: 'Automations',
         description: '设置自动评价回复规则，减少人工回复工作量',
+        descriptionEn: 'Set up automatic review reply rules to reduce manual workload',
         features: [
           {
             id: 'auto-reply-rules',
             name: '自动回复规则',
             nameEn: 'Auto Reply Rules',
             description: '创建基于评分或关键词的自动回复规则。例如，所有5星评价自动发送感谢语，特定关键词触发特定回复模板。',
+            descriptionEn: 'Create auto-reply rules based on rating or keywords. Example: all 5-star reviews auto-send thank you, specific keywords trigger specific reply templates.',
             usage: [
               '进入"评价"页面，点击"自动回复"标签',
               '点击"添加规则"创建新规则',
               '设置触发条件（评分范围/关键词）',
               '编写或选择回复模板',
             ],
+            usageEn: [
+              'Go to "Reviews" page, click "Auto Replies" tab',
+              'Click "Add Rule" to create new rule',
+              'Set trigger conditions (rating range/keywords)',
+              'Write or select reply template',
+            ],
             tips: ['自动回复不能完全替代人工回复，建议用于常见场景的快速响应'],
+            tipsEn: ['Auto-replies cannot fully replace human replies, best for quick responses to common scenarios'],
           },
           {
             id: 'reply-templates',
             name: '回复模板库',
             nameEn: 'Reply Templates',
             description: '预设多种场景的回复模板，包括感谢回复、问题道歉、改进承诺等，方便快速选择使用。支持自定义添加和编辑模板内容。',
+            descriptionEn: 'Pre-set reply templates for various scenarios including thank you, apology, improvement commitment, etc. Supports custom add and edit.',
             usage: [
               '在自动回复页面查看预设模板',
               '点击模板预览完整内容',
               '选择模板应用到规则中',
               '支持创建自定义模板',
+            ],
+            usageEn: [
+              'View pre-set templates on auto-reply page',
+              'Click template to preview full content',
+              'Select template to apply to rules',
+              'Supports creating custom templates',
             ],
           },
         ],
@@ -300,6 +428,7 @@ export const CATEGORIES: Category[] = [
     icon: 'BulkEdits',
     color: '#8b5cf6',
     description: '一次操作更新多个门店信息，大幅提升工作效率',
+    descriptionEn: 'Update multiple locations in one operation to significantly improve efficiency',
     subcategories: [
       {
         id: 'wizard-flow',
@@ -307,12 +436,14 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Three-Step Wizard',
         icon: 'Wizard',
         description: '引导式批量编辑流程，分步完成选择门店、填写字段、确认提交',
+        descriptionEn: 'Guided bulk edit flow: select locations, fill fields, confirm submission',
         features: [
           {
             id: 'step-select-locations',
             name: '步骤一：选择门店',
             nameEn: 'Step 1: Select Locations',
             description: '从已连接的门店列表中选择需要批量编辑的目标门店，支持全选/取消全选，方便快速操作。显示每个门店的当前评分和评价数量供参考。',
+            descriptionEn: 'Select target locations for bulk edit from connected list, supports select all/deselect all. Shows current rating and review count for reference.',
             usage: [
               '进入"批量编辑"页面',
               '查看当前连接的所有门店列表',
@@ -320,30 +451,52 @@ export const CATEGORIES: Category[] = [
               '点击"全选"快速选择所有门店',
               '确认选择后点击"下一步"',
             ],
+            usageEn: [
+              'Go to "Bulk Edits" page',
+              'View all currently connected locations',
+              'Check locations for bulk edit',
+              'Click "Select All" to quickly select all',
+              'Click "Next" after confirming selection',
+            ],
           },
           {
             id: 'step-fill-fields',
             name: '步骤二：填写字段',
             nameEn: 'Step 2: Fill Fields',
             description: '填写需要批量更新的字段值，可以同时更新电话号码、网站URL、地址等字段。系统仅更新有填写值的字段，空白字段保持不变。',
+            descriptionEn: 'Fill field values to bulk update, can update phone, website URL, address simultaneously. Only updates filled fields, blank fields remain unchanged.',
             usage: [
               '在表单中填写需要更新的字段值',
               '只需填写需要修改的字段，其他可留空',
               '预览将要更新的字段列表',
               '确认无误后点击"下一步"',
             ],
+            usageEn: [
+              'Fill field values to update in form',
+              'Only fill fields to modify, others can be blank',
+              'Preview list of fields to update',
+              'Click "Next" after confirming',
+            ],
             tips: ['此步骤仅填写要修改的字段，不填写的字段不会被覆盖'],
+            tipsEn: ['Only fill fields to modify, unfilled fields will not be overwritten'],
           },
           {
             id: 'step-review-apply',
             name: '步骤三：审核并应用',
             nameEn: 'Step 3: Review & Apply',
             description: '在提交前审核所有更改，确认受影响门店数量和更新字段汇总。点击"应用更改"后系统将批量更新所有选中门店的Google商业信息。',
+            descriptionEn: 'Review all changes before submission, confirm affected location count and field summary. System bulk-updates all selected locations after clicking "Apply Changes".',
             usage: [
               '查看更改摘要：门店数量和字段数量',
               '查看将要应用的详细更改内容',
               '点击"应用更改"开始批量更新',
               '等待处理完成后查看结果',
+            ],
+            usageEn: [
+              'View change summary: location count and field count',
+              'View detailed changes to be applied',
+              'Click "Apply Changes" to start bulk update',
+              'View results after processing completes',
             ],
           },
         ],
@@ -357,6 +510,7 @@ export const CATEGORIES: Category[] = [
     icon: 'EditsLog',
     color: '#10b981',
     description: '记录所有操作历史，便于追溯和审计',
+    descriptionEn: 'Record all operation history for traceability and auditing',
     subcategories: [
       {
         id: 'log-view',
@@ -364,17 +518,25 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Log Viewer',
         icon: 'LogViewer',
         description: '以时间线形式展示所有操作记录，包括创建、编辑、删除、同步等各类操作',
+        descriptionEn: 'Display all operation records in timeline format including create, edit, delete, sync',
         features: [
           {
             id: 'activity-timeline',
             name: '活动时间线',
             nameEn: 'Activity Timeline',
             description: '以卡片式时间线展示所有操作记录，每条记录包含操作类型、涉及实体、操作详情、时间和状态。便于追溯每个门店的所有变更历史。',
+            descriptionEn: 'Display all operations in card-style timeline, each record contains type, entity, details, time, and status. Easy to trace all change history for each location.',
             usage: [
               '进入"操作日志"页面查看操作记录',
               '时间从新到旧排列，最新操作在最前',
               '每条记录显示操作类型和详情',
               '点击记录可查看更多详情',
+            ],
+            usageEn: [
+              'Go to "Activity Log" page to view operation records',
+              'Sorted newest to oldest, latest operation first',
+              'Each record shows operation type and details',
+              'Click record to view more details',
             ],
           },
           {
@@ -382,11 +544,18 @@ export const CATEGORIES: Category[] = [
             name: '日志筛选',
             nameEn: 'Log Filters',
             description: '支持按操作类型筛选日志记录：全部活动、仅创建、仅帖子、仅回复、仅同步、仅删除。方便快速定位特定类型的操作。',
+            descriptionEn: 'Filter logs by operation type: All, Create only, Posts only, Replies only, Sync only, Delete only. Easy to quickly locate specific operation types.',
             usage: [
               '使用左侧筛选栏按操作类型筛选',
               '点击筛选按钮只显示特定类型记录',
               '筛选条件组合使用可精确定位',
               '点击刷新按钮重新加载最新日志',
+            ],
+            usageEn: [
+              'Use left filter bar to filter by operation type',
+              'Click filter button to show only specific type records',
+              'Combine filter conditions for precise location',
+              'Click refresh to reload latest logs',
             ],
           },
         ],
@@ -400,6 +569,7 @@ export const CATEGORIES: Category[] = [
     icon: 'Publishing',
     color: '#ec4899',
     description: '创建和管理Google商家帖子，保持活跃的在线存在感',
+    descriptionEn: 'Create and manage Google Business posts to maintain active online presence',
     subcategories: [
       {
         id: 'calendar-view',
@@ -407,12 +577,14 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Calendar View',
         icon: 'Calendar',
         description: '以日历形式展示已发布和待发布的帖子，便于规划内容发布计划',
+        descriptionEn: 'Display published and scheduled posts in calendar format for easy content planning',
         features: [
           {
             id: 'calendar-grid',
             name: '日历网格',
             nameEn: 'Calendar Grid',
             description: '月历视图展示每天的帖子安排，不同颜色区分已发布（绿色）、已排期（蓝色）和草稿（橙色）状态。点击日期可查看当天所有帖子详情。',
+            descriptionEn: 'Monthly view shows daily post schedules, different colors distinguish published (green), scheduled (blue), and draft (orange). Click date to view all posts for that day.',
             usage: [
               '进入"内容发布"页面查看日历视图',
               '使用左右箭头切换上/下个月',
@@ -420,18 +592,33 @@ export const CATEGORIES: Category[] = [
               '查看每天日期格中的帖子标签',
               '悬停在帖子上查看预览',
             ],
+            usageEn: [
+              'Go to "Publishing" page to view calendar',
+              'Use left/right arrows to switch months',
+              'Click "Today" to quickly return to current date',
+              'View post labels in each date cell',
+              'Hover over post to preview',
+            ],
             tips: ['建议提前规划一个月的内容发布计划，保持发布频率稳定'],
+            tipsEn: ['Recommended to plan one month content schedule in advance'],
           },
           {
             id: 'post-list',
             name: '帖子列表',
             nameEn: 'Post List',
             description: '在日历下方或侧边显示当前筛选条件下的所有帖子列表，支持按门店和状态筛选，显示每个帖子的内容摘要、发布时间和当前状态。',
+            descriptionEn: 'Display all posts for current filter below or beside calendar, supports filter by location and status, shows content summary, post time, and current status.',
             usage: [
               '使用顶部筛选器按门店筛选帖子',
               '按状态筛选：全部/已发布/已排期/草稿',
               '点击帖子行可展开更多操作',
               '支持直接从列表发布、编辑或删除',
+            ],
+            usageEn: [
+              'Use top filter to filter posts by location',
+              'Filter by status: All/Published/Scheduled/Draft',
+              'Click post row to expand more actions',
+              'Supports direct publish, edit, or delete from list',
             ],
           },
         ],
@@ -442,12 +629,14 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Create Post',
         icon: 'CreatePost',
         description: '创建新的Google商家帖子，支持立即发布或定时发布',
+        descriptionEn: 'Create new Google Business posts, supports publish now or schedule',
         features: [
           {
             id: 'post-composer',
             name: '帖子编辑器',
             nameEn: 'Post Composer',
             description: '使用帖子编辑器撰写帖子内容，支持添加文字描述，选择目标门店，设置发布方式（立即发布或定时发布）。内容将直接同步到Google商业页面。',
+            descriptionEn: 'Use post composer to write content, supports adding text, selecting target locations, setting publish method (now or scheduled). Content syncs directly to Google Business.',
             usage: [
               '点击右下角"+"按钮打开帖子编辑器',
               '在文本框中输入帖子内容',
@@ -455,18 +644,33 @@ export const CATEGORIES: Category[] = [
               '设置发布时间：立即发布或选择未来时间',
               '点击"发布"或"保存草稿"完成',
             ],
+            usageEn: [
+              'Click "+" button in bottom-right to open composer',
+              'Enter post content in text box',
+              'Select target location(s)',
+              'Set publish time: now or future time',
+              'Click "Publish" or "Save Draft" to complete',
+            ],
             tips: ['帖子内容建议包含关键词和号召性用语，提高客户参与度'],
+            tipsEn: ['Post content should include keywords and calls-to-action to boost engagement'],
           },
           {
             id: 'publish-now',
             name: '立即发布',
             nameEn: 'Publish Now',
             description: '编辑完帖子内容后直接点击发布，帖子将立即同步到Google商业页面，立即展示给潜在客户。适合时效性强的内容。',
+            descriptionEn: 'After editing post content, click publish directly to sync immediately to Google Business, instantly visible to potential customers. Good for time-sensitive content.',
             usage: [
               '填写帖子内容',
               '不设置发布时间（留空）',
               '点击"发布"按钮',
               '确认发布成功提示',
+            ],
+            usageEn: [
+              'Fill in post content',
+              'Leave publish time empty',
+              'Click "Publish" button',
+              'Confirm success notification',
             ],
           },
           {
@@ -474,6 +678,7 @@ export const CATEGORIES: Category[] = [
             name: '定时发布',
             nameEn: 'Schedule Post',
             description: '设置未来的发布时间，系统将在指定时间自动将帖子发布到Google。适合提前规划营销活动，确保内容按时上线。',
+            descriptionEn: 'Set future publish time, system auto-posts to Google at specified time. Good for planning marketing campaigns in advance.',
             usage: [
               '填写帖子内容',
               '点击日期时间选择器',
@@ -481,18 +686,33 @@ export const CATEGORIES: Category[] = [
               '点击"定时发布"保存排期',
               '在日历中查看已排期的帖子',
             ],
+            usageEn: [
+              'Fill in post content',
+              'Click date-time picker',
+              'Select future date and time',
+              'Click "Schedule Post" to save',
+              'View scheduled posts in calendar',
+            ],
             tips: ['建议在工作时间内发布帖子以获得更好的互动'],
+            tipsEn: ['Recommended to publish during business hours for better engagement'],
           },
           {
             id: 'post-quick-actions',
             name: '快捷操作',
             nameEn: 'Quick Actions',
             description: '在日历视图中对已排期的帖子进行快捷操作：点击发布按钮可立即发布，点击删除按钮可取消帖子。悬停时显示操作按钮。',
+            descriptionEn: 'Quick actions on scheduled posts in calendar view: click publish to post immediately, click delete to cancel. Action buttons show on hover.',
             usage: [
               '将鼠标悬停在已排期帖子上',
               '点击发送图标立即发布',
               '点击删除图标取消帖子',
               '操作后自动刷新日历视图',
+            ],
+            usageEn: [
+              'Hover over scheduled post',
+              'Click send icon to publish immediately',
+              'Click delete icon to cancel post',
+              'Calendar refreshes automatically after action',
             ],
           },
         ],
@@ -506,6 +726,7 @@ export const CATEGORIES: Category[] = [
     icon: 'Reports',
     color: '#f97316',
     description: '深度分析业务数据，导出专业报告辅助决策',
+    descriptionEn: 'Deep analysis of business data, export professional reports for decision-making',
     subcategories: [
       {
         id: 'performance-report',
@@ -513,12 +734,14 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Performance Report',
         icon: 'Performance',
         description: '详细分析Google商业资料的绩效数据，包括展示、点击、转化等关键指标',
+        descriptionEn: 'Detailed analysis of Google Business performance data including views, clicks, conversions',
         features: [
           {
             id: 'search-performance',
             name: '搜索绩效分析',
             nameEn: 'Search Performance',
             description: '展示在Google搜索中的表现数据，包括搜索展示次数和地图展示次数的趋势图、月度对比表、饼图分析和周数据柱状图，全面了解品牌曝光情况。',
+            descriptionEn: 'Display Google search performance including trend charts, monthly comparison tables, pie charts, and weekly bar charts for search and map views.',
             usage: [
               '选择门店和时间范围',
               '查看搜索展示趋势图',
@@ -526,17 +749,31 @@ export const CATEGORIES: Category[] = [
               '查看搜索vs地图展示占比饼图',
               '查看最近7天的柱状图数据',
             ],
+            usageEn: [
+              'Select location and time range',
+              'View search views trend chart',
+              'View monthly data comparison table',
+              'View search vs map share pie chart',
+              'View last 7 days bar chart data',
+            ],
           },
           {
             id: 'actions-performance',
             name: '行为绩效分析',
             nameEn: 'Actions Performance',
             description: '分析用户的实际行为数据，包括导航请求次数、电话拨打次数，以及两类行为的趋势对比和占比分析，帮助了解客户转化路径。',
+            descriptionEn: 'Analyze actual user behavior data including direction requests, phone calls, trend comparison and share analysis to understand customer conversion paths.',
             usage: [
               '查看导航和电话的趋势变化图',
               '查看月度行为数据对比',
               '查看导航vs电话占比饼图',
               '分析不同时段的用户行为差异',
+            ],
+            usageEn: [
+              'View direction and phone trend charts',
+              'View monthly behavior data comparison',
+              'View direction vs phone share pie chart',
+              'Analyze user behavior differences by time period',
             ],
           },
           {
@@ -544,6 +781,7 @@ export const CATEGORIES: Category[] = [
             name: '日期范围筛选',
             nameEn: 'Date Range Filter',
             description: '灵活设置数据报告的时间范围，支持自定义起止日期，便于对比不同时间段的表现，发现增长趋势或问题。',
+            descriptionEn: 'Flexibly set report time range, supports custom start/end dates for comparing different periods and discovering trends or issues.',
             usage: [
               '点击开始日期选择器',
               '选择报告起始日期',
@@ -551,18 +789,33 @@ export const CATEGORIES: Category[] = [
               '选择报告结束日期',
               '数据自动更新为选定范围',
             ],
+            usageEn: [
+              'Click start date picker',
+              'Select report start date',
+              'Click end date picker',
+              'Select report end date',
+              'Data auto-updates to selected range',
+            ],
           },
           {
             id: 'pdf-export',
             name: 'PDF导出',
             nameEn: 'PDF Export',
             description: '将当前报告数据导出为专业的PDF文档，包含所有图表和数据表格，方便与团队分享或存档。文档格式美观，可直接用于演示。',
+            descriptionEn: 'Export current report data to professional PDF with all charts and data tables, easy to share with team or archive. Document format is presentation-ready.',
             usage: [
               '设置好筛选条件查看数据',
               '点击页面右侧"下载PDF"按钮',
               '等待PDF生成（约5-10秒）',
               '浏览器自动下载PDF文件',
               '可在本地查看或分享给他人',
+            ],
+            usageEn: [
+              'Set filter conditions and view data',
+              'Click "Download PDF" button on right side',
+              'Wait for PDF generation (5-10 seconds)',
+              'Browser auto-downloads PDF file',
+              'View locally or share with others',
             ],
           },
         ],
@@ -576,6 +829,7 @@ export const CATEGORIES: Category[] = [
     icon: 'SEO',
     color: '#06b6d4',
     description: '提升本地搜索排名，增加门店曝光和客流',
+    descriptionEn: 'Improve local search ranking and increase location visibility and traffic',
     subcategories: [
       {
         id: 'local-search-grid',
@@ -583,25 +837,35 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Local Search Grid',
         icon: 'Grid',
         description: '可视化分析门店在不同地理位置的搜索排名情况',
+        descriptionEn: 'Visual analysis of location search rankings at different geographic positions',
         features: [
           {
             id: 'keyword-scan',
             name: '关键词扫描',
             nameEn: 'Keyword Scan',
             description: '输入目标关键词，分析门店在不同地理位置的Google搜索排名。使用网格扫描技术，在门店周围生成多个采样点，评估排名覆盖度。',
+            descriptionEn: 'Enter target keyword to analyze Google search ranking at different geographic positions. Uses grid scanning to generate multiple sample points around location.',
             usage: [
               '输入目标关键词（如"餐厅"）',
               '选择网格密度（3x3/5x5/7x7/9x9）',
               '选择扫描半径（1-20英里）',
               '点击"扫描"开始分析',
             ],
+            usageEn: [
+              'Enter target keyword (e.g., "restaurant")',
+              'Select grid density (3x3/5x5/7x7/9x9)',
+              'Select scan radius (1-20 miles)',
+              'Click "Scan" to start analysis',
+            ],
             tips: ['建议扫描半径覆盖主要客源区域'],
+            tipsEn: ['Recommended scan radius to cover main customer source areas'],
           },
           {
             id: 'rank-visualization',
             name: '排名可视化',
             nameEn: 'Rank Visualization',
             description: '在交互式地图上展示扫描结果，不同颜色表示不同排名区间：绿色=前3名（优秀）、黄色=4-10名（良好）、红色=10名以后（需改进）。直观了解排名地理分布。',
+            descriptionEn: 'Display scan results on interactive map with different colors: green=Top 3 (excellent), yellow=4-10 (good), red=10+ (needs improvement). Understand ranking geographic distribution.',
             usage: [
               '扫描完成后自动显示地图',
               '地图上每个点代表一个采样位置',
@@ -609,17 +873,31 @@ export const CATEGORIES: Category[] = [
               '查看图例了解颜色含义',
               '缩放和平移地图查看更多区域',
             ],
+            usageEn: [
+              'Map auto-displays after scan completes',
+              'Each point on map represents a sample location',
+              'Click point to view ranking details',
+              'View legend for color meaning',
+              'Zoom and pan map to view more areas',
+            ],
           },
           {
             id: 'grid-statistics',
             name: '网格统计',
             nameEn: 'Grid Statistics',
             description: '汇总扫描结果的关键统计数据：平均排名、前3名占比、前10名占比、扫描点总数等。量化评估整体搜索表现。',
+            descriptionEn: 'Summarize key scan statistics: average rank, top-3 share, top-10 share, total scan points. Quantify overall search performance.',
             usage: [
               '扫描完成后查看顶部统计卡片',
               '平均排名反映整体搜索表现',
               '前3名占比越高越好',
               '对比不同关键词的统计结果',
+            ],
+            usageEn: [
+              'View top stat cards after scan completes',
+              'Average rank reflects overall search performance',
+              'Higher top-3 share is better',
+              'Compare statistics for different keywords',
             ],
           },
           {
@@ -627,11 +905,18 @@ export const CATEGORIES: Category[] = [
             name: '网格数据表',
             nameEn: 'Grid Point Table',
             description: '以表格形式列出所有扫描点的详细数据，包括位置编号、排名、搜索结果总数。方便导出和分析具体数据。',
+            descriptionEn: 'List all scan point details in table including position number, rank, total search results. Easy to export and analyze specific data.',
             usage: [
               '在地图下方查看数据表',
               '点击行数据可在地图上高亮对应位置',
               '按排名排序快速找到最优和最差点位',
               '复制数据用于其他分析',
+            ],
+            usageEn: [
+              'View data table below map',
+              'Click row to highlight location on map',
+              'Sort by rank to find best/worst points quickly',
+              'Copy data for other analysis',
             ],
           },
         ],
@@ -642,17 +927,25 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Local Citations',
         icon: 'Citations',
         description: '追踪和管理门店在各大目录平台的引用信息',
+        descriptionEn: 'Track and manage location citation info across major directory platforms',
         features: [
           {
             id: 'citation-tracker',
             name: '引用追踪器',
             nameEn: 'Citation Tracker',
             description: '自动扫描互联网上与门店相关的商业引用，追踪在Google、Yelp、Facebook等平台的展示情况，确保NAP（名称、地址、电话）信息一致。',
+            descriptionEn: 'Auto-scan internet for business citations related to location, track appearances on Google, Yelp, Facebook to ensure NAP (Name, Address, Phone) consistency.',
             usage: [
               '进入SEO页面，点击"引用"标签',
               '系统自动获取门店基础信息',
               '查看已发现的引用列表',
               '检查每个引用的信息一致性',
+            ],
+            usageEn: [
+              'Go to SEO page, click "Citations" tab',
+              'System auto-fetches location basic info',
+              'View discovered citation list',
+              'Check info consistency for each citation',
             ],
           },
           {
@@ -660,11 +953,18 @@ export const CATEGORIES: Category[] = [
             name: '引用审计',
             nameEn: 'Citation Audit',
             description: '对比不同平台上的门店信息，发现不一致的引用项。高亮显示存在信息差异的平台，便于逐一修正，提高引用质量。',
+            descriptionEn: 'Compare location info across platforms to find inconsistent citations. Highlight platforms with info differences for easy correction.',
             usage: [
               '在引用页面查看审计结果',
               '绿色表示信息一致',
               '黄色表示需要确认',
               '点击具体项目查看详情',
+            ],
+            usageEn: [
+              'View audit results on Citations page',
+              'Green = consistent info',
+              'Yellow = needs verification',
+              'Click specific item to view details',
             ],
           },
         ],
@@ -675,17 +975,25 @@ export const CATEGORIES: Category[] = [
         nameEn: 'SEO Optimization',
         icon: 'Optimization',
         description: 'AI驱动的SEO健康度分析和优化建议',
+        descriptionEn: 'AI-powered SEO health analysis and optimization suggestions',
         features: [
           {
             id: 'seo-health-score',
             name: 'SEO健康评分',
             nameEn: 'SEO Health Score',
             description: '基于AI分析生成0-100的综合SEO健康评分，综合评估商业档案完整性、内容质量、评价状况等因素。环形进度图直观展示当前分数。',
+            descriptionEn: 'AI-generated 0-100 comprehensive SEO health score evaluating profile completeness, content quality, review status. Ring progress chart shows current score.',
             usage: [
               '点击"生成报告"开始分析',
               '等待AI完成分析（约10-30秒）',
               '查看SEO健康评分环形图',
               '分数越高表示SEO状况越好',
+            ],
+            usageEn: [
+              'Click "Generate Report" to start analysis',
+              'Wait for AI to complete analysis (10-30 seconds)',
+              'View SEO health score ring chart',
+              'Higher score means better SEO status',
             ],
           },
           {
@@ -693,13 +1001,21 @@ export const CATEGORIES: Category[] = [
             name: '快速优化项',
             nameEn: 'Quick Wins',
             description: '列出最容易实施且效果明显的优化建议，按影响程度分级（高/中/低）。帮助优先处理最高价值的优化任务，快速提升搜索排名。',
+            descriptionEn: 'List easiest and most effective optimization suggestions ranked by impact (High/Medium/Low). Help prioritize highest-value optimization tasks.',
             usage: [
               '查看健康评分下方的快速优化列表',
               '按影响程度排序，高优先级在上',
               '逐项查看具体优化建议',
               '按建议操作完成优化',
             ],
+            usageEn: [
+              'View quick wins list below health score',
+              'Sorted by impact, high priority first',
+              'View specific optimization suggestions for each',
+              'Complete optimization by following suggestions',
+            ],
             tips: ['从高影响建议开始，可以最快看到排名提升效果'],
+            tipsEn: ['Start with high-impact suggestions to see ranking improvement fastest'],
           },
         ],
       },
@@ -709,17 +1025,25 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Real Reviews',
         icon: 'RealReviews',
         description: '帮助企业获取更多真实的Google评价，提升在线口碑',
+        descriptionEn: 'Help businesses get more authentic Google reviews to improve online reputation',
         features: [
           {
             id: 'review-link-generator',
             name: '评价链接生成器',
             nameEn: 'Review Link Generator',
             description: '为每个门店生成专属的Google评价链接，方便客户直接跳转撰写评价。支持多门店批量生成。',
+            descriptionEn: 'Generate unique Google review links for each location for easy customer access. Supports batch generation for multiple locations.',
             usage: [
               '进入"真实评价"页面',
               '系统自动为已连接门店生成评价链接',
               '复制链接用于发送给客户',
               '点击直接跳转到Google评价页面',
+            ],
+            usageEn: [
+              'Go to "Real Reviews" page',
+              'System auto-generates review links for connected locations',
+              'Copy links to send to customers',
+              'Click to jump directly to Google review page',
             ],
           },
         ],
@@ -730,17 +1054,25 @@ export const CATEGORIES: Category[] = [
         nameEn: 'RedNote SEO',
         icon: 'RedNote',
         description: '针对小红书平台的内容优化建议',
+        descriptionEn: 'Content optimization suggestions for RedNote (Xiaohongshu) platform',
         features: [
           {
             id: 'rednote-tips',
             name: '小红书运营技巧',
             nameEn: 'RedNote Tips',
             description: '提供针对小红书平台的内容发布和优化技巧，帮助企业在这个重要平台建立存在感。包括标签建议、关键词优化、内容格式指导等。',
+            descriptionEn: 'Provide content publishing and optimization tips for RedNote to help businesses establish presence on this important platform. Includes tag suggestions, keyword optimization, content format guidance.',
             usage: [
               '进入"小红书SEO"页面',
               '查看平台特点介绍',
               '学习内容发布最佳实践',
               '应用建议到实际内容运营中',
+            ],
+            usageEn: [
+              'Go to "RedNote SEO" page',
+              'View platform feature introduction',
+              'Learn content publishing best practices',
+              'Apply suggestions to actual content operations',
             ],
           },
         ],
@@ -754,6 +1086,7 @@ export const CATEGORIES: Category[] = [
     icon: 'Settings',
     color: '#64748b',
     description: '配置API密钥和系统参数',
+    descriptionEn: 'Configure API keys and system parameters',
     subcategories: [
       {
         id: 'api-keys',
@@ -761,17 +1094,25 @@ export const CATEGORIES: Category[] = [
         nameEn: 'API Keys',
         icon: 'ApiKeys',
         description: '配置各平台API密钥以启用相应功能',
+        descriptionEn: 'Configure API keys for each platform to enable corresponding features',
         features: [
           {
             id: 'embedsocial-key',
             name: 'EmbedSocial API密钥',
             nameEn: 'EmbedSocial API Key',
             description: '配置EmbedSocial API密钥以连接Google商业资料、获取评价数据和发布帖子。密钥可在EmbedSocial后台获取。',
+            descriptionEn: 'Configure EmbedSocial API key to connect Google Business, fetch reviews, and publish posts. Get key from EmbedSocial dashboard.',
             usage: [
               '进入"设置"页面',
               '找到EmbedSocial API密钥输入框',
               '粘贴从EmbedSocial后台获取的密钥',
               '点击保存并等待验证',
+            ],
+            usageEn: [
+              'Go to "Settings" page',
+              'Find EmbedSocial API key input',
+              'Paste key from EmbedSocial dashboard',
+              'Click save and wait for verification',
             ],
           },
           {
@@ -779,11 +1120,18 @@ export const CATEGORIES: Category[] = [
             name: 'Gemini API密钥',
             nameEn: 'Gemini API Key',
             description: '配置Google Gemini API密钥以启用AI回复生成、商业档案分析等智能功能。密钥可在Google AI Studio获取。',
+            descriptionEn: 'Configure Google Gemini API key to enable AI reply generation, business profile analysis, and other smart features. Get key from Google AI Studio.',
             usage: [
               '在设置页面找到Gemini API配置',
               '输入有效的Gemini API密钥',
               '保存后AI功能自动启用',
               '可在仪表盘右上角查看积分余额',
+            ],
+            usageEn: [
+              'Find Gemini API config on Settings page',
+              'Enter valid Gemini API key',
+              'AI features auto-enable after saving',
+              'View credits in dashboard top-right',
             ],
           },
           {
@@ -791,10 +1139,16 @@ export const CATEGORIES: Category[] = [
             name: 'OpenAI API密钥',
             nameEn: 'OpenAI API Key',
             description: '配置OpenAI API密钥作为Gemini的备选方案，用于AI功能。当Gemini不可用时可自动切换。',
+            descriptionEn: 'Configure OpenAI API key as Gemini backup for AI features. Auto-switches when Gemini is unavailable.',
             usage: [
               '在设置页面找到OpenAI API配置',
               '输入有效的OpenAI API密钥',
               '保存后作为备用AI服务',
+            ],
+            usageEn: [
+              'Find OpenAI API config on Settings page',
+              'Enter valid OpenAI API key',
+              'Saves as backup AI service',
             ],
           },
         ],
@@ -805,17 +1159,25 @@ export const CATEGORIES: Category[] = [
         nameEn: 'Language Settings',
         icon: 'Language',
         description: '设置系统界面语言',
+        descriptionEn: 'Set system interface language',
         features: [
           {
             id: 'ui-language',
             name: '界面语言',
             nameEn: 'UI Language',
             description: '切换系统界面的显示语言，支持中文和英文。界面文字将根据设置的语言版本显示。',
+            descriptionEn: 'Switch system interface language between Chinese and English. Interface text displays according to selected language.',
             usage: [
               '在设置页面找到语言选项',
               '选择目标语言（中文/English）',
               '界面自动刷新为所选语言',
               '刷新页面后设置保持生效',
+            ],
+            usageEn: [
+              'Find language option on Settings page',
+              'Select target language (中文/English)',
+              'Interface auto-refreshes to selected language',
+              'Settings persist after page refresh',
             ],
           },
         ],

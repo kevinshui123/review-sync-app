@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Star, Shield, Zap, BarChart3, MessageSquare, Search, Globe, ArrowRight, Check, Sparkles, Play, Users, TrendingUp, MapPin, Phone, Mail, ChevronDown, Menu, X, Lock, Award, Target, Rocket, FileSearch, Bot, Send, UserCheck, Headphones, Image as ImageIcon } from 'lucide-react';
+import { ScreenshotShowcase } from '../components/ScreenshotGallery';
 
 interface LandingPageProps {
   onShowAuth: () => void;
@@ -283,6 +284,7 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
 
           <div className="nav-links">
             <a href="#features">Features</a>
+            <a href="#screenshots">Screenshots</a>
             <a href="#how-it-works">How It Works</a>
             <a href="#pricing">Pricing</a>
             <a href="#testimonials">Reviews</a>
@@ -495,6 +497,24 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Product Screenshots Section */}
+      <section className="screenshots-section" id="screenshots">
+        <div className="section-container">
+          <div className="section-header scroll-animate">
+            <span className="section-badge">
+              <Sparkles size={14} />
+              Live Preview
+            </span>
+            <h2 className="section-title">See the Platform in Action</h2>
+            <p className="section-subtitle">
+              Explore all 13 powerful features with interactive screenshots.
+              From dashboard analytics to AI-powered automations, experience the full power of PinKernel.
+            </p>
+          </div>
+          <ScreenshotShowcase />
         </div>
       </section>
 
@@ -1559,6 +1579,12 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
         .features-section {
           padding: 120px 0;
           background: var(--surface);
+        }
+
+        /* Screenshots Section */
+        .screenshots-section {
+          padding: 120px 0;
+          background: white;
         }
 
         .features-grid {

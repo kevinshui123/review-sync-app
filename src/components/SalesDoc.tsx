@@ -19,17 +19,18 @@ import {
   Star,
   AutoAwesome,
   Bolt,
-  OpenInNew,
   AccessTime,
-  ExpandMore,
-  ExpandLess,
 } from '@mui/icons-material';
 import {
   Search,
   ChevronDown,
   ChevronRight,
+  Globe,
+  Monitor,
 } from 'lucide-react';
 import { CATEGORIES, type Category, type SubCategory, type Feature } from './SalesDocData';
+import { ScreenshotShowcase } from './ScreenshotGallery';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Dashboard,
@@ -82,18 +83,19 @@ interface FeatureCardProps {
   isExpanded: boolean;
   onToggle: () => void;
   accentColor: string;
+  isZh: boolean;
 }
 
-function FeatureCard({ feature, isExpanded, onToggle, accentColor }: FeatureCardProps) {
+function FeatureCard({ feature, isExpanded, onToggle, accentColor, isZh }: FeatureCardProps) {
   return (
     <div className="feature-card" style={{ borderLeftColor: accentColor }}>
       <button className="feature-card-header" onClick={onToggle}>
         <div className="feature-card-header-left">
-          <span className="feature-name">{feature.name}</span>
-          <span className="feature-name-en">{feature.nameEn}</span>
+          <span className="feature-name">{isZh ? feature.name : feature.nameEn}</span>
+          <span className="feature-name-en">{isZh ? feature.nameEn : feature.name}</span>
         </div>
         <div className="feature-card-header-right">
-          <span className="feature-expand-hint">{isExpanded ? '收起' : '展开'}</span>
+          <span className="feature-expand-hint">{isExpanded ? (isZh ? '收起' : 'Collapse') : (isZh ? '展开' : 'Expand')}</span>
           {isExpanded ? (
             <ChevronDown size={18} />
           ) : (
@@ -104,15 +106,15 @@ function FeatureCard({ feature, isExpanded, onToggle, accentColor }: FeatureCard
 
       {isExpanded && (
         <div className="feature-card-body">
-          <p className="feature-description">{feature.description}</p>
+          <p className="feature-description">{isZh ? feature.description : feature.descriptionEn}</p>
 
           <div className="feature-section">
             <div className="feature-section-title">
               <span className="feature-section-num" style={{ backgroundColor: accentColor }}>1</span>
-              <span>使用方法</span>
+              <span>{isZh ? '使用方法' : 'How to Use'}</span>
             </div>
             <ol className="feature-steps">
-              {feature.usage.map((step, i) => (
+              {(isZh ? feature.usage : feature.usageEn).map((step, i) => (
                 <li key={i} className="feature-step">
                   <span className="step-num" style={{ backgroundColor: `${accentColor}20`, color: accentColor }}>
                     {i + 1}
@@ -123,14 +125,14 @@ function FeatureCard({ feature, isExpanded, onToggle, accentColor }: FeatureCard
             </ol>
           </div>
 
-          {feature.tips && feature.tips.length > 0 && (
+          {(isZh ? feature.tips : feature.tipsEn)?.length > 0 && (
             <div className="feature-section">
               <div className="feature-section-title">
                 <span className="feature-section-num" style={{ backgroundColor: accentColor }}>!</span>
-                <span>小贴士</span>
+                <span>{isZh ? '小贴士' : 'Tips'}</span>
               </div>
               <div className="feature-tips">
-                {feature.tips.map((tip, i) => (
+                {(isZh ? feature.tips : feature.tipsEn).map((tip, i) => (
                   <div key={i} className="feature-tip">
                     <CheckCircle sx={{ fontSize: 14, color: accentColor }} />
                     <span>{tip}</span>
@@ -146,7 +148,7 @@ function FeatureCard({ feature, isExpanded, onToggle, accentColor }: FeatureCard
                 <span className="feature-section-num" style={{ backgroundColor: accentColor }}>
                   <ArrowForward sx={{ fontSize: 12 }} />
                 </span>
-                <span>相关功能</span>
+                <span>{isZh ? '相关功能' : 'Related Features'}</span>
               </div>
               <div className="feature-related">
                 {feature.relatedFeatures.map((rel, i) => (
@@ -165,9 +167,10 @@ interface SubCategorySectionProps {
   sub: SubCategory;
   accentColor: string;
   defaultOpen: boolean;
+  isZh: boolean;
 }
 
-function SubCategorySection({ sub, accentColor, defaultOpen }: SubCategorySectionProps) {
+function SubCategorySection({ sub, accentColor, defaultOpen, isZh }: SubCategorySectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
   const contentRef = useRef<HTMLDivElement>(null);
@@ -207,12 +210,12 @@ function SubCategorySection({ sub, accentColor, defaultOpen }: SubCategorySectio
             <FeatureIcon name={sub.icon} size={20} />
           </div>
           <div className="subcategory-title-group">
-            <span className="subcategory-name">{sub.name}</span>
-            <span className="subcategory-name-en">{sub.nameEn}</span>
+            <span className="subcategory-name">{isZh ? sub.name : sub.nameEn}</span>
+            <span className="subcategory-name-en">{isZh ? sub.nameEn : sub.name}</span>
           </div>
         </div>
         <div className="subcategory-header-right">
-          <span className="subcategory-count">{sub.features.length}个功能</span>
+          <span className="subcategory-count">{sub.features.length}{isZh ? '个功能' : ' features'}</span>
           {isOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
         </div>
       </button>
@@ -222,10 +225,10 @@ function SubCategorySection({ sub, accentColor, defaultOpen }: SubCategorySectio
         style={{ maxHeight: isOpen ? `${(contentHeight as number) + 16}px` : '0' }}
       >
         <div ref={contentRef} className="subcategory-content-inner">
-          <p className="subcategory-desc">{sub.description}</p>
+          <p className="subcategory-desc">{isZh ? sub.description : sub.descriptionEn}</p>
           <div className="subcategory-controls">
             <button className="subcategory-toggle-all" onClick={toggleAll}>
-              {expandedFeatures.size === sub.features.length ? '全部收起' : '全部展开'}
+              {expandedFeatures.size === sub.features.length ? (isZh ? '全部收起' : 'Collapse All') : (isZh ? '全部展开' : 'Expand All')}
             </button>
           </div>
           <div className="feature-cards">
@@ -236,6 +239,7 @@ function SubCategorySection({ sub, accentColor, defaultOpen }: SubCategorySectio
                 isExpanded={expandedFeatures.has(feature.id)}
                 onToggle={() => toggleFeature(feature.id)}
                 accentColor={accentColor}
+                isZh={isZh}
               />
             ))}
           </div>
@@ -248,9 +252,10 @@ function SubCategorySection({ sub, accentColor, defaultOpen }: SubCategorySectio
 interface CategorySectionProps {
   category: Category;
   defaultOpen: boolean;
+  isZh: boolean;
 }
 
-function CategorySection({ category, defaultOpen }: CategorySectionProps) {
+function CategorySection({ category, defaultOpen, isZh }: CategorySectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
@@ -259,20 +264,20 @@ function CategorySection({ category, defaultOpen }: CategorySectionProps) {
         <div className="category-header-left">
           <CategoryBadge color={category.color} />
           <div className="category-title-group">
-            <span className="category-name">{category.name}</span>
-            <span className="category-name-en">{category.nameEn}</span>
+            <span className="category-name">{isZh ? category.name : category.nameEn}</span>
+            <span className="category-name-en">{isZh ? category.nameEn : category.name}</span>
           </div>
         </div>
         <div className="category-header-right">
           <span className="category-count">
-            {category.subcategories.length}个子类 · {category.subcategories.reduce((acc, sub) => acc + sub.features.length, 0)}个功能
+            {category.subcategories.length}{isZh ? '个子类' : ' subcategories'} · {category.subcategories.reduce((acc, sub) => acc + sub.features.length, 0)}{isZh ? '个功能' : ' features'}
           </span>
           {isOpen ? <ChevronDown size={22} /> : <ChevronRight size={22} />}
         </div>
       </button>
 
       <div className="category-desc-row">
-        <p className="category-desc">{category.description}</p>
+        <p className="category-desc">{isZh ? category.description : category.descriptionEn}</p>
       </div>
 
       <div className={`category-content ${isOpen ? 'open' : ''}`}>
@@ -282,6 +287,7 @@ function CategorySection({ category, defaultOpen }: CategorySectionProps) {
             sub={sub}
             accentColor={category.color}
             defaultOpen={idx === 0}
+            isZh={isZh}
           />
         ))}
       </div>
@@ -290,10 +296,12 @@ function CategorySection({ category, defaultOpen }: CategorySectionProps) {
 }
 
 export function SalesDoc() {
+  const { language, setLanguage } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const isZh = language === 'zh';
 
   const totalFeatures = CATEGORIES.reduce(
     (acc, cat) => acc + cat.subcategories.reduce((a, sub) => a + sub.features.length, 0),
@@ -308,8 +316,8 @@ export function SalesDoc() {
         features: sub.features.filter(
           (f) =>
             !searchQuery ||
-            f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            f.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (isZh ? f.name : f.nameEn).toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (isZh ? f.nameEn : f.name).toLowerCase().includes(searchQuery.toLowerCase()) ||
             f.description.toLowerCase().includes(searchQuery.toLowerCase())
         ),
       }))
@@ -346,6 +354,10 @@ export function SalesDoc() {
     }
   }, [showSearch]);
 
+  const handleLangToggle = () => {
+    setLanguage(isZh ? 'en' : 'zh');
+  };
+
   return (
     <div className="sales-doc">
       {/* Topbar */}
@@ -357,7 +369,7 @@ export function SalesDoc() {
             </div>
             <div className="sales-doc-brand-text">
               <span className="sales-doc-brand-name">PinKernel</span>
-              <span className="sales-doc-brand-sub">产品功能文档</span>
+              <span className="sales-doc-brand-sub">{isZh ? '产品功能文档' : 'Product Documentation'}</span>
             </div>
           </div>
           <div className="sales-doc-topbar-center">
@@ -366,7 +378,7 @@ export function SalesDoc() {
               <input
                 ref={searchRef}
                 type="text"
-                placeholder="搜索功能..."
+                placeholder={isZh ? '搜索功能...' : 'Search features...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="sales-doc-search-input"
@@ -381,12 +393,17 @@ export function SalesDoc() {
             </div>
           </div>
           <div className="sales-doc-topbar-right">
+            {/* Language Toggle */}
+            <button className="sales-doc-lang-toggle" onClick={handleLangToggle}>
+              <Globe size={16} />
+              <span>{isZh ? 'EN' : '中文'}</span>
+            </button>
             <div className="sales-doc-stats">
               <span className="sales-doc-stat-num">{CATEGORIES.length}</span>
-              <span className="sales-doc-stat-label">大分类</span>
+              <span className="sales-doc-stat-label">{isZh ? '大分类' : 'Categories'}</span>
               <span className="sales-doc-stat-sep">·</span>
               <span className="sales-doc-stat-num">{totalFeatures}</span>
-              <span className="sales-doc-stat-label">个功能</span>
+              <span className="sales-doc-stat-label">{isZh ? '个功能' : 'Features'}</span>
             </div>
           </div>
         </div>
@@ -397,7 +414,7 @@ export function SalesDoc() {
         <nav className="sales-doc-sidebar">
           <div className="sales-doc-sidebar-header">
             <MenuBook sx={{ fontSize: 16 }} />
-            <span>功能导航</span>
+            <span>{isZh ? '功能导航' : 'Navigation'}</span>
           </div>
           <div className="sales-doc-nav-list">
             {CATEGORIES.map((cat) => (
@@ -411,8 +428,8 @@ export function SalesDoc() {
                   className="sales-doc-nav-dot"
                   style={{ backgroundColor: cat.color }}
                 />
-                <span className="sales-doc-nav-name">{cat.name}</span>
-                <span className="sales-doc-nav-en">{cat.nameEn}</span>
+                <span className="sales-doc-nav-name">{isZh ? cat.name : cat.nameEn}</span>
+                <span className="sales-doc-nav-en">{isZh ? cat.nameEn : cat.name}</span>
               </button>
             ))}
           </div>
@@ -425,14 +442,16 @@ export function SalesDoc() {
             <div className="sales-doc-hero-inner">
               <div className="sales-doc-hero-badge">
                 <MenuBook sx={{ fontSize: 14 }} />
-                <span>PinKernel 产品功能文档</span>
+                <span>PinKernel {isZh ? '产品功能文档' : 'Product Documentation'}</span>
               </div>
               <h1 className="sales-doc-hero-title">
-                完整的功能指南
+                {isZh ? '完整的功能指南' : 'Complete Feature Guide'}
               </h1>
               <p className="sales-doc-hero-subtitle">
-                了解 PinKernel 平台的每一个功能，从快速入门到高级用法，全部收录。
-                共 {CATEGORIES.length} 个功能分类，{totalFeatures} 个功能点，助您充分利用平台能力。
+                {isZh
+                  ? `了解 PinKernel 平台的每一个功能，从快速入门到高级用法，全部收录。共 ${CATEGORIES.length} 个功能分类，${totalFeatures} 个功能点，助您充分利用平台能力。`
+                  : `Learn every feature of the PinKernel platform, from quick start to advanced usage. ${CATEGORIES.length} feature categories, ${totalFeatures} features to help you make the most of the platform.`
+                }
               </p>
               <div className="sales-doc-hero-tags">
                 {CATEGORIES.map((cat) => (
@@ -446,9 +465,19 @@ export function SalesDoc() {
                       className="tag-dot"
                       style={{ backgroundColor: cat.color }}
                     />
-                    {cat.name}
+                    {isZh ? cat.name : cat.nameEn}
                   </button>
                 ))}
+              </div>
+
+              {/* Screenshot Showcase */}
+              <div className="sales-doc-hero-screenshots">
+                <div className="sales-doc-screenshots-header">
+                  <Monitor size={16} />
+                  <span>{isZh ? '功能界面预览' : 'Feature Interface Preview'}</span>
+                  <span className="sales-doc-screenshots-count">{isZh ? '共13个功能模块' : '13 feature modules'}</span>
+                </div>
+                <ScreenshotShowcase />
               </div>
             </div>
           </div>
@@ -459,8 +488,7 @@ export function SalesDoc() {
               <div className="search-results-inner">
                 <Search size={18} className="search-icon-blue" />
                 <span>
-                  找到 <strong>{filteredCategories.reduce((acc, c) => acc + c.subcategories.reduce((a, s) => a + s.features.length, 0), 0)}</strong> 个与 "
-                  <strong>{searchQuery}</strong>" 相关的结果
+                  {isZh ? '找到 ' : 'Found '}<strong>{filteredCategories.reduce((acc, c) => acc + c.subcategories.reduce((a, s) => a + s.features.length, 0), 0)}</strong> {isZh ? '个与 "' : ' results for "'}<strong>{searchQuery}</strong>{isZh ? '" 相关的结果' : '"'}
                 </span>
               </div>
             </div>
@@ -473,14 +501,15 @@ export function SalesDoc() {
                 key={cat.id}
                 category={cat}
                 defaultOpen={idx === 0 && !searchQuery}
+                isZh={isZh}
               />
             ))}
 
             {filteredCategories.length === 0 && (
               <div className="sales-doc-empty">
                 <Search size={48} />
-                <h3>未找到相关功能</h3>
-                <p>尝试使用不同的关键词搜索</p>
+                <h3>{isZh ? '未找到相关功能' : 'No Results Found'}</h3>
+                <p>{isZh ? '尝试使用不同的关键词搜索' : 'Try using different keywords'}</p>
               </div>
             )}
           </div>
@@ -568,8 +597,8 @@ export function SalesDoc() {
 
         .sales-doc-search.active {
           background: white;
-          border-color: #0ea5e9;
-          box-shadow: 0 0 0 3px rgba(14,165,233,0.1);
+          border-color: #4facfe;
+          box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
         }
 
         .sales-doc-search-input {
@@ -602,7 +631,29 @@ export function SalesDoc() {
         }
 
         .sales-doc-topbar-right {
+          display: flex;
+          align-items: center;
+          gap: 16px;
           flex-shrink: 0;
+        }
+
+        .sales-doc-lang-toggle {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          color: #0f172a;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .sales-doc-lang-toggle:hover {
+          background: #e2e8f0;
         }
 
         .sales-doc-stats {
@@ -794,6 +845,30 @@ export function SalesDoc() {
           width: 6px;
           height: 6px;
           border-radius: 999px;
+        }
+
+        /* Screenshot Showcase */
+        .sales-doc-hero-screenshots {
+          margin-top: 36px;
+          padding-top: 28px;
+          border-top: 1px solid #f1f5f9;
+        }
+
+        .sales-doc-screenshots-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #64748b;
+          margin-bottom: 16px;
+        }
+
+        .sales-doc-screenshots-count {
+          margin-left: auto;
+          font-size: 11px;
+          font-weight: 500;
+          color: #94a3b8;
         }
 
         .search-icon-blue {
