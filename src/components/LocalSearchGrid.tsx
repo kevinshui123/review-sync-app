@@ -448,9 +448,9 @@ export function LocalSearchGrid({ setActiveTab }: LocalSearchGridProps) {
           {/* Point Detail Panel */}
           {selectedPoint && (
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
                 <div>
-                  <h3 className="text-base font-bold">Point #{selectedPoint.idx + 1} — {selectedPoint.totalResults} Results</h3>
+                  <h3 className="text-base font-bold text-slate-800">Point #{selectedPoint.idx + 1} — {selectedPoint.totalResults} Results</h3>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {selectedPoint.businessRank !== null
                       ? `Your business ranks #${selectedPoint.businessRank}`
@@ -459,18 +459,18 @@ export function LocalSearchGrid({ setActiveTab }: LocalSearchGridProps) {
                 </div>
                 <button
                   onClick={() => setSelectedPoint(null)}
-                  className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                 >
                   <Close className="w-5 h-5 text-slate-400" />
                 </button>
               </div>
-              <div className="overflow-x-auto">
+              <div className="max-h-[400px] overflow-y-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b border-slate-200">
+                  <thead className="bg-slate-100 border-b border-slate-200 sticky top-0 z-10">
                     <tr>
-                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase w-28">Rank</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase w-24">Rank</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Business</th>
-                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-24">Rating</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-20">Rating</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-24">Reviews</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-32">Category</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-32">Phone</th>
@@ -495,11 +495,12 @@ export function LocalSearchGrid({ setActiveTab }: LocalSearchGridProps) {
                   </tbody>
                 </table>
               </div>
-              {selectedPoint.businessRank === null && selectedPoint.totalResults > 20 && (
-                <div className="px-6 py-3 bg-amber-50 border-t border-amber-100 text-xs text-amber-700">
-                  Your business was not found in the top 20 results. Consider expanding your local SEO efforts.
-                </div>
-              )}
+              <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
+                <span>Showing {selectedPoint.competitors.length} of {selectedPoint.totalResults} results</span>
+                {selectedPoint.businessRank === null && selectedPoint.totalResults > 20 && (
+                  <span className="text-amber-600">Your business not in top 20</span>
+                )}
+              </div>
             </div>
           )}
 
