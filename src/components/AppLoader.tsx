@@ -282,12 +282,11 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           flex-direction: column;
           min-width: 0;
           width: 100%;
-          margin-left: 0;
         }
 
         @media (min-width: 1024px) {
           .main-content-area {
-            margin-left: 256px;
+            margin-left: 0;
           }
         }
 
