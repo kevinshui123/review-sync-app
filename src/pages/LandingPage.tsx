@@ -286,6 +286,7 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
             <a href="#how-it-works">How It Works</a>
             <a href="#pricing">Pricing</a>
             <a href="#testimonials">Reviews</a>
+            <a href="/?page=sales-doc" target="_blank">功能文档</a>
           </div>
 
           <div className="nav-actions">

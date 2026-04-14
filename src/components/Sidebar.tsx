@@ -20,6 +20,7 @@ import {
   Article,
   ExpandMore,
   ExpandLess,
+  MenuBook,
 } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -228,6 +229,13 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
       {/* Bottom Links */}
       <div className="sidebar-bottom">
         <div className="sidebar-divider" />
+        <button
+          className="nav-item nav-item-inactive sales-doc-link"
+          onClick={() => window.dispatchEvent(new CustomEvent('go-to-sales-doc'))}
+        >
+          <MenuBook sx={{ fontSize: 20 }} />
+          <span className="nav-label">产品功能文档</span>
+        </button>
         {navItem('settings', 'nav.settings', Settings, activeTab === 'settings')}
         {navItem('help', 'nav.help', Help, activeTab === 'help')}
         <button className="nav-item nav-item-inactive">
@@ -438,6 +446,16 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
           height: 1px;
           background: var(--color-divider);
           margin: 8px;
+        }
+
+        .sales-doc-link {
+          color: var(--color-accent) !important;
+          font-weight: 600 !important;
+        }
+
+        .sales-doc-link:hover {
+          background: var(--color-accent-muted) !important;
+          color: var(--color-accent) !important;
         }
       `}</style>
 

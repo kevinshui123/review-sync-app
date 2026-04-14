@@ -17,6 +17,7 @@ import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
 import { LandingPage } from './pages/LandingPage';
+import { SalesDoc } from './components/SalesDoc';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -59,7 +60,21 @@ function AppContent() {
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [currentRoute, setCurrentRoute] = useState<'app' | 'sales-doc'>('app');
   const { t } = useLanguage();
+
+  const handleBackToLanding = () => {
+    setShowAuth(false);
+    window.history.pushState({}, '', window.location.pathname);
+  };
+
+  // Route handling - allow going to sales doc without auth
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('page') === 'sales-doc') {
+      setCurrentRoute('sales-doc');
+    }
+  }, []);
 
   // Listen for navigation events from Optimization page
   useEffect(() => {
@@ -75,6 +90,16 @@ function AppContent() {
     };
     window.addEventListener('navigate-tab', handleNavigateTab as EventListener);
     return () => window.removeEventListener('navigate-tab', handleNavigateTab as EventListener);
+  }, []);
+
+  // Listen for navigation to sales doc
+  useEffect(() => {
+    const handleNavSalesDoc = () => {
+      setCurrentRoute('sales-doc');
+      window.history.pushState({}, '', '?page=sales-doc');
+    };
+    window.addEventListener('go-to-sales-doc', handleNavSalesDoc);
+    return () => window.removeEventListener('go-to-sales-doc', handleNavSalesDoc);
   }, []);
 
   useEffect(() => {
@@ -122,6 +147,7 @@ function AppContent() {
       case 'seo-rednote-seo': return t('nav.rednoteSeo');
       case 'settings': return t('nav.settings');
       case 'help': return t('nav.help');
+      case 'sales-doc': return '产品功能文档';
       default: return t('nav.dashboard');
     }
   };
@@ -146,11 +172,18 @@ function AppContent() {
     );
   }
 
+  // Sales Documentation Route - accessible without login
+  if (currentRoute === 'sales-doc') {
+    return <SalesDoc />;
+  }
+
   // Not logged in - show landing page or auth page
   if (!user) {
     // If showAuth is true, show auth page, otherwise show landing page
     if (showAuth) {
-      return <AuthPage />;
+      return (
+        <AuthPage onBack={handleBackToLanding} />
+      );
     }
     return (
       <LandingPage onShowAuth={() => setShowAuth(true)} />
@@ -239,7 +272,7 @@ function AppContent() {
               {activeTab === 'publishing' && <Publishing setActiveTab={setActiveTab} />}
               {activeTab === 'reports' && <Reports setActiveTab={setActiveTab} />}
               {/* SEO Local Search Grid */}
-              {activeTab === 'seo-grid' && <LocalSearchGrid setActiveTab={setActiveTab} />}
+              {activeTab === 'seo-grid' && <LocalSearchGrid />}
               {/* SEO Local Citations */}
               {activeTab === 'seo-citations' && <LocalCitations />}
               {/* SEO Optimization */}
