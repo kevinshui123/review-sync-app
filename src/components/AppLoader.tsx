@@ -76,6 +76,8 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           justify-content: center;
           gap: 32px;
           padding: 48px;
+          background: var(--color-surface);
+          min-height: inherit;
         }
 
         .app-loader-animation {
@@ -101,23 +103,23 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
 
         .al-ring-1 {
           inset: 0;
-          border-top-color: var(--color-primary, #1e3a5f);
-          border-right-color: rgba(30, 58, 95, 0.15);
+          border-top-color: var(--color-primary);
+          border-right-color: var(--color-border);
           animation-duration: 1.8s;
         }
 
         .al-ring-2 {
           inset: 14%;
-          border-top-color: var(--color-accent, #0ea5e9);
-          border-bottom-color: rgba(14, 165, 233, 0.15);
+          border-top-color: var(--color-accent);
+          border-bottom-color: var(--color-border);
           animation-duration: 2.4s;
           animation-direction: reverse;
         }
 
         .al-ring-3 {
           inset: 28%;
-          border-top-color: var(--color-success, #059669);
-          border-left-color: rgba(16, 185, 129, 0.15);
+          border-top-color: var(--color-success);
+          border-left-color: var(--color-border);
           animation-duration: 1.5s;
         }
 
@@ -128,16 +130,15 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
 
         .al-core {
           position: absolute;
-          background: linear-gradient(135deg, var(--color-primary, #1e3a5f) 0%, #0f2744 100%);
+          background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover, #162d4d) 100%);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
+          color: var(--color-on-primary);
           box-shadow:
-            0 0 20px rgba(30, 58, 95, 0.3),
-            0 0 40px rgba(30, 58, 95, 0.15),
-            inset 0 2px 4px rgba(255, 255, 255, 0.2);
+            0 0 20px var(--color-primary-muted),
+            0 0 40px var(--color-border);
           z-index: 2;
         }
 
@@ -145,7 +146,7 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           position: absolute;
           inset: -25%;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(79, 172, 254, 0.2) 0%, transparent 70%);
+          background: radial-gradient(circle, var(--color-accent-muted) 0%, transparent 70%);
           animation: al-pulse-ring 2s ease-out infinite;
         }
 
@@ -165,17 +166,17 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: var(--color-primary, #1e3a5f);
+          background: var(--color-primary);
           opacity: 0;
           animation: al-particle-orbit 3s ease-in-out infinite;
         }
 
         .al-p1 { top: 0; left: 50%; animation-delay: 0s; }
-        .al-p2 { top: 50%; right: 0; animation-delay: 0.5s; background: var(--color-accent, #0ea5e9); }
-        .al-p3 { bottom: 0; left: 50%; animation-delay: 1s; background: var(--color-success, #059669); }
-        .al-p4 { top: 50%; left: 0; animation-delay: 1.5s; background: var(--color-accent, #0ea5e9); }
-        .al-p5 { top: 15%; left: 15%; animation-delay: 0.75s; background: var(--color-warning, #d97706); }
-        .al-p6 { bottom: 15%; right: 15%; animation-delay: 1.25s; background: var(--color-primary, #1e3a5f); }
+        .al-p2 { top: 50%; right: 0; animation-delay: 0.5s; background: var(--color-accent); }
+        .al-p3 { bottom: 0; left: 50%; animation-delay: 1s; background: var(--color-success); }
+        .al-p4 { top: 50%; left: 0; animation-delay: 1.5s; background: var(--color-accent); }
+        .al-p5 { top: 15%; left: 15%; animation-delay: 0.75s; background: var(--color-warning); }
+        .al-p6 { bottom: 15%; right: 15%; animation-delay: 1.25s; background: var(--color-primary); }
 
         @keyframes al-particle-orbit {
           0% {
@@ -202,17 +203,17 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
         }
 
         .al-title {
-          font-family: var(--font-headline, 'Manrope', sans-serif);
+          font-family: var(--font-headline);
           font-size: 18px;
           font-weight: 600;
-          color: var(--color-text-primary, #0f172a);
+          color: var(--color-text-primary);
           margin-bottom: 8px;
           letter-spacing: -0.01em;
         }
 
         .al-subtitle {
           font-size: 13px;
-          color: var(--color-text-muted, #94a3b8);
+          color: var(--color-text-muted);
           margin-bottom: 20px;
           animation: al-subtitle-pulse 2s ease-in-out infinite;
         }
@@ -225,7 +226,7 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
         .al-progress {
           width: 200px;
           height: 4px;
-          background: var(--color-border, #e2e8f0);
+          background: var(--color-border);
           border-radius: 999px;
           overflow: hidden;
           margin: 0 auto;
@@ -234,7 +235,7 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
         .al-progress-bar {
           height: 100%;
           width: 100%;
-          background: linear-gradient(90deg, var(--color-primary, #1e3a5f), var(--color-accent, #0ea5e9));
+          background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
           border-radius: 999px;
           animation: al-progress-slide 1.5s ease-in-out infinite;
           transform-origin: left;
@@ -262,7 +263,95 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
             animation: none;
           }
         }
-      `}</style>
+
+        /* ============================================
+           APP LAYOUT SYSTEM
+           ============================================ */
+
+        /* App Layout Container */
+        .app-layout {
+          display: flex;
+          height: 100vh;
+          overflow: hidden;
+        }
+
+        /* Main Content Area */
+        .main-content-area {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          width: 100%;
+          margin-left: 0;
+        }
+
+        @media (min-width: 1024px) {
+          .main-content-area {
+            margin-left: 256px;
+          }
+        }
+
+        /* Main Scroll Area */
+        .main-scroll-area {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          overflow-y: auto;
+          background-color: var(--color-surface);
+        }
+
+        /* Page Content */
+        .page-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+
+        /* Config Warning Banner */
+        .config-warning-banner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 16px;
+          background-color: var(--color-warning-bg);
+          border-bottom: 1px solid var(--color-warning);
+          color: var(--color-warning-text);
+          font-size: 14px;
+        }
+
+        .config-warning-banner svg {
+          flex-shrink: 0;
+        }
+
+        .config-warning-btn {
+          margin-left: 16px;
+          padding: 6px 16px;
+          background-color: var(--color-warning);
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background-color 0.15s ease;
+        }
+
+        .config-warning-btn:hover {
+          filter: brightness(1.1);
+        }
+
+        /* Selection Styling */
+        ::selection {
+          background-color: var(--color-primary-muted);
+          color: var(--color-primary);
+        }
+
+        /* ============================================
+           LEGACY PAGE LOADER STYLES
+           ============================================ */
     </div>
   );
 }
@@ -317,7 +406,7 @@ export function SkeletonLoader({ lines = 3, height = 16 }: { lines?: number; hei
           key={i}
           style={{
             height,
-            background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
+            background: `linear-gradient(90deg, var(--color-surface) 25%, var(--color-border) 50%, var(--color-surface) 75%)`,
             backgroundSize: '200% 100%',
             animation: 'skeleton-loading 1.5s infinite',
             borderRadius: 4,

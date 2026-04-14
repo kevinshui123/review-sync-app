@@ -6,28 +6,45 @@ import CssBaseline from '@mui/material/CssBaseline';
 import './index.css';
 import './styles/animations.css';
 
-const theme = createTheme({
+// Create light and dark themes
+const lightTheme = createTheme({
   palette: {
-    primary: {
-      main: '#003d9b',
-    },
-    secondary: {
-      main: '#4c5d8d',
-    },
+    mode: 'light',
+    primary: { main: '#1e3a5f' },
+    secondary: { main: '#0ea5e9' },
   },
   typography: {
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'Figtree, Inter, sans-serif',
   },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
-        body: {
-          scrollbarWidth: 'thin',
-        },
+        body: { scrollbarWidth: 'thin' },
       },
     },
   },
 });
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: { main: '#3b82f6' },
+    secondary: { main: '#38bdf8' },
+  },
+  typography: {
+    fontFamily: 'Figtree, Inter, sans-serif',
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: { scrollbarWidth: 'thin' },
+      },
+    },
+  },
+});
+
+// Export themes for use elsewhere
+export { lightTheme, darkTheme };
 
 createRoot(document.getElementById('root')!).render(
   <LanguageProvider>

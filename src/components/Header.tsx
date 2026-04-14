@@ -9,25 +9,17 @@ interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onMenuClick: () => void;
+  theme?: 'light' | 'dark';
+  onThemeChange?: (theme: 'light' | 'dark') => void;
 }
 
-export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderProps) {
+export function Header({ title, activeTab, setActiveTab, onMenuClick, theme = 'light', onThemeChange }: HeaderProps) {
   const { t, language, setLanguage } = useLanguage();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('app_theme');
-    return (saved as 'light' | 'dark') || 'light';
-  });
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Apply theme
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('app_theme', theme);
-  }, [theme]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -143,14 +135,14 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick }: HeaderPr
               <div className="hdr-dropdown-theme">
                 <button
                   className={`hdr-theme-btn ${theme === 'light' ? 'active' : ''}`}
-                  onClick={() => setTheme('light')}
+                  onClick={() => onThemeChange?.('light')}
                 >
                   <LightMode sx={{ fontSize: 16 }} />
                   <span>{t('nav.light')}</span>
                 </button>
                 <button
                   className={`hdr-theme-btn ${theme === 'dark' ? 'active' : ''}`}
-                  onClick={() => setTheme('dark')}
+                  onClick={() => onThemeChange?.('dark')}
                 >
                   <DarkMode sx={{ fontSize: 16 }} />
                   <span>{t('nav.dark')}</span>

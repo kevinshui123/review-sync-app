@@ -7,8 +7,8 @@
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
   --font-headline: "Manrope", ui-sans-serif, system-ui, sans-serif;
 
-  /* Design System Colors - Professional Slate & Blue */
-  /* Surface Scale - Tinted toward brand blue */
+  /* Design System Colors - Light Mode (Default) */
+  /* Surface Scale */
   --color-surface: #f4f6f9;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #ebedf2;
@@ -58,6 +58,67 @@
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+}
+
+/* Dark Mode Override */
+[data-theme="dark"] {
+  /* Surface Scale */
+  --color-surface: #0f172a;
+  --color-surface-raised: #1e293b;
+  --color-surface-sunken: #020617;
+
+  /* Primary */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-muted: #1e3a5f;
+  --color-on-primary: #ffffff;
+
+  /* Accent */
+  --color-accent: #38bdf8;
+  --color-accent-hover: #0ea5e9;
+  --color-accent-muted: #0c2d4a;
+  --color-on-accent: #0f172a;
+
+  /* Text Hierarchy */
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-text-disabled: #475569;
+
+  /* Borders & Dividers */
+  --color-border: #334155;
+  --color-border-strong: #475569;
+  --color-divider: #1e293b;
+
+  /* Status Colors */
+  --color-success: #22c55e;
+  --color-success-bg: #052e16;
+  --color-success-text: #4ade80;
+
+  --color-warning: #f59e0b;
+  --color-warning-bg: #1c1408;
+  --color-warning-text: #fbbf24;
+
+  --color-error: #ef4444;
+  --color-error-bg: #1c0a0a;
+  --color-error-text: #fca5a5;
+
+  --color-info: #38bdf8;
+  --color-info-bg: #0c2d4a;
+  --color-info-text: #7dd3fc;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+}
+
+/* Dark mode Tailwind v4 compatibility - add dark: variants */
+@layer base {
+  [data-theme="dark"] {
+    color-scheme: dark;
+  }
 }
 
 /* Base Styles */

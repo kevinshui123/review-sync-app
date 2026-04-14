@@ -24,6 +24,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppLoader } from './components/AppLoader';
 import AuthPage from './pages/AuthPage';
 import { apiGet } from './utils/api';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { lightTheme, darkTheme } from './main';
 
 interface ErrorBoundaryProps { children: ReactNode; fallback?: ReactNode; t?: (key: string) => string; }
 interface ErrorBoundaryState { hasError: boolean; error?: Error; }
@@ -62,8 +65,18 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<'app' | 'sales-doc'>('app');
+  const [appTheme, setAppTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('app_theme');
+    return (saved as 'light' | 'dark') || 'light';
+  });
   const { t, language } = useLanguage();
   const isZh = language === 'zh';
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', appTheme);
+    localStorage.setItem('app_theme', appTheme);
+  }, [appTheme]);
 
   const handleBackToLanding = () => {
     setShowAuth(false);
@@ -157,24 +170,37 @@ function AppContent() {
   // Wait for client-side hydration to complete
   if (!mounted) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-surface">
-        <AppLoader message={t('app.loading')} subMessage={isZh ? '正在加载应用...' : 'Loading application...'} />
-      </div>
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AppLoader message={t('app.loading')} subMessage={isZh ? '正在加载应用...' : 'Loading application...'} />
+        </div>
+      </ThemeProvider>
     );
   }
 
   // Auth loading state
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-surface">
-        <AppLoader message={isZh ? '正在验证身份...' : 'Verifying authentication...'} subMessage={isZh ? '请稍候' : 'Please wait'} />
-      </div>
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AppLoader message={isZh ? '正在验证身份...' : 'Verifying authentication...'} subMessage={isZh ? '请稍候' : 'Please wait'} />
+        </div>
+      </ThemeProvider>
     );
   }
 
   // Sales Documentation Route - accessible without login
   if (currentRoute === 'sales-doc') {
-    return <SalesDoc />;
+    return (
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
+          <SalesDoc />
+        </div>
+      </ThemeProvider>
+    );
   }
 
   // Not logged in - show landing page or auth page
@@ -182,59 +208,84 @@ function AppContent() {
     // If showAuth is true, show auth page, otherwise show landing page
     if (showAuth) {
       return (
-        <AuthPage onBack={handleBackToLanding} />
+        <ThemeProvider theme={muiTheme}>
+          <CssBaseline />
+          <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
+            <AuthPage onBack={handleBackToLanding} />
+          </div>
+        </ThemeProvider>
       );
     }
     return (
-      <LandingPage onShowAuth={() => setShowAuth(true)} />
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
+          <LandingPage onShowAuth={() => setShowAuth(true)} />
+        </div>
+      </ThemeProvider>
     );
   }
+
+  // Header callback for theme changes
+  const handleThemeChange = (newTheme: 'light' | 'dark') => {
+    setAppTheme(newTheme);
+  };
+
+  const muiTheme = appTheme === 'dark' ? darkTheme : lightTheme;
 
   // Not configured
   if (isConfigured === null) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-surface">
-        <AppLoader message={isZh ? '正在检查配置...' : 'Checking configuration...'} />
-      </div>
+      <ThemeProvider theme={muiTheme}>
+        <CssBaseline />
+        <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
+          <AppLoader message={isZh ? '正在检查配置...' : 'Checking configuration...'} />
+        </div>
+      </ThemeProvider>
     );
   }
 
   return (
-    <div className="flex h-screen bg-surface text-on-surface overflow-hidden selection:bg-primary/30 selection:text-primary">
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={(tab) => {
-          setActiveTab(tab);
-          setIsSidebarOpen(false);
-        }} 
-        isOpen={isSidebarOpen}
-        setIsOpen={setIsSidebarOpen}
-      />
-      
-      <div className="flex-1 flex flex-col min-w-0 relative w-full lg:ml-64">
-        <Header 
-          title={getTitle()} 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-          onMenuClick={() => setIsSidebarOpen(true)}
-        />
-        
-        {!isConfigured && activeTab !== 'settings' && (
-          <div className="bg-yellow-50 border-b border-yellow-200 p-4 flex items-center justify-center gap-3 text-yellow-700">
-            <AlertTriangle className="w-5 h-5" />
-            <span className="font-medium text-sm">{t('app.configWarning')}</span>
-            <button 
-              onClick={() => setActiveTab('settings')}
-              className="ml-4 px-4 py-1.5 bg-yellow-500 text-white rounded-md text-xs font-bold hover:bg-yellow-600 transition-colors"
-            >
-              {t('app.goToSettings')}
-            </button>
-          </div>
-        )}
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline />
+      <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
+        <div className="app-layout">
+          <Sidebar
+            activeTab={activeTab}
+            setActiveTab={(tab) => {
+              setActiveTab(tab);
+              setIsSidebarOpen(false);
+            }}
+            isOpen={isSidebarOpen}
+            setIsOpen={setIsSidebarOpen}
+          />
 
-        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto relative bg-white">
-          <ErrorBoundary t={t}>
-            <div className="flex-1 flex flex-col min-h-0">
+          <div className="main-content-area">
+            <Header
+              title={getTitle()}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              onMenuClick={() => setIsSidebarOpen(true)}
+              theme={appTheme}
+              onThemeChange={handleThemeChange}
+            />
+
+            {!isConfigured && activeTab !== 'settings' && (
+              <div className="config-warning-banner">
+                <AlertTriangle className="w-5 h-5" />
+                <span>{t('app.configWarning')}</span>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className="config-warning-btn"
+                >
+                  {t('app.goToSettings')}
+                </button>
+              </div>
+            )}
+
+            <main className="main-scroll-area">
+              <ErrorBoundary t={t}>
+                <div className="page-content">
               {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
               {activeTab === 'listings' && (
                 listingsSubTab === 'edit' ? (
@@ -307,7 +358,8 @@ function AppContent() {
             </div>
           </ErrorBoundary>
         </main>
-      </div>
+        </div>
+      </ThemeProvider>
     </div>
   );
 }
