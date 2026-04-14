@@ -355,9 +355,10 @@ function AppContent() {
               )}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
-            </div>
-          </ErrorBoundary>
-        </main>
+                </div>
+              </ErrorBoundary>
+            </main>
+          </div>
         </div>
       </ThemeProvider>
     </div>
