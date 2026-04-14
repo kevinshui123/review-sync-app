@@ -681,6 +681,28 @@ async function getCoordinatesFromPlaceId(placeId: string, apiKey: string): Promi
   return null;
 }
 
+// Get the first photo reference from Google Places API for a business
+async function getPhotoReferenceFromPlaceId(placeId: string, apiKey: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=photos&key=${apiKey}`
+    );
+    const data = await res.json();
+    if (data.result?.photos && data.result.photos.length > 0) {
+      // Return the first photo reference (most representative business photo)
+      return data.result.photos[0].photo_reference;
+    }
+  } catch (e) {
+    console.warn('[getPhotoReference] Google Places error:', (e as any).message);
+  }
+  return null;
+}
+
+// Get photo URL from Google Places Photo API
+function getGooglePhotoUrl(photoReference: string, apiKey: string, maxWidth = 400): string {
+  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${apiKey}`;
+}
+
 async function getCoordinatesFromAddressFree(address: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const query = encodeURIComponent(address);
@@ -1862,6 +1884,16 @@ async function startServer() {
             lat = 39.3305; lng = -76.6150;
             console.log(`[sync-listings] Using hardcoded fallback coords for known listing`);
           }
+
+          // Get photo reference from Google Places API
+          let photoRef: string | null = null;
+          if (placesApiKey && listing.googleId) {
+            photoRef = await getPhotoReferenceFromPlaceId(listing.googleId, placesApiKey);
+            if (photoRef) {
+              console.log(`[sync-listings] Got photo reference for ${listing.name}`);
+            }
+          }
+
           await prisma.tenantListing.create({
             data: {
               tenantId: req.tenantId!,
@@ -1875,6 +1907,7 @@ async function startServer() {
               averageRating: listing.averageRating || 0,
               latitude: lat,
               longitude: lng,
+              photoReference: photoRef,
               status: 'active',
             },
           });
@@ -4460,11 +4493,23 @@ Return ONLY this JSON structure, nothing else:
   // Get tenant's connected listings from local DB
   app.get('/api/tenant/listings', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
+      const tenant = await prisma.tenant.findFirst();
+      const apiKey = tenant?.googlePlacesApiKey || process.env.GOOGLE_PLACES_API_KEY;
+
       const listings = await prisma.tenantListing.findMany({
         where: { tenantId: req.tenantId!, status: 'active' },
         orderBy: { connectedAt: 'desc' },
       });
-      res.json(listings);
+
+      // Add photo URL if photoReference exists
+      const listingsWithPhotos = listings.map(listing => ({
+        ...listing,
+        photoUrl: listing.photoReference && apiKey
+          ? getGooglePhotoUrl(listing.photoReference, apiKey, 200)
+          : null,
+      }));
+
+      res.json(listingsWithPhotos);
     } catch (error: any) {
       console.error('[tenant-listings] Error:', error);
       res.status(500).json({ error: 'Failed to fetch listings', details: error.message });
@@ -4560,6 +4605,16 @@ Return ONLY this JSON structure, nothing else:
         return res.status(400).json({ error: 'Listing already connected' });
       }
 
+      // Get photo reference from Google Places API
+      let photoRef: string | null = null;
+      if (googleId) {
+        const tenant = await prisma.tenant.findFirst({ where: { id: req.tenantId! } });
+        const apiKey = tenant?.googlePlacesApiKey || process.env.GOOGLE_PLACES_API_KEY;
+        if (apiKey) {
+          photoRef = await getPhotoReferenceFromPlaceId(googleId, apiKey);
+        }
+      }
+
       const listing = await prisma.tenantListing.create({
         data: {
           tenantId: req.tenantId!,
@@ -4569,6 +4624,7 @@ Return ONLY this JSON structure, nothing else:
           phoneNumber: phoneNumber || null,
           websiteUrl: websiteUrl || null,
           googleId: googleId || null,
+          photoReference: photoRef,
           status: 'active',
         },
       });

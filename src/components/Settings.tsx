@@ -10,6 +10,7 @@ interface TenantListing {
   address?: string;
   status: string;
   connectedAt: string;
+  photoUrl?: string | null;
 }
 
 export function Settings() {
@@ -241,7 +242,11 @@ export function Settings() {
                   <div key={listing.id} className="listing-card">
                     <div className="listing-info">
                       <div className="listing-icon">
-                        <Store size={18} />
+                        {listing.photoUrl ? (
+                          <img src={listing.photoUrl} alt={listing.name} className="listing-photo" />
+                        ) : (
+                          <Store size={18} />
+                        )}
                       </div>
                       <div>
                         <div className="listing-name">{listing.name}</div>
@@ -592,6 +597,13 @@ export function Settings() {
           display: flex;
           align-items: center;
           justify-content: center;
+          overflow: hidden;
+        }
+
+        .listing-photo {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
         }
 
         .listing-name {

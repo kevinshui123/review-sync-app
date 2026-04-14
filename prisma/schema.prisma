@@ -157,22 +157,23 @@ model CommentTask {
 }
 
 model TenantListing {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  embedSocialListingId String  @unique  // The listing ID from EmbedSocial (used as sourceId in API calls)
-  name                String
-  address             String?
-  phoneNumber         String?
-  websiteUrl          String?
-  googleId            String?  // The Google Business Profile ID
-  totalReviews        Int      @default(0)
-  averageRating       Float    @default(0)
-  latitude            Float?   // GPS latitude from Google Places API
-  longitude           Float?   // GPS longitude from Google Places API
-  connectedAt         DateTime @default(now())
-  status              String   @default("active") // active, disconnected
+  id                     String   @id @default(uuid())
+  tenantId               String
+  embedSocialListingId   String   @unique  // The listing ID from EmbedSocial (used as sourceId in API calls)
+  name                   String
+  address                String?
+  phoneNumber            String?
+  websiteUrl             String?
+  googleId               String?  // The Google Business Profile ID
+  totalReviews           Int      @default(0)
+  averageRating          Float    @default(0)
+  latitude               Float?   // GPS latitude from Google Places API
+  longitude              Float?   // GPS longitude from Google Places API
+  photoReference         String?  // Google Places photo reference for business photo
+  connectedAt            DateTime @default(now())
+  status                 String   @default("active") // active, disconnected
 
-  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                 Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([embedSocialListingId])
