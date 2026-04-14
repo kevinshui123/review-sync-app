@@ -17,7 +17,7 @@ import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
 import { LandingPage } from './pages/LandingPage';
-import AuthPage from './pages/AuthPage';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
