@@ -21,6 +21,7 @@ import {
 import { Loader2, Sparkles, Zap } from 'lucide-react';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import { PageLoader } from './PageLoader';
 
 interface ReviewTask {
   id: string;
@@ -376,15 +377,7 @@ ${photoContext}
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-slate-100 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-transparent border-t-primary rounded-full animate-spin"></div>
-        </div>
-        <p className="text-sm text-slate-500 font-medium">加载中...</p>
-      </div>
-    );
+    return <PageLoader message={t('realComment.loading')} subMessage={t('realComment.loadingDesc')} />;
   }
 
   return (

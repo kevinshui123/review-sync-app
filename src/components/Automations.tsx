@@ -22,6 +22,7 @@ import {
   Lightbulb,
 } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
+import { PageLoader } from './PageLoader';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api';
 import type { AutomationRule, AutomationStatus, AIAgent } from '../types/automation';
 import { NewAutomationModal } from './NewAutomationModal';
@@ -357,12 +358,7 @@ export function Automations({ setActiveTab }: AutomationsProps) {
   const draftCount = automations.filter(a => a.status === 'draft').length;
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm text-slate-500">Loading automations...</p>
-      </div>
-    );
+    return <PageLoader message={t('automations.loading')} subMessage={t('automations.loadingDesc')} />;
   }
 
   return (

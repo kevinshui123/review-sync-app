@@ -3,6 +3,7 @@ import { Inventory2, Store, LocationOn, Close, ArrowForward, Star, Phone, Langua
 import { useLanguage } from '../contexts/LanguageContext';
 import { EditBusinessPage } from './EditBusinessPage';
 import { ProfileAnalysisDrawer } from './ProfileAnalysisDrawer';
+import { PageLoader } from './PageLoader';
 import { apiGet, apiDelete } from '../utils/api';
 
 interface ListingsProps {
@@ -77,12 +78,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   };
 
   if (loading) {
-    return (
-      <div className="page-loading">
-        <div className="loading-spinner" />
-        <p>Loading listings...</p>
-      </div>
-    );
+    return <PageLoader message={t('listings.loading')} subMessage={t('listings.loadingDesc')} />;
   }
 
   return (

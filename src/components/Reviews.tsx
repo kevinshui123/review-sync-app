@@ -3,6 +3,7 @@ import { Search, AllInbox, PendingActions, DoneAll, SmartToy, Sort, LocationOn, 
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../utils/api';
 import { Automations } from './Automations';
+import { PageLoader } from './PageLoader';
 
 interface ReviewsProps {
   setActiveTab?: (tab: string) => void;
@@ -182,12 +183,7 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
     });
 
   if (loading) {
-    return (
-      <div className="reviews-loading">
-        <div className="loading-spinner" />
-        <p>Loading reviews...</p>
-      </div>
-    );
+    return <PageLoader message={t('reviews.loading')} subMessage={t('reviews.loadingDesc')} />;
   }
 
   return (

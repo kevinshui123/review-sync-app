@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Settings as SettingsIcon, Save, Key, AlertCircle, CheckCircle2, Users, Plus, Trash2, Sparkles, ExternalLink, Store, Unlink, Loader2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
+import { PageLoader } from './PageLoader';
 
 interface TenantListing {
   id: string;
@@ -165,12 +166,7 @@ export function Settings() {
   };
 
   if (isLoading) {
-    return (
-      <div className="settings-loading">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--color-primary)' }} />
-        <p>Loading settings...</p>
-      </div>
-    );
+    return <PageLoader message={t('settings.loading')} subMessage={t('settings.loadingDesc')} />;
   }
 
   return (

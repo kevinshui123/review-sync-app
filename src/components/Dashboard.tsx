@@ -19,6 +19,7 @@ import {
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts';
 import { apiGet } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import { PageLoader } from './PageLoader';
 
 interface DashboardProps {
   setActiveTab: (tab: string) => void;
@@ -274,12 +275,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
   const filteredReviews = reviewFilter === 'all' ? recentReviews : recentReviews.filter(r => reviewFilter === 'positive' ? r.isPositive : !r.isPositive);
 
   if (!mounted || loading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner" />
-        <p className="loading-text">Loading dashboard...</p>
-      </div>
-    );
+    return <PageLoader message="Loading dashboard..." subMessage="Fetching your business data" />;
   }
 
   const avgHealthScore = locations.length > 0 ? Math.round(locations.reduce((acc, loc) => acc + loc.healthScore, 0) / locations.length) : 0;

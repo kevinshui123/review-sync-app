@@ -3,6 +3,7 @@ import { Search, Map, Refresh, Place, Close, Star } from '@mui/icons-material';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import { PageLoader } from './PageLoader';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -122,12 +123,7 @@ export function LocalSearchGrid() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="lsg-loading">
-        <div className="loading-spinner" />
-        <p>{t('app.loading')}</p>
-      </div>
-    );
+    return <PageLoader message={t('seo.loadingSeo')} subMessage={t('seo.loadingSeoDesc')} />;
   }
 
   return (
