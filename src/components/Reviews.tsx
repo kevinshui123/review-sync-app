@@ -1,25 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Search,
-  AllInbox,
-  PendingActions,
-  DoneAll,
-  SmartToy,
-  Analytics,
-  Sort,
-  LocationOn,
-  Share,
-  MoreVert,
-  AutoAwesome,
-  Send,
-  Star,
-  Sync,
-  CheckCircle,
-  Bolt,
-} from '@mui/icons-material';
+import { Search, AllInbox, PendingActions, DoneAll, SmartToy, Sort, LocationOn, Share, MoreVert, AutoAwesome, Send, Star, Sync, CheckCircle } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../utils/api';
-import { addActivityLog } from './EditsLog';
 import { Automations } from './Automations';
 
 interface ReviewsProps {
@@ -29,34 +11,19 @@ interface ReviewsProps {
 interface Review {
   id: string;
   reviewerName?: string;
-  reviewerPhotoUrl?: string;
   authorName?: string;
-  authorPhotoUrl?: string;
   rating?: number;
-  author?: string;
-  location?: string;
   sourceName?: string;
+  location?: string;
   captionText?: string;
   text?: string;
   message?: string;
-  sourceId?: string;
   originalCreatedOn?: string;
   createdAt?: string;
-  date?: string;
   replies?: any[];
   replied?: boolean;
-  hasReply?: boolean;
   replyText?: string;
 }
-
-interface ReviewFilters {
-  all: number;
-  waiting: number;
-  replied: number;
-  ai: number;
-}
-
-type SortOption = 'newest' | 'oldest' | 'highest' | 'lowest';
 
 interface AIReplyOptions {
   professional: string;
@@ -68,11 +35,11 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
   const { t } = useLanguage();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
-  const [filters, setFilters] = useState<ReviewFilters>({ all: 0, waiting: 0, replied: 0, ai: 0 });
+  const [filters, setFilters] = useState({ all: 0, waiting: 0, replied: 0, ai: 0 });
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
   const [replyText, setReplyText] = useState('');
   const [aiReplyOptions, setAiReplyOptions] = useState<AIReplyOptions | null>(null);
   const [selectedTone, setSelectedTone] = useState<'professional' | 'friendly' | 'empathetic' | null>(null);
@@ -81,21 +48,20 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
-  const [showSortMenu, setShowSortMenu] = useState(false);
-  const [showLocationMenu, setShowLocationMenu] = useState(false);
-  const [reviewsSubTab, setReviewsSubTab] = useState<'reviews' | 'automations'>('reviews');
+  const [subTab, setSubTab] = useState<'reviews' | 'automations'>('reviews');
 
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const locationsRes = await apiGet('/api/embedsocial/locations');
+      const [locationsRes, res] = await Promise.all([
+        apiGet('/api/embedsocial/locations'),
+        apiGet('/api/embedsocial/reviews')
+      ]);
       if (locationsRes.ok) {
-        const locationsData = await locationsRes.json();
-        const locs = Array.isArray(locationsData) ? locationsData : (locationsData.data || []);
+        const locsData = await locationsRes.json();
+        const locs = Array.isArray(locsData) ? locsData : (locsData.data || []);
         setLocations(locs.map((l: any) => ({ id: l.id, name: l.name })));
       }
-
-      const res = await apiGet('/api/embedsocial/reviews');
       if (res.ok) {
         const data = await res.json();
         const embedReviews = Array.isArray(data) ? data : [];
@@ -106,16 +72,11 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
           replied: embedReviews.filter((r: any) => r.replies?.length > 0).length,
           ai: 0,
         });
-        if (embedReviews.length > 0 && !selectedReview) {
-          setSelectedReview(embedReviews[0]);
-        }
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setSyncMessage({ type: 'error', text: data.error || 'Failed to load reviews.' });
+        if (embedReviews.length > 0 && !selectedReview) setSelectedReview(embedReviews[0]);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to fetch reviews:', error);
-      setSyncMessage({ type: 'error', text: 'Failed to load reviews. Please check your connection.' });
+      setSyncMessage({ type: 'error', text: 'Failed to load reviews.' });
     } finally {
       setLoading(false);
     }
@@ -123,7 +84,7 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
 
   useEffect(() => { fetchReviews(); }, []);
 
-  const handleSyncReviews = async () => {
+  const handleSync = async () => {
     setSyncing(true);
     setSyncMessage(null);
     try {
@@ -132,24 +93,18 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
       if (res.ok) {
         const embedReviews = Array.isArray(data) ? data : [];
         setReviews(embedReviews);
-        setFilters({
-          all: embedReviews.length,
-          waiting: embedReviews.filter((r: any) => !r.replies?.length).length,
-          replied: embedReviews.filter((r: any) => r.replies?.length > 0).length,
-          ai: 0,
-        });
-        setSyncMessage({ type: 'success', text: `Synced ${embedReviews.length} reviews successfully!` });
-      } else {
-        setSyncMessage({ type: 'error', text: (data && data.error) || 'Failed to sync reviews' });
+        setFilters({ all: embedReviews.length, waiting: embedReviews.filter((r: any) => !r.replies?.length).length, replied: embedReviews.filter((r: any) => r.replies?.length > 0).length, ai: 0 });
+        setSyncMessage({ type: 'success', text: `Synced ${embedReviews.length} reviews.` });
+        setTimeout(() => setSyncMessage(null), 3000);
       }
     } catch {
-      setSyncMessage({ type: 'error', text: 'Network error. Please try again.' });
+      setSyncMessage({ type: 'error', text: 'Network error.' });
     } finally {
       setSyncing(false);
     }
   };
 
-  const generateAIReply = async () => {
+  const generateReply = async () => {
     if (!selectedReview) return;
     setGenerating(true);
     setAiReplyOptions(null);
@@ -168,15 +123,10 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
           setAiReplyOptions(data.replies);
           setSelectedTone('professional');
           setReplyText(data.replies.professional);
-        } else if (data.error) {
-          alert('Failed to generate reply: ' + data.error);
         }
-      } else {
-        const data = await res.json();
-        alert('Failed to generate reply: ' + (data.error || 'Unknown error'));
       }
-    } catch (error: any) {
-      alert('Network error. Please try again: ' + (error.message || 'Unknown error'));
+    } catch (error) {
+      console.error('Failed to generate reply:', error);
     } finally {
       setGenerating(false);
     }
@@ -188,62 +138,38 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
     try {
       const res = await apiPost(`/api/reviews/${selectedReview.id}/reply`, { replyText });
       if (res.ok) {
-        const updatedReviews = reviews.map(r =>
-          r.id === selectedReview.id ? { ...r, replied: true, replyText } : r
-        );
+        const updatedReviews = reviews.map(r => r.id === selectedReview.id ? { ...r, replied: true, replyText } : r);
         setReviews(updatedReviews);
         setSelectedReview({ ...selectedReview, replied: true, replyText });
         setReplyText('');
-        setFilters(prev => ({
-          ...prev,
-          waiting: prev.waiting - 1,
-          replied: prev.replied + 1,
-        }));
-        setSyncMessage({ type: 'success', text: `Reply sent successfully!` });
-        setTimeout(() => setSyncMessage(null), 4000);
-        addActivityLog({
-          action: 'reply',
-          entity: 'Review',
-          entityId: selectedReview.id,
-          details: `Replied to review by ${selectedReview.reviewerName || selectedReview.authorName || 'a customer'}`,
-          status: 'completed',
-        });
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to send reply. Please try again.');
+        setFilters(prev => ({ ...prev, waiting: prev.waiting - 1, replied: prev.replied + 1 }));
+        setSyncMessage({ type: 'success', text: 'Reply sent!' });
+        setTimeout(() => setSyncMessage(null), 3000);
       }
-    } catch (error: any) {
-      alert('Network error. Please try again: ' + (error?.message || 'Unknown error'));
+    } catch (error) {
+      console.error('Failed to send reply:', error);
     } finally {
       setSending(false);
     }
   };
 
   const filterCategories = [
-    { id: 'all', label: 'All reviews', icon: AllInbox, count: filters.all },
-    { id: 'waiting', label: 'Waiting for reply', icon: PendingActions, count: filters.waiting, highlight: true },
+    { id: 'all', label: 'All', icon: AllInbox, count: filters.all },
+    { id: 'waiting', label: 'Pending', icon: PendingActions, count: filters.waiting },
     { id: 'replied', label: 'Replied', icon: DoneAll, count: filters.replied },
-    { id: 'ai', label: 'AI replies', icon: SmartToy, count: filters.ai },
   ];
 
-  const reviewsNavItems = [
+  const subNavItems = [
     { id: 'reviews', label: 'Reviews', icon: AllInbox },
-    { id: 'automations', label: 'Automations', icon: Bolt, badge: 'NEW' },
+    { id: 'automations', label: 'Automations', icon: SmartToy, badge: 'NEW' },
   ];
 
-  const filteredAndSortedReviews = (reviews || [])
-    .filter(r => {
-      if (activeFilter === 'waiting') return !r.replied && !(r.replies && r.replies.length > 0);
-      if (activeFilter === 'replied') return r.replied || (r.replies && r.replies.length > 0);
-      return true;
-    })
-    .filter(r => {
-      if (selectedLocation !== 'all') return r.sourceId === selectedLocation || r.location === selectedLocation;
-      return true;
-    })
+  const filteredReviews = (reviews || [])
+    .filter(r => activeFilter === 'all' || (activeFilter === 'waiting' ? !r.replied : activeFilter === 'replied' ? (r.replied || r.replies?.length > 0) : true))
+    .filter(r => selectedLocation === 'all' || r.sourceId === selectedLocation || r.location === selectedLocation)
     .sort((a, b) => {
-      const dateA = new Date(a.originalCreatedOn || a.createdAt || a.date || 0).getTime();
-      const dateB = new Date(b.originalCreatedOn || b.createdAt || b.date || 0).getTime();
+      const dateA = new Date(a.originalCreatedOn || a.createdAt || 0).getTime();
+      const dateB = new Date(b.originalCreatedOn || b.createdAt || 0).getTime();
       const ratingA = a.rating || 0;
       const ratingB = b.rating || 0;
       switch (sortBy) {
@@ -257,475 +183,699 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm text-slate-500">Loading reviews...</p>
+      <div className="reviews-loading">
+        <div className="loading-spinner" />
+        <p>Loading reviews...</p>
       </div>
     );
   }
 
   return (
-    <>
-      {reviewsSubTab === 'automations' ? (
+    <div className="reviews-container">
+      {subTab === 'automations' ? (
         <Automations />
       ) : (
-        <div className="flex flex-col h-full overflow-hidden">
+        <>
           {/* Header */}
-          <div className="px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg md:text-xl font-bold">Reviews</h2>
-              <span className="text-xs text-slate-400 hidden sm:inline">{filters.all} total</span>
+          <header className="reviews-header">
+            <div className="reviews-header-left">
+              <h1 className="page-title">Reviews</h1>
+              <span className="reviews-count">{filters.all} total</span>
             </div>
-            <button
-              onClick={handleSyncReviews}
-              disabled={syncing}
-              className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 md:px-5 md:py-2.5 rounded-full font-bold text-xs md:text-sm hover:bg-primary/90 transition-all disabled:opacity-50 shrink-0"
-            >
-              <Sync className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{syncing ? 'Syncing...' : 'Sync Reviews'}</span>
-              <span className="sm:hidden">{syncing ? 'Syncing' : 'Sync'}</span>
+            <button className="btn btn-primary" onClick={handleSync} disabled={syncing}>
+              <Sync sx={{ fontSize: 18, className: syncing ? 'spin' : '' }} />
+              {syncing ? 'Syncing...' : 'Sync Reviews'}
             </button>
-          </div>
+          </header>
 
           {/* Sync Message */}
           {syncMessage && (
-            <div className={`mx-4 mt-3 md:mx-6 md:mt-4 px-4 py-3 rounded-xl text-sm font-medium shrink-0 ${
-              syncMessage.type === 'success'
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
-            }`}>
+            <div className={`sync-message ${syncMessage.type}`}>
               {syncMessage.text}
             </div>
           )}
 
-          {/* Mobile: Filter Tabs + Controls */}
-          <div className="md:hidden shrink-0 bg-white border-b border-slate-100 relative z-10">
-            <div className="flex overflow-x-auto px-4 pt-3 gap-2 scrollbar-hide">
-              {reviewsNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = reviewsSubTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setReviewsSubTab(item.id as 'reviews' | 'automations')}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
-                      isActive ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{item.label}</span>
-                    {item.badge && (
-                      <span className="text-[9px] px-1 py-0.5 rounded-full bg-orange-500 text-white font-bold">
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Only show filters when in reviews tab */}
-            {reviewsSubTab === 'reviews' && (
-              <>
-                <div className="flex overflow-x-auto px-4 pt-2 gap-2 scrollbar-hide">
-                  {filterCategories.map((cat) => {
-                    const Icon = cat.icon;
-                    const isActive = activeFilter === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => setActiveFilter(cat.id)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
-                          isActive ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        <span>{cat.count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-2 px-4 pb-3 pt-2">
-                  <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <input
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border-none rounded-full text-xs"
-                      placeholder="Search..."
-                    />
-                  </div>
-                  <button
-                    onClick={() => { setShowSortMenu(!showSortMenu); setShowLocationMenu(false); }}
-                    className="flex items-center gap-1 px-3 py-2 bg-slate-50 text-xs font-semibold rounded-full"
-                  >
-                    <Sort className="w-3.5 h-3.5" /> Sort
-                  </button>
-                  <button
-                    onClick={() => { setShowLocationMenu(!showLocationMenu); setShowSortMenu(false); }}
-                    className="flex items-center gap-1 px-3 py-2 bg-slate-50 text-xs font-semibold rounded-full"
-                  >
-                    <LocationOn className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                {/* Dropdowns */}
-                {showSortMenu && (
-                  <div className="absolute left-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-0">
-                    {[{ id: 'newest', label: 'Newest first' }, { id: 'oldest', label: 'Oldest first' }, { id: 'highest', label: 'Highest rating' }, { id: 'lowest', label: 'Lowest rating' }].map(opt => (
-                      <button
-                        key={opt.id}
-                        onClick={() => { setSortBy(opt.id as SortOption); setShowSortMenu(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-xs ${sortBy === opt.id ? 'text-primary font-bold' : 'text-slate-600'}`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {showLocationMenu && (
-                  <div className="absolute left-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-0">
-                    <button onClick={() => { setSelectedLocation('all'); setShowLocationMenu(false); }} className={`w-full text-left px-4 py-2.5 text-xs ${selectedLocation === 'all' ? 'text-primary font-bold' : 'text-slate-600'}`}>
-                      All Locations
-                    </button>
-                    {locations.map(loc => (
-                      <button key={loc.id} onClick={() => { setSelectedLocation(loc.id); setShowLocationMenu(false); }} className={`w-full text-left px-4 py-2.5 text-xs truncate ${selectedLocation === loc.id ? 'text-primary font-bold' : 'text-slate-600'}`}>
-                        {loc.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+          {/* Sub Navigation */}
+          <div className="reviews-subnav">
+            {subNavItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button key={item.id} className={`subnav-btn ${subTab === item.id ? 'active' : ''}`} onClick={() => setSubTab(item.id as 'reviews' | 'automations')}>
+                  <Icon sx={{ fontSize: 18 }} />
+                  <span>{item.label}</span>
+                  {item.badge && <span className="subnav-badge">{item.badge}</span>}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex flex-1 overflow-hidden">
-            {/* Desktop: Left Pane */}
-            <aside className="hidden md:flex w-64 bg-slate-50 p-6 flex-col gap-1 overflow-y-auto shrink-0">
-              {/* Sub Navigation */}
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-3">Navigation</h3>
-              {reviewsNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = reviewsSubTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setReviewsSubTab(item.id as 'reviews' | 'automations')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                      isActive ? 'bg-white text-primary font-semibold shadow-sm' : 'text-slate-500 hover:bg-white/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
-                      <span className="text-sm">{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                        isActive ? 'bg-primary/20 text-primary' : 'bg-orange-100 text-orange-600'
-                      }`}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-
-              {/* Only show filters when in reviews tab */}
-              {reviewsSubTab === 'reviews' && (
-                <>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-3 mt-6">Filter Views</h3>
-                  {filterCategories.map((cat) => {
-                    const Icon = cat.icon;
-                    const isActive = activeFilter === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => setActiveFilter(cat.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                          isActive ? 'bg-white text-primary font-semibold shadow-sm' : 'text-slate-500 hover:bg-white/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
-                          <span className="text-sm">{cat.label}</span>
-                        </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          isActive ? 'bg-primary/10 text-primary font-bold' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {cat.count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                  <div className="mt-6 pt-6 border-t border-slate-200">
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-white/50 rounded-xl transition-all">
-                      <Analytics className="w-5 h-5" />
-                      <span className="text-sm">Analytics</span>
+          <div className="reviews-layout">
+            {/* Sidebar Filters */}
+            <aside className="reviews-sidebar">
+              <div className="sidebar-section">
+                <h4 className="sidebar-label">Filter</h4>
+                {filterCategories.map((cat) => {
+                  const Icon = cat.icon;
+                  return (
+                    <button key={cat.id} className={`filter-btn ${activeFilter === cat.id ? 'active' : ''}`} onClick={() => setActiveFilter(cat.id)}>
+                      <Icon sx={{ fontSize: 18 }} />
+                      <span className="filter-label">{cat.label}</span>
+                      <span className="filter-count">{cat.count}</span>
                     </button>
-                  </div>
-                </>
-              )}
+                  );
+                })}
+              </div>
             </aside>
 
-            {/* Review List Pane */}
-            <section className="flex-1 min-w-0 bg-white flex flex-col border-x border-slate-100 overflow-hidden">
-              {/* Desktop: search + sort */}
-              <div className="hidden md:flex p-6 bg-white/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-100 flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-headline text-xl font-bold">All reviews</h2>
-                  <div className="flex gap-2 relative">
-                    <div className="relative">
-                      <button
-                        onClick={() => { setShowSortMenu(!showSortMenu); setShowLocationMenu(false); }}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white text-xs font-semibold rounded-full shadow-sm hover:bg-slate-50 transition-colors"
-                      >
-                        <Sort className="w-4 h-4" /> Sort
-                      </button>
-                      {showSortMenu && (
-                        <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 min-w-[120px]">
-                          {[{ id: 'newest', label: 'Newest first' }, { id: 'oldest', label: 'Oldest first' }, { id: 'highest', label: 'Highest rating' }, { id: 'lowest', label: 'Lowest rating' }].map(opt => (
-                            <button key={opt.id} onClick={() => { setSortBy(opt.id as SortOption); setShowSortMenu(false); }} className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 ${sortBy === opt.id ? 'text-primary font-bold' : 'text-slate-600'}`}>
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <button
-                        onClick={() => { setShowLocationMenu(!showLocationMenu); setShowSortMenu(false); }}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white text-xs font-semibold rounded-full shadow-sm hover:bg-slate-50 transition-colors"
-                      >
-                        <LocationOn className="w-4 h-4" /> Location
-                      </button>
-                      {showLocationMenu && (
-                        <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 min-w-[160px]">
-                          <button onClick={() => { setSelectedLocation('all'); setShowLocationMenu(false); }} className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 ${selectedLocation === 'all' ? 'text-primary font-bold' : 'text-slate-600'}`}>All Locations</button>
-                          {locations.map(loc => (
-                            <button key={loc.id} onClick={() => { setSelectedLocation(loc.id); setShowLocationMenu(false); }} className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 ${selectedLocation === loc.id ? 'text-primary font-bold' : 'text-slate-600'}`}>{loc.name}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+            {/* Review List */}
+            <main className="reviews-list">
+              <div className="reviews-list-header">
+                <div className="search-box">
+                  <Search sx={{ fontSize: 18, color: 'var(--color-text-muted)' }} />
+                  <input type="text" placeholder="Search reviews..." className="search-input" />
                 </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                  <input className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-full text-sm focus:ring-2 focus:ring-primary/20" placeholder="Search across all reviews..." />
+                <div className="list-controls">
+                  <select className="input select" value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)}>
+                    <option value="all">All Locations</option>
+                    {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+                  </select>
+                  <select className="input select" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="highest">Highest rating</option>
+                    <option value="lowest">Lowest rating</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Review Cards */}
-              <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-3 pb-8">
-                {filteredAndSortedReviews.length > 0 ? filteredAndSortedReviews.map((review) => (
+              <div className="review-cards">
+                {filteredReviews.length > 0 ? filteredReviews.map((review) => (
                   <div
                     key={review.id}
+                    className={`review-card ${selectedReview?.id === review.id ? 'selected' : ''}`}
                     onClick={() => { setSelectedReview(review); setAiReplyOptions(null); setSelectedTone(null); setReplyText(''); }}
-                    className={`p-4 rounded-xl cursor-pointer transition-all ${
-                      selectedReview?.id === review.id ? 'bg-primary text-white shadow-lg' : 'bg-slate-50 hover:bg-slate-100'
-                    }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-3">
-                        {review.reviewerPhotoUrl || review.authorPhotoUrl ? (
-                          <img src={review.reviewerPhotoUrl || review.authorPhotoUrl} alt="" className={`w-10 h-10 rounded-full border-2 object-cover ${selectedReview?.id === review.id ? 'border-white/20' : 'border-slate-200'}`} />
-                        ) : (
-                          <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold text-sm ${selectedReview?.id === review.id ? 'border-white/20 bg-white/20' : 'border-slate-200 bg-slate-200'}`}>
-                            {(review.reviewerName || review.authorName || 'A').charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <h4 className="text-sm font-bold leading-tight">{review.reviewerName || review.authorName}</h4>
-                          <div className="flex text-amber-400">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} className={`w-3 h-3 ${i < (review.rating || 0) ? 'text-amber-400' : 'text-slate-300'} ${selectedReview?.id === review.id ? 'text-white' : ''}`} style={{ fontVariationSettings: "'FILL' 1" }} />
+                    <div className="review-card-header">
+                      <div className="review-avatar">
+                        {(review.reviewerName || review.authorName || 'A').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="review-card-info">
+                        <div className="review-author">{review.reviewerName || review.authorName}</div>
+                        <div className="review-meta">
+                          <div className="review-stars">
+                            {[1, 2, 3, 4, 5].map(i => (
+                              <Star key={i} sx={{ fontSize: 12, color: i <= (review.rating || 0) ? '#f59e0b' : '#e2e8f0', fontVariationSettings: "'FILL' 1" }} />
                             ))}
                           </div>
+                          <span>{review.originalCreatedOn || review.createdAt}</span>
                         </div>
                       </div>
-                      <span className={`text-[10px] ${selectedReview?.id === review.id ? 'text-white/70' : 'text-slate-400'}`}>
-                        {review.originalCreatedOn || review.createdAt || review.date}
-                      </span>
                     </div>
-                    <p className={`text-xs line-clamp-2 ${selectedReview?.id === review.id ? 'text-white/90' : 'text-slate-500'}`}>
-                      {review.captionText || review.text || review.message}
-                    </p>
+                    <p className="review-text">{review.captionText || review.text || review.message}</p>
+                    {review.replied && (
+                      <div className="review-replied-badge">
+                        <CheckCircle sx={{ fontSize: 14 }} />
+                        Replied
+                      </div>
+                    )}
                   </div>
                 )) : (
-                  <div className="py-16 text-center">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                      <AllInbox className="w-8 h-8 text-slate-400" />
-                    </div>
-                    <p className="text-slate-500">No reviews found</p>
+                  <div className="empty-state">
+                    <AllInbox sx={{ fontSize: 48, color: 'var(--color-text-disabled)' }} />
+                    <div className="empty-title">No reviews found</div>
                   </div>
                 )}
               </div>
-            </section>
+            </main>
 
-            {/* Right Pane: Review Detail */}
+            {/* Detail Panel */}
             {selectedReview && (
-              <section className="w-full max-w-2xl bg-white flex flex-col shadow-2xl z-20 overflow-hidden">
-                {/* Mobile back bar */}
-                <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-slate-100 bg-white shrink-0">
-                  <button onClick={() => setSelectedReview(null)} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-                  </button>
-                  <span className="text-sm font-semibold text-slate-500">Back</span>
-                  <span className="ml-auto text-xs text-slate-400 truncate max-w-[120px]">{selectedReview.reviewerName || selectedReview.authorName}</span>
-                </div>
-
-                <div className="p-5 md:p-8 overflow-y-auto flex-1">
-                  <header className="flex justify-between items-start mb-5 md:mb-8">
-                    <div className="flex items-center gap-3 md:gap-5">
-                      {selectedReview.reviewerPhotoUrl || selectedReview.authorPhotoUrl ? (
-                        <img src={selectedReview.reviewerPhotoUrl || selectedReview.authorPhotoUrl} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-slate-100 object-cover shrink-0" />
-                      ) : (
-                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-slate-100 bg-slate-200 flex items-center justify-center text-lg md:text-2xl font-bold shrink-0">
-                          {(selectedReview.reviewerName || selectedReview.authorName || 'A').charAt(0).toUpperCase()}
+              <aside className="reviews-detail">
+                <div className="detail-header">
+                  <div className="detail-author">
+                    <div className="detail-avatar">{(selectedReview.reviewerName || selectedReview.authorName || 'A').charAt(0).toUpperCase()}</div>
+                    <div>
+                      <div className="detail-name">{selectedReview.reviewerName || selectedReview.authorName}</div>
+                      <div className="detail-meta">
+                        <div className="review-stars">
+                          {[1, 2, 3, 4, 5].map(i => (
+                            <Star key={i} sx={{ fontSize: 14, color: i <= (selectedReview.rating || 0) ? '#f59e0b' : '#e2e8f0', fontVariationSettings: "'FILL' 1" }} />
+                          ))}
                         </div>
-                      )}
-                      <div className="min-w-0">
-                        <h2 className="text-base md:text-2xl font-extrabold font-headline truncate max-w-[120px] md:max-w-none">{selectedReview.reviewerName || selectedReview.authorName}</h2>
-                        <div className="flex flex-wrap items-center gap-1 text-[11px] md:text-sm text-slate-400 mt-0.5 md:mt-1">
-                          <div className="flex text-amber-400">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} className={`w-3.5 md:w-4 h-3.5 md:h-4 ${i < (selectedReview.rating || 0) ? 'text-amber-400' : 'text-slate-300'}`} style={{ fontVariationSettings: "'FILL' 1" }} />
-                            ))}
-                          </div>
-                          <span>•</span>
-                          <span className="truncate max-w-[70px] md:max-w-none">{selectedReview.originalCreatedOn || selectedReview.createdAt || selectedReview.date}</span>
-                          <span className="hidden sm:inline">•</span>
-                          <span className="hidden sm:inline flex items-center gap-1 truncate max-w-[120px]">
-                            <LocationOn className="w-3 h-3 shrink-0" />{selectedReview.sourceName || selectedReview.location}
-                          </span>
-                        </div>
+                        <span>{selectedReview.originalCreatedOn || selectedReview.createdAt}</span>
                       </div>
                     </div>
-                    <div className="flex gap-1 ml-2 shrink-0">
-                      <button className="p-1.5 md:p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
-                        <Share className="w-4 h-4" />
-                      </button>
-                      <button className="p-1.5 md:p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
-                        <MoreVert className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </header>
+                  </div>
+                  <div className="detail-actions">
+                    <button className="btn-icon"><Share sx={{ fontSize: 18 }} /></button>
+                    <button className="btn-icon"><MoreVert sx={{ fontSize: 18 }} /></button>
+                  </div>
+                </div>
 
-                  <article className="mb-5 md:mb-8">
-                    <p className="text-sm md:text-base leading-relaxed text-slate-700">
-                      {selectedReview.captionText || selectedReview.text || selectedReview.message}
-                    </p>
-                  </article>
+                <div className="detail-body">
+                  <p className="detail-text">{selectedReview.captionText || selectedReview.text || selectedReview.message}</p>
 
-                  {(selectedReview.replyText || selectedReview.replies?.length) && (
-                    <div className="bg-slate-50 rounded-2xl p-4 md:p-6 mb-5 md:mb-8 border-l-4 border-primary">
-                      <h4 className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-primary mb-3">Your Reply</h4>
-                      <p className="text-xs md:text-sm text-slate-700">
-                        {selectedReview.replyText || (typeof selectedReview.replies?.[0] === 'string' ? selectedReview.replies?.[0] : selectedReview.replies?.[0]?.text)}
-                      </p>
+                  {selectedReview.replyText && (
+                    <div className="detail-reply">
+                      <div className="reply-label">Your Reply</div>
+                      <p>{selectedReview.replyText}</p>
                     </div>
                   )}
-
-                  <div className="bg-slate-50 rounded-2xl p-4 md:p-6 mb-5 md:mb-8 border-l-4 border-primary">
-                    <h4 className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-primary mb-3">Customer Context</h4>
-                    <div className="grid grid-cols-3 gap-3 md:gap-6">
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase font-semibold">Rating</p>
-                        <p className="text-sm font-bold text-slate-900">{(selectedReview.rating || 0)}/5</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase font-semibold">Total Reviews</p>
-                        <p className="text-sm font-bold text-slate-900 truncate">
-                          {reviews.filter(r => (r.authorName || r.author) === (selectedReview.authorName || selectedReview.author)).length} published
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase font-semibold">Status</p>
-                        <p className="text-sm font-bold text-slate-900 truncate">
-                          {(selectedReview.replied || selectedReview.hasReply || selectedReview.replies?.length) ? 'Replied' : 'Pending'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Reply Footer */}
-                <footer className="p-4 md:p-8 bg-white border-t border-slate-100 shrink-0">
-                  <div className="mb-3 md:mb-4 flex items-center justify-between gap-2">
-                    <label className="text-xs md:text-sm font-bold text-slate-900">Write your reply</label>
-                    <button
-                      onClick={generateAIReply}
-                      disabled={generating}
-                      className="flex items-center gap-1 px-3 py-1.5 md:px-4 md:py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-all text-xs md:text-sm font-bold disabled:opacity-50 shrink-0"
-                    >
-                      <AutoAwesome className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                      {generating ? 'Generating...' : 'AI reply'}
-                    </button>
-                  </div>
+                <div className="detail-footer">
+                  <button className="btn btn-accent btn-sm" onClick={generateReply} disabled={generating}>
+                    <AutoAwesome sx={{ fontSize: 16 }} />
+                    {generating ? 'Generating...' : 'AI Reply'}
+                  </button>
 
                   {aiReplyOptions && (
-                    <div className="mb-3 md:mb-4 space-y-2">
-                      <p className="text-xs font-semibold text-slate-500 mb-2">Choose tone:</p>
+                    <div className="tone-selector">
                       {[
-                        { key: 'professional' as const, label: 'Professional', icon: '👔', desc: 'Formal' },
-                        { key: 'friendly' as const, label: 'Friendly', icon: '😊', desc: 'Warm' },
-                        { key: 'empathetic' as const, label: 'Empathetic', icon: '💙', desc: 'Caring' },
-                      ].map((tone) => {
-                        const isSelected = selectedTone === tone.key;
-                        const replyContent = aiReplyOptions[tone.key];
-                        return (
-                          <button
-                            key={tone.key}
-                            onClick={() => { setSelectedTone(tone.key); setReplyText(replyContent); }}
-                            className={`w-full p-3 rounded-xl border-2 transition-all text-left ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 bg-white'}`}
-                          >
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-base">{tone.icon}</span>
-                              <span className={`font-bold text-xs md:text-sm ${isSelected ? 'text-primary' : 'text-slate-700'}`}>{tone.label}</span>
-                              <span className="text-[10px] md:text-xs text-slate-400">{tone.desc}</span>
-                              {isSelected && <CheckCircle className="w-4 h-4 text-primary ml-auto shrink-0" />}
-                            </div>
-                            <p className={`text-[10px] md:text-xs line-clamp-2 pl-6 ${isSelected ? 'text-primary/80' : 'text-slate-500'}`}>
-                              "{replyContent}"
-                            </p>
-                          </button>
-                        );
-                      })}
+                        { key: 'professional', label: 'Professional', emoji: '👔' },
+                        { key: 'friendly', label: 'Friendly', emoji: '😊' },
+                        { key: 'empathetic', label: 'Caring', emoji: '💙' },
+                      ].map((tone) => (
+                        <button key={tone.key} className={`tone-btn ${selectedTone === tone.key ? 'active' : ''}`} onClick={() => { setSelectedTone(tone.key as any); setReplyText(aiReplyOptions[tone.key]); }}>
+                          <span>{tone.emoji}</span>
+                          <span>{tone.label}</span>
+                        </button>
+                      ))}
                     </div>
                   )}
 
                   <textarea
-                    className="w-full min-h-[100px] md:min-h-[120px] bg-slate-50 border-2 border-transparent rounded-2xl p-3 md:p-4 text-xs md:text-sm focus:ring-2 focus:ring-primary focus:bg-white transition-all resize-none"
+                    className="input reply-textarea"
                     placeholder={`Reply to ${selectedReview.reviewerName || selectedReview.authorName}...`}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
+                    rows={4}
                   />
-                  <div className="mt-3 md:mt-4 flex items-center justify-end gap-2 md:gap-3">
-                    <button onClick={() => { setReplyText(''); setAiReplyOptions(null); setSelectedTone(null); }} className="px-4 md:px-5 py-2 text-xs md:text-sm font-bold text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
-                      Discard
-                    </button>
-                    <button
-                      onClick={sendReply}
-                      disabled={!replyText.trim() || sending}
-                      className="px-6 md:px-8 py-2 bg-primary text-white text-xs md:text-sm font-bold rounded-full shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {sending ? 'Sending...' : 'Send'}
-                      {!sending && <Send className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+                  <div className="reply-actions">
+                    <button className="btn btn-secondary" onClick={() => { setReplyText(''); setAiReplyOptions(null); setSelectedTone(null); }}>Clear</button>
+                    <button className="btn btn-primary" onClick={sendReply} disabled={!replyText.trim() || sending}>
+                      <Send sx={{ fontSize: 16 }} />
+                      {sending ? 'Sending...' : 'Send Reply'}
                     </button>
                   </div>
-                </footer>
-              </section>
-            )}
-
-            {!selectedReview && (
-              <section className="hidden md:flex w-full max-w-2xl bg-white flex-col items-center justify-center text-center p-8 shrink-0">
-                <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                  <Star className="w-10 h-10 text-slate-300" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Select a Review</h3>
-                <p className="text-slate-500 text-sm">Click on a review from the list to view details.</p>
-              </section>
+              </aside>
             )}
           </div>
-        </div>
+        </>
       )}
-    </>
+
+      <style>{`
+        .reviews-loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          gap: 16px;
+        }
+
+        .loading-spinner {
+          width: 32px;
+          height: 32px;
+          border: 3px solid var(--color-border);
+          border-top-color: var(--color-primary);
+          border-radius: 999px;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .reviews-container {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .reviews-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px 24px;
+          border-bottom: 1px solid var(--color-border);
+          background: var(--color-surface-raised);
+        }
+
+        .reviews-header-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .page-title {
+          font-family: var(--font-headline);
+          font-size: 20px;
+          font-weight: 700;
+          color: var(--color-text-primary);
+          margin: 0;
+          letter-spacing: -0.02em;
+        }
+
+        .reviews-count {
+          font-size: 13px;
+          color: var(--color-text-muted);
+        }
+
+        .sync-message {
+          padding: 12px 24px;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .sync-message.success {
+          background: var(--color-success-bg);
+          color: var(--color-success-text);
+        }
+
+        .sync-message.error {
+          background: var(--color-error-bg);
+          color: var(--color-error-text);
+        }
+
+        .reviews-subnav {
+          display: flex;
+          gap: 4px;
+          padding: 12px 24px;
+          border-bottom: 1px solid var(--color-border);
+          background: var(--color-surface-raised);
+        }
+
+        .subnav-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          font-size: 13px;
+          font-weight: 500;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          background: transparent;
+          color: var(--color-text-secondary);
+          transition: all 0.15s ease;
+        }
+
+        .subnav-btn:hover {
+          background: var(--color-surface);
+        }
+
+        .subnav-btn.active {
+          background: var(--color-primary);
+          color: white;
+        }
+
+        .subnav-badge {
+          font-size: 9px;
+          font-weight: 700;
+          padding: 1px 5px;
+          border-radius: 999px;
+          background: var(--color-warning);
+          color: white;
+        }
+
+        .subnav-btn.active .subnav-badge {
+          background: rgba(255,255,255,0.3);
+        }
+
+        .reviews-layout {
+          flex: 1;
+          display: grid;
+          grid-template-columns: 200px 1fr 400px;
+          overflow: hidden;
+        }
+
+        @media (max-width: 1200px) {
+          .reviews-layout {
+            grid-template-columns: 180px 1fr;
+          }
+          .reviews-detail { display: none; }
+        }
+
+        @media (max-width: 768px) {
+          .reviews-layout {
+            grid-template-columns: 1fr;
+          }
+          .reviews-sidebar { display: none; }
+        }
+
+        .reviews-sidebar {
+          border-right: 1px solid var(--color-border);
+          background: var(--color-surface-raised);
+          padding: 16px;
+          overflow-y: auto;
+        }
+
+        .sidebar-section {
+          margin-bottom: 24px;
+        }
+
+        .sidebar-label {
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: var(--color-text-muted);
+          margin: 0 0 8px;
+          padding: 0 8px;
+        }
+
+        .filter-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 8px 10px;
+          font-size: 13px;
+          font-weight: 500;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          background: transparent;
+          color: var(--color-text-secondary);
+          transition: all 0.15s ease;
+          text-align: left;
+        }
+
+        .filter-btn:hover {
+          background: var(--color-surface);
+        }
+
+        .filter-btn.active {
+          background: var(--color-primary-muted);
+          color: var(--color-primary);
+        }
+
+        .filter-label { flex: 1; }
+
+        .filter-count {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 2px 6px;
+          border-radius: 999px;
+          background: var(--color-surface);
+        }
+
+        .filter-btn.active .filter-count {
+          background: var(--color-primary);
+          color: white;
+        }
+
+        .reviews-list {
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          background: var(--color-surface);
+        }
+
+        .reviews-list-header {
+          display: flex;
+          gap: 8px;
+          padding: 12px 16px;
+          border-bottom: 1px solid var(--color-border);
+          background: var(--color-surface-raised);
+        }
+
+        .search-box {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+        }
+
+        .search-input {
+          flex: 1;
+          border: none;
+          background: transparent;
+          font-size: 13px;
+          color: var(--color-text-primary);
+          outline: none;
+        }
+
+        .search-input::placeholder {
+          color: var(--color-text-muted);
+        }
+
+        .list-controls {
+          display: flex;
+          gap: 8px;
+        }
+
+        .list-controls .input {
+          width: auto;
+          min-width: 120px;
+        }
+
+        .review-cards {
+          flex: 1;
+          overflow-y: auto;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .review-card {
+          padding: 14px;
+          background: var(--color-surface-raised);
+          border: 1px solid var(--color-border);
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .review-card:hover {
+          border-color: var(--color-border-strong);
+        }
+
+        .review-card.selected {
+          border-color: var(--color-primary);
+          box-shadow: 0 0 0 3px var(--color-primary-muted);
+        }
+
+        .review-card-header {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+
+        .review-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 999px;
+          background: var(--color-primary);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          font-weight: 600;
+          flex-shrink: 0;
+        }
+
+        .review-card-info { flex: 1; min-width: 0; }
+
+        .review-author {
+          font-weight: 600;
+          font-size: 14px;
+          color: var(--color-text-primary);
+        }
+
+        .review-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 2px;
+          font-size: 12px;
+          color: var(--color-text-muted);
+        }
+
+        .review-stars {
+          display: flex;
+          gap: 1px;
+        }
+
+        .review-text {
+          font-size: 13px;
+          color: var(--color-text-secondary);
+          line-height: 1.5;
+          margin: 0;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .review-replied-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 8px;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--color-success);
+        }
+
+        .reviews-detail {
+          border-left: 1px solid var(--color-border);
+          background: var(--color-surface-raised);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .detail-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .detail-author {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .detail-avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 999px;
+          background: var(--color-primary);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .detail-name {
+          font-weight: 600;
+          font-size: 15px;
+          color: var(--color-text-primary);
+        }
+
+        .detail-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 4px;
+          font-size: 12px;
+          color: var(--color-text-muted);
+        }
+
+        .detail-actions {
+          display: flex;
+          gap: 4px;
+        }
+
+        .detail-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 20px;
+        }
+
+        .detail-text {
+          font-size: 14px;
+          line-height: 1.6;
+          color: var(--color-text-secondary);
+          margin: 0 0 16px;
+        }
+
+        .detail-reply {
+          padding: 12px 14px;
+          background: var(--color-success-bg);
+          border-radius: 8px;
+          font-size: 13px;
+        }
+
+        .reply-label {
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--color-success);
+          margin-bottom: 6px;
+        }
+
+        .detail-footer {
+          padding: 16px 20px;
+          border-top: 1px solid var(--color-border);
+          background: var(--color-surface);
+        }
+
+        .tone-selector {
+          display: flex;
+          gap: 6px;
+          margin: 12px 0;
+        }
+
+        .tone-btn {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          padding: 10px 8px;
+          font-size: 11px;
+          font-weight: 500;
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          background: var(--color-surface-raised);
+          cursor: pointer;
+          transition: all 0.15s ease;
+          color: var(--color-text-secondary);
+        }
+
+        .tone-btn:hover {
+          border-color: var(--color-primary);
+        }
+
+        .tone-btn.active {
+          border-color: var(--color-primary);
+          background: var(--color-primary-muted);
+          color: var(--color-primary);
+        }
+
+        .reply-textarea {
+          resize: none;
+          min-height: 80px;
+          margin-bottom: 12px;
+        }
+
+        .reply-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 64px 24px;
+          text-align: center;
+        }
+
+        .empty-title {
+          font-family: var(--font-headline);
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--color-text-primary);
+          margin-top: 16px;
+        }
+      `}</style>
+    </div>
   );
 }

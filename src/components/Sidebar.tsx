@@ -20,7 +20,6 @@ import {
   Article,
   ExpandMore,
   ExpandLess,
-  AccountCircle,
 } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -72,7 +71,6 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
   const { t } = useLanguage();
   const [seoLocalExpanded, setSeoLocalExpanded] = useState(true);
 
-  // Check which SEO sub-section is active
   const isSeoLocal = ['seo-grid', 'seo-citations', 'seo-optimization'].includes(activeTab);
   const isSeoRealComment = activeTab === 'seo-real-comment';
   const isSeoRednote = activeTab === 'seo-rednote-seo';
@@ -99,18 +97,12 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
       <button
         key={id}
         onClick={() => handleNavClick(id)}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-          isActive
-            ? 'bg-primary text-white font-semibold shadow-sm'
-            : 'text-slate-500 hover:bg-slate-100 hover:text-primary'
-        }`}
+        className={`nav-item ${isActive ? 'nav-item-active' : 'nav-item-inactive'}`}
       >
-        <Icon className="w-5 h-5" />
-        <span className="text-sm font-medium flex-1">{t(labelKey)}</span>
+        <Icon sx={{ fontSize: 20 }} />
+        <span className="nav-label">{t(labelKey)}</span>
         {badge && (
-          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
-            isActive ? 'bg-white/20 text-white' : 'bg-orange-500 text-white'
-          }`}>
+          <span className={`nav-badge ${isActive ? 'nav-badge-active' : 'nav-badge-inactive'}`}>
             {badge}
           </span>
         )}
@@ -124,18 +116,12 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
       <button
         key={item.id}
         onClick={() => handleNavClick(item.id)}
-        className={`w-full flex items-center gap-3 px-4 py-2.5 pl-12 rounded-lg transition-all duration-200 text-xs ${
-          isActive
-            ? 'bg-primary/10 text-primary font-semibold'
-            : 'text-slate-500 hover:bg-slate-50 hover:text-primary'
-        }`}
+        className={`nav-sub-item ${isActive ? 'nav-sub-item-active' : 'nav-sub-item-inactive'}`}
       >
-        <Icon className="w-4 h-4" />
-        <span className="text-sm font-medium flex-1">{t(item.labelKey)}</span>
+        <Icon sx={{ fontSize: 18 }} />
+        <span className="nav-sub-label">{t(item.labelKey)}</span>
         {item.badge && (
-          <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
-            isActive ? 'bg-primary/20 text-primary' : 'bg-orange-500 text-white'
-          }`}>
+          <span className={`nav-badge ${isActive ? 'nav-badge-active' : 'nav-badge-inactive'}`}>
             {item.badge}
           </span>
         )}
@@ -144,43 +130,35 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
   };
 
   const sidebarContent = (
-    <div className="h-full flex flex-col">
+    <div className="sidebar-content">
       {/* Brand */}
-      <div className="px-4 py-6 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md">
-            <AutoAwesome className="text-white w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-blue-900 font-headline tracking-tight">
-              PinKernel SEO
-            </h1>
-            <p className="text-[10px] text-slate-500 font-medium tracking-widest uppercase mt-0.5">
-              Local Search Intelligence
-            </p>
-          </div>
+      <div className="sidebar-brand">
+        <div className="brand-icon">
+          <AutoAwesome sx={{ fontSize: 22, color: '#fff' }} />
+        </div>
+        <div className="brand-text">
+          <h1 className="brand-name">PinKernel</h1>
+          <p className="brand-tagline">Local SEO Platform</p>
         </div>
       </div>
 
-      {/* Credits display */}
-      <div className="px-4 mb-4">
-        <div className="bg-primary-fixed/30 rounded-full px-4 py-2 flex items-center justify-between">
-          <span className="text-[10px] font-bold text-primary">100 Credits Remaining</span>
-          <Bolt className="text-primary w-4 h-4" style={{ fontVariationSettings: "'FILL' 1" }} />
+      {/* Credits */}
+      <div className="sidebar-credits">
+        <div className="credits-inner">
+          <span className="credits-label">100 Credits</span>
+          <Bolt sx={{ fontSize: 16, color: '#0ea5e9', fontVariationSettings: "'FILL' 1" }} />
         </div>
       </div>
 
-      {/* Main navigation */}
-      <nav className="flex-1 space-y-1 px-2 overflow-y-auto">
-        {/* Main nav items */}
+      {/* Main Navigation */}
+      <nav className="sidebar-nav">
         {MAIN_NAV_ITEMS.map(({ id, labelKey, icon }) =>
           navItem(id, labelKey, icon, activeTab === id)
         )}
 
-        {/* SEO Section - two-level nested menu */}
-        <div className="pt-2">
-          {/* SEO top-level items: Local SEO (expandable), Real Comment, Rednote SEO */}
-          <div className="space-y-0.5">
+        {/* SEO Section */}
+        <div className="sidebar-section">
+          <div className="sidebar-section-items">
             {SEO_TOP_ITEMS.map(({ id, labelKey, icon, badge }) => {
               const Icon = icon;
               const isActive = activeTab === id;
@@ -189,75 +167,52 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
                 <div key={id}>
                   {isLocalSeo ? (
                     <>
-                      {/* Local SEO - expandable with sub-items */}
                       <button
                         onClick={handleSeoLocalClick}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                          isSeoTopActive && seoLocalExpanded
-                            ? 'bg-primary text-white font-semibold shadow-sm'
-                            : isSeoTopActive
-                            ? 'bg-primary/10 text-primary font-semibold'
-                            : 'text-slate-500 hover:bg-slate-100 hover:text-primary'
-                        }`}
+                        className={`nav-item ${isSeoTopActive && seoLocalExpanded ? 'nav-item-active' : isSeoTopActive ? 'nav-item-active-muted' : 'nav-item-inactive'}`}
                       >
-                        <Icon className="w-5 h-5" />
-                        <span className="text-sm font-medium flex-1">{t(labelKey)}</span>
+                        <Icon sx={{ fontSize: 20 }} />
+                        <span className="nav-label">{t(labelKey)}</span>
                         {seoLocalExpanded ? (
-                          <ExpandLess className="w-4 h-4" />
+                          <ExpandLess sx={{ fontSize: 18 }} />
                         ) : (
-                          <ExpandMore className="w-4 h-4" />
+                          <ExpandMore sx={{ fontSize: 18 }} />
                         )}
                       </button>
 
-                      {/* Local SEO sub-items: Grid, Citations, Optimization */}
                       {seoLocalExpanded && (
-                          <div className="transition-all duration-200 overflow-hidden">
-                            <div className="pt-1 space-y-0.5">
-                              {SEO_LOCAL_ITEMS.map((item) => {
-                                const SubIcon = item.icon;
-                                const isSubActive = activeTab === item.id;
-                                return (
-                                  <button
-                                    key={item.id}
-                                    onClick={() => handleNavClick(item.id)}
-                                    className={`w-full flex items-center gap-3 px-4 py-2.5 pl-12 rounded-lg transition-all duration-200 text-xs ${
-                                      isSubActive
-                                        ? 'bg-primary/10 text-primary font-semibold'
-                                        : 'text-slate-500 hover:bg-slate-50 hover:text-primary'
-                                    }`}
-                                  >
-                                    <SubIcon className="w-4 h-4" />
-                                    <span className="text-sm font-medium flex-1">{t(item.labelKey)}</span>
-                                    {item.badge && (
-                                      <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
-                                        isSubActive ? 'bg-primary/20 text-primary' : 'bg-orange-500 text-white'
-                                      }`}>
-                                        {item.badge}
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
+                        <div className="nav-submenu">
+                          {SEO_LOCAL_ITEMS.map((item) => {
+                            const SubIcon = item.icon;
+                            const isSubActive = activeTab === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => handleNavClick(item.id)}
+                                className={`nav-sub-item ${isSubActive ? 'nav-sub-item-active' : 'nav-sub-item-inactive'}`}
+                              >
+                                <SubIcon sx={{ fontSize: 18 }} />
+                                <span className="nav-sub-label">{t(item.labelKey)}</span>
+                                {item.badge && (
+                                  <span className={`nav-badge ${isSubActive ? 'nav-badge-active' : 'nav-badge-inactive'}`}>
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </>
                   ) : (
-                    /* Real Comment and Rednote SEO - top-level items */
                     <button
                       onClick={() => handleNavClick(id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                        isActive
-                          ? 'bg-primary/10 text-primary font-semibold'
-                          : 'text-slate-500 hover:bg-slate-100 hover:text-primary'
-                      }`}
+                      className={`nav-item ${isActive ? 'nav-item-active' : 'nav-item-inactive'}`}
                     >
-                      <Icon className="w-5 h-5" />
-                      <span className="text-sm font-medium flex-1">{t(labelKey)}</span>
+                      <Icon sx={{ fontSize: 20 }} />
+                      <span className="nav-label">{t(labelKey)}</span>
                       {badge && (
-                        <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
-                          isActive ? 'bg-primary/20 text-primary' : 'bg-orange-500 text-white'
-                        }`}>
+                        <span className={`nav-badge ${isActive ? 'nav-badge-active' : 'nav-badge-inactive'}`}>
                           {badge}
                         </span>
                       )}
@@ -270,13 +225,14 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
         </div>
       </nav>
 
-      {/* Bottom links */}
-      <div className="mt-auto pt-4 border-t border-slate-200/50 space-y-1 px-2">
+      {/* Bottom Links */}
+      <div className="sidebar-bottom">
+        <div className="sidebar-divider" />
         {navItem('settings', 'nav.settings', Settings, activeTab === 'settings')}
         {navItem('help', 'nav.help', Help, activeTab === 'help')}
-        <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 rounded-xl transition-all">
-          <Logout className="w-5 h-5" />
-          <span className="text-sm font-medium">Logout</span>
+        <button className="nav-item nav-item-inactive">
+          <Logout sx={{ fontSize: 20 }} />
+          <span className="nav-label">Sign Out</span>
         </button>
       </div>
     </div>
@@ -284,8 +240,209 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
 
   return (
     <>
+      <style>{`
+        .sidebar-content {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          padding: 0;
+        }
+
+        .sidebar-brand {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 20px 16px;
+          margin-bottom: 8px;
+        }
+
+        .brand-icon {
+          width: 40px;
+          height: 40px;
+          background: var(--color-primary);
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .brand-text {
+          min-width: 0;
+        }
+
+        .brand-name {
+          font-family: var(--font-headline);
+          font-size: 18px;
+          font-weight: 800;
+          color: var(--color-text-primary);
+          letter-spacing: -0.02em;
+          margin: 0;
+          line-height: 1.2;
+        }
+
+        .brand-tagline {
+          font-size: 11px;
+          font-weight: 500;
+          color: var(--color-text-muted);
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+          margin: 0;
+        }
+
+        .sidebar-credits {
+          margin: 0 16px 16px;
+        }
+
+        .credits-inner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 14px;
+          background: var(--color-accent-muted);
+          border-radius: 8px;
+        }
+
+        .credits-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--color-accent);
+        }
+
+        .sidebar-nav {
+          flex: 1;
+          overflow-y: auto;
+          padding: 0 8px;
+        }
+
+        .sidebar-section {
+          margin-top: 4px;
+        }
+
+        .sidebar-section-items {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .nav-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          width: 100%;
+          padding: 10px 12px;
+          border-radius: 8px;
+          font-family: var(--font-sans);
+          font-size: 14px;
+          font-weight: 500;
+          border: none;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          text-align: left;
+          color: inherit;
+        }
+
+        .nav-item-active {
+          background: var(--color-primary);
+          color: var(--color-on-primary);
+          font-weight: 600;
+        }
+
+        .nav-item-active:hover {
+          background: var(--color-primary-hover);
+        }
+
+        .nav-item-active-muted {
+          background: var(--color-primary-muted);
+          color: var(--color-primary);
+          font-weight: 600;
+        }
+
+        .nav-item-inactive {
+          color: var(--color-text-secondary);
+        }
+
+        .nav-item-inactive:hover {
+          background: var(--color-surface);
+          color: var(--color-text-primary);
+        }
+
+        .nav-label {
+          flex: 1;
+        }
+
+        .nav-badge {
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 999px;
+          letter-spacing: 0.02em;
+        }
+
+        .nav-badge-active {
+          background: rgba(255, 255, 255, 0.2);
+          color: inherit;
+        }
+
+        .nav-badge-inactive {
+          background: var(--color-warning);
+          color: white;
+        }
+
+        .nav-submenu {
+          padding-left: 16px;
+          margin-top: 2px;
+        }
+
+        .nav-sub-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-family: var(--font-sans);
+          font-size: 13px;
+          font-weight: 500;
+          border: none;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          text-align: left;
+          color: inherit;
+        }
+
+        .nav-sub-item-active {
+          background: var(--color-primary-muted);
+          color: var(--color-primary);
+          font-weight: 600;
+        }
+
+        .nav-sub-item-inactive {
+          color: var(--color-text-muted);
+        }
+
+        .nav-sub-item-inactive:hover {
+          background: var(--color-surface);
+          color: var(--color-text-primary);
+        }
+
+        .nav-sub-label {
+          flex: 1;
+        }
+
+        .sidebar-bottom {
+          padding: 8px;
+          margin-top: auto;
+        }
+
+        .sidebar-divider {
+          height: 1px;
+          background: var(--color-divider);
+          margin: 8px;
+        }
+      `}</style>
+
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-200/50 flex-col z-50">
+      <aside className="sidebar-desktop">
         {sidebarContent}
       </aside>
 
@@ -294,15 +451,77 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
         <>
           <div
             onClick={() => setIsOpen(false)}
-            className="fixed inset-0 bg-black/50 z-50 lg:hidden backdrop-blur-sm animate-fade-in"
+            className="sidebar-overlay"
           />
-          <aside
-            className="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-50 lg:hidden animate-slide-left"
-          >
+          <aside className="sidebar-mobile">
             {sidebarContent}
           </aside>
         </>
       )}
+
+      <style>{`
+        .sidebar-desktop {
+          display: none;
+          position: fixed;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 240px;
+          background: var(--color-surface-raised);
+          border-right: 1px solid var(--color-border);
+          z-index: 50;
+        }
+
+        @media (min-width: 1024px) {
+          .sidebar-desktop {
+            display: flex;
+          }
+        }
+
+        .sidebar-mobile {
+          position: fixed;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 280px;
+          background: var(--color-surface-raised);
+          border-right: 1px solid var(--color-border);
+          z-index: 50;
+          box-shadow: var(--shadow-lg);
+          animation: slideInRight 0.2s ease-out;
+        }
+
+        .sidebar-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.4);
+          z-index: 49;
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        @media (min-width: 1024px) {
+          .sidebar-overlay,
+          .sidebar-mobile {
+            display: none;
+          }
+        }
+
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </>
   );
 }

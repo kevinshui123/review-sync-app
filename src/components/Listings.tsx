@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Inventory2, Store, LocationOn, Close, Link, ArrowBack, Edit, Star, Phone, Language, Lock, PhotoCamera, Tag, AccountCircle, CheckCircle, Add, Delete, AutoAwesome, OpenInNew } from '@mui/icons-material';
+import { Inventory2, Store, LocationOn, Close, ArrowForward, Star, Phone, Language, Edit, Delete, AutoAwesome, OpenInNew } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EditBusinessPage } from './EditBusinessPage';
 import { ProfileAnalysisDrawer } from './ProfileAnalysisDrawer';
@@ -15,28 +15,16 @@ interface ListingsProps {
 
 interface Location {
   id: string;
-  embedId?: string;
   name: string;
   address: string;
   account: string;
-  group: string;
   lastSync: string;
   synced: boolean;
-  embedSocialLocationId?: string;
-  googleId?: string;
   websiteUrl?: string;
   phoneNumber?: string;
   totalReviews?: number;
   averageRating?: number;
-  isLinked: boolean;
-  openingHours?: string;
-  categories?: string[];
   status?: string;
-  ownerName?: string;
-  photos?: string[];
-  tags?: string[];
-  latitude?: number;
-  longitude?: number;
 }
 
 export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation, selectedLocation }: ListingsProps) {
@@ -45,11 +33,10 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   const [loading, setLoading] = useState(true);
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [showAnalysisDrawer, setShowAnalysisDrawer] = useState(false);
+  const [selectedLocationForDetail, setSelectedLocationForDetail] = useState<Location | null>(null);
   const [selectedLocationForAnalysis, setSelectedLocationForAnalysis] = useState<Location | null>(null);
 
-  useEffect(() => {
-    fetchLocations();
-  }, []);
+  useEffect(() => { fetchLocations(); }, []);
 
   const fetchLocations = async () => {
     setLoading(true);
@@ -57,25 +44,20 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
       const res = await apiGet('/api/tenant/listings');
       if (res.ok) {
         const data = await res.json();
-        const mappedLocations: Location[] = data.map((tl: any) => ({
+        const mapped: Location[] = data.map((tl: any) => ({
           id: tl.id,
-          embedId: tl.embedSocialListingId,
           name: tl.name || 'Unknown',
           address: tl.address || '',
           account: 'Google',
-          group: 'Default',
           lastSync: new Date(tl.connectedAt).toLocaleString(),
           synced: tl.status === 'active',
-          embedSocialLocationId: tl.embedSocialListingId,
-          googleId: tl.googleId,
           websiteUrl: tl.websiteUrl,
           phoneNumber: tl.phoneNumber,
           totalReviews: tl.totalReviews || 0,
           averageRating: tl.averageRating || 0,
-          isLinked: true,
           status: tl.status,
         }));
-        setLocations(mappedLocations);
+        setLocations(mapped);
       }
     } catch (error) {
       console.error('Failed to fetch locations:', error);
@@ -84,306 +66,575 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
     }
   };
 
-  const handleDeleteLocation = async (id: string) => {
-    if (!confirm('Are you sure you want to disconnect this listing?')) return;
+  const handleDelete = async (id: string) => {
+    if (!confirm('Disconnect this listing?')) return;
     try {
       const res = await apiDelete(`/api/embedsocial/listings/${id}/disconnect`);
-      if (res.ok) {
-        setLocations(locations.filter(l => l.id !== id));
-      }
+      if (res.ok) setLocations(locations.filter(l => l.id !== id));
     } catch (error) {
-      console.error('Failed to disconnect listing:', error);
+      console.error('Failed to disconnect:', error);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm text-slate-500">Loading listings...</p>
+      <div className="page-loading">
+        <div className="loading-spinner" />
+        <p>Loading listings...</p>
       </div>
     );
   }
 
   return (
-    <div className="animate-slide-up min-h-screen"
-    >
-      {/* Page Header */}
-      <div className="px-10 pt-8 pb-4">
-        <div className="flex items-end mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold text-primary font-headline tracking-tight">Listings</h1>
-            <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-semibold w-fit">
-              <Inventory2 className="w-4 h-4" />
-              {locations.length} listing{locations.length !== 1 ? 's' : ''}
-            </div>
-          </div>
+    <div className="page-container animate-fade-in">
+      {/* Header */}
+      <div className="page-header-row">
+        <div>
+          <h1 className="page-title">Listings</h1>
+          <p className="page-subtitle">
+            <Inventory2 sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
+            {locations.length} location{locations.length !== 1 ? 's' : ''} connected
+          </p>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="px-10">
-        {/* Data Table */}
-        <div className="bg-white rounded-3xl overflow-hidden shadow-sm">
-          <table className="w-full text-left border-collapse">
+      {/* Table */}
+      {locations.length > 0 ? (
+        <div className="table-container">
+          <table className="table">
             <thead>
-              <tr className="bg-slate-50">
-                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Name</th>
-                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Account</th>
-                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Status</th>
-                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Reviews</th>
-                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider">Last sync</th>
-                <th className="py-5 px-6 font-semibold text-xs text-slate-400 uppercase tracking-wider text-right">Actions</th>
+              <tr>
+                <th>Location</th>
+                <th>Account</th>
+                <th>Status</th>
+                <th>Rating</th>
+                <th>Last Sync</th>
+                <th></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {locations.map((location) => (
-                <tr key={location.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="py-6 px-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center">
-                        <Store className="w-6 h-6 text-slate-400" />
+                <tr key={location.id} className="listing-row">
+                  <td>
+                    <div className="listing-info">
+                      <div className="listing-icon">
+                        <Store sx={{ fontSize: 20 }} />
                       </div>
                       <div>
-                        <div className="font-bold text-base text-slate-900">{location.name}</div>
-                        <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                          <LocationOn className="w-3 h-3" />
+                        <div className="listing-name">{location.name}</div>
+                        <div className="listing-address">
+                          <LocationOn sx={{ fontSize: 12 }} />
                           {location.address || 'No address'}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="py-6 px-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 bg-orange-100 text-orange-600 rounded flex items-center justify-center">
-                        <Store className="w-3 h-3" style={{ fontVariationSettings: "'FILL' 1" }} />
-                      </div>
-                      <span className="text-sm font-medium text-slate-600">{location.account}</span>
+                  <td>
+                    <div className="listing-account">
+                      <div className="account-badge">G</div>
+                      <span>{location.account}</span>
                     </div>
                   </td>
-                  <td className="py-6 px-6">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      location.status === 'active' 
-                        ? 'bg-green-50 text-green-700' 
-                        : 'bg-slate-100 text-slate-500'
-                    }`}>
+                  <td>
+                    <span className={`badge ${location.status === 'active' ? 'badge-success' : 'badge-default'}`}>
                       {location.status === 'active' ? 'Connected' : 'Disconnected'}
                     </span>
                   </td>
-                  <td className="py-6 px-6">
-                    <div className="flex items-center gap-2">
-                      <Star className="w-4 h-4 text-amber-500" />
-                      <span className="text-sm font-semibold text-slate-700">
-                        {location.averageRating?.toFixed(1) || '0.0'}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        ({location.totalReviews || 0})
-                      </span>
+                  <td>
+                    <div className="listing-rating">
+                      <Star sx={{ fontSize: 16, color: '#f59e0b', fontVariationSettings: "'FILL' 1" }} />
+                      <span className="rating-value">{location.averageRating?.toFixed(1) || '0.0'}</span>
+                      <span className="rating-count">({location.totalReviews || 0})</span>
                     </div>
                   </td>
-                  <td className="py-6 px-6">
-                    <div className="text-sm text-slate-600 font-medium">{location.lastSync}</div>
+                  <td>
+                    <span className="listing-sync">{location.lastSync}</span>
                   </td>
-                  <td className="py-6 px-6 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td>
+                    <div className="listing-actions">
                       <button
+                        className="btn btn-sm btn-secondary"
                         onClick={() => {
-                          setSelectedLocationForAnalysis(location);
-                          setShowAnalysisDrawer(true);
-                        }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20 hover:from-purple-700 hover:to-indigo-700 transition-all"
-                        title="AI Profile Analysis"
-                      >
-                        <AutoAwesome className="w-4 h-4" />
-                        AI Analysis
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedLocation(location);
+                          setSelectedLocationForDetail(location);
                           setShowDetailDrawer(true);
                         }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-md shadow-primary/10 hover:bg-primary-container transition-all"
                       >
-                        View Details
+                        Details
                       </button>
                       <button
-                        onClick={() => handleDeleteLocation(location.id)}
-                        className="w-9 h-9 flex items-center justify-center bg-slate-100 text-slate-500 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all"
+                        className="btn-icon"
+                        onClick={() => handleDelete(location.id)}
+                        title="Disconnect"
                       >
-                        <Delete className="w-5 h-5" />
+                        <Delete sx={{ fontSize: 18 }} />
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {locations.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
-                        <Store className="w-8 h-8 text-slate-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900">No Listings Connected</h3>
-                        <p className="text-sm text-slate-500 mt-1">Go to Settings to connect your Google Business Profile listings.</p>
-                      </div>
-                      <button
-                        onClick={() => setActiveTab('settings')}
-                        className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm"
-                      >
-                        <Link className="w-5 h-5" />
-                        Go to Settings
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
-      </div>
+      ) : (
+        <div className="card empty-card">
+          <div className="empty-state">
+            <div className="empty-icon">
+              <Store sx={{ fontSize: 48 }} />
+            </div>
+            <h3 className="empty-title">No Listings Connected</h3>
+            <p className="empty-desc">Connect your Google Business Profile to sync reviews and manage your business.</p>
+            <button className="btn btn-primary" onClick={() => setActiveTab('settings')}>
+              Go to Settings
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Profile Analysis Drawer */}
+      {/* Detail Drawer */}
+      {showDetailDrawer && selectedLocationForDetail && (
+        <>
+          <div className="drawer-overlay" onClick={() => setShowDetailDrawer(false)} />
+          <div className="drawer">
+            <div className="drawer-header">
+              <button className="drawer-close" onClick={() => setShowDetailDrawer(false)}>
+                <Close sx={{ fontSize: 20 }} />
+              </button>
+              <h2 className="drawer-title">Business Details</h2>
+              <div className="drawer-actions">
+                <button
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => {
+                    setShowDetailDrawer(false);
+                    setSelectedLocationForAnalysis(selectedLocationForDetail);
+                    setShowAnalysisDrawer(true);
+                  }}
+                >
+                  <AutoAwesome sx={{ fontSize: 14 }} />
+                  Analyze
+                </button>
+              </div>
+            </div>
+            <div className="drawer-body">
+              <div className="detail-section">
+                <h3 className="detail-name">{selectedLocationForDetail.name}</h3>
+                <div className="detail-rating">
+                  <Star sx={{ fontSize: 20, color: '#f59e0b', fontVariationSettings: "'FILL' 1" }} />
+                  <span>{selectedLocationForDetail.averageRating?.toFixed(1) || '0.0'}</span>
+                  <span className="detail-reviews">({selectedLocationForDetail.totalReviews || 0} reviews)</span>
+                </div>
+              </div>
+
+              <div className="detail-info-grid">
+                <div className="detail-info-item">
+                  <LocationOn sx={{ fontSize: 18, color: 'var(--color-text-muted)' }} />
+                  <div>
+                    <div className="detail-info-label">Address</div>
+                    <div className="detail-info-value">{selectedLocationForDetail.address || 'Not set'}</div>
+                  </div>
+                </div>
+                <div className="detail-info-item">
+                  <Phone sx={{ fontSize: 18, color: 'var(--color-text-muted)' }} />
+                  <div>
+                    <div className="detail-info-label">Phone</div>
+                    <div className="detail-info-value">{selectedLocationForDetail.phoneNumber || 'Not set'}</div>
+                  </div>
+                </div>
+                <div className="detail-info-item">
+                  <Language sx={{ fontSize: 18, color: 'var(--color-text-muted)' }} />
+                  <div>
+                    <div className="detail-info-label">Website</div>
+                    <div className="detail-info-value">
+                      {selectedLocationForDetail.websiteUrl ? (
+                        <a href={selectedLocationForDetail.websiteUrl} target="_blank" rel="noopener noreferrer">
+                          {selectedLocationForDetail.websiteUrl}
+                        </a>
+                      ) : 'Not set'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="detail-actions">
+                <button className="btn btn-secondary" onClick={() => setActiveTab('reviews')}>
+                  <Star sx={{ fontSize: 16 }} />
+                  View Reviews
+                </button>
+                <button className="btn btn-secondary" onClick={() => window.open('https://business.google.com', '_blank')}>
+                  <OpenInNew sx={{ fontSize: 16 }} />
+                  Open in Google
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <ProfileAnalysisDrawer
         isOpen={showAnalysisDrawer}
         onClose={() => setShowAnalysisDrawer(false)}
         location={selectedLocationForAnalysis}
       />
 
-      {/* View Details Drawer */}
-      {showDetailDrawer && selectedLocation && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/40 z-40 animate-fade-in"
-            onClick={() => setShowDetailDrawer(false)}
-          />
-          <div
-            className="fixed right-0 top-0 bottom-0 w-full max-w-[480px] bg-white shadow-2xl z-50 flex flex-col animate-slide-right"
-          >
-              <div className="flex-shrink-0 bg-gradient-to-r from-primary to-primary/80 px-6 py-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setShowDetailDrawer(false)}
-                      className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-                    >
-                      <ArrowBack className="text-white" />
-                    </button>
-                    <h2 className="text-xl font-bold text-white">Business Info</h2>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        setShowDetailDrawer(false);
-                        setSelectedLocationForAnalysis(selectedLocation);
-                        setShowAnalysisDrawer(true);
-                      }}
-                      className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-semibold text-xs transition-all"
-                    >
-                      <AutoAwesome className="w-4 h-4" />
-                      AI Analysis
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowDetailDrawer(false);
-                        setListingsSubTab?.('edit', selectedLocation);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-white text-primary rounded-xl font-semibold text-sm hover:bg-white/90 transition-all"
-                    >
-                      <Edit className="w-4 h-4" />
-                      Edit
-                    </button>
-                  </div>
-                </div>
-              </div>
+      <style>{`
+        .page-loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          gap: 16px;
+        }
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900">{selectedLocation.name}</h1>
-                  <div className="flex items-center gap-3 mt-3">
-                    <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-lg">
-                      <Star className="w-5 h-5 text-amber-500" />
-                      <span className="font-bold text-amber-700">{selectedLocation.averageRating?.toFixed(1) ?? '0.0'}</span>
-                    </div>
-                    <span className="text-slate-500">({selectedLocation.totalReviews ?? 0} reviews)</span>
-                  </div>
-                </div>
+        .loading-spinner {
+          width: 32px;
+          height: 32px;
+          border: 3px solid var(--color-border);
+          border-top-color: var(--color-primary);
+          border-radius: 999px;
+          animation: spin 0.8s linear infinite;
+        }
 
-                <div className="bg-slate-50 rounded-2xl p-5">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Business information</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="text-xs text-slate-400 mb-1">Address</div>
-                      <div className="flex items-start gap-2">
-                        <LocationOn className="w-4 h-4 text-slate-400 mt-0.5" />
-                        <span className="font-medium text-slate-700">{selectedLocation.address || 'No address'}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-400 mb-1">Phone</div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-slate-400" />
-                        <a href={`tel:${selectedLocation.phoneNumber}`} className="font-medium text-primary">
-                          {selectedLocation.phoneNumber || 'No phone'}
-                        </a>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-400 mb-1">Website</div>
-                      <div className="flex items-center gap-2">
-                        <Language className="w-4 h-4 text-slate-400" />
-                        <a href={selectedLocation.websiteUrl || '#'} target="_blank" rel="noopener noreferrer" className="font-medium text-primary truncate">
-                          {selectedLocation.websiteUrl || 'No website'}
-                        </a>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-400 mb-1">Status</div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        selectedLocation.status === 'active' 
-                          ? 'bg-green-50 text-green-700' 
-                          : 'bg-slate-100 text-slate-500'
-                      }`}>
-                        {selectedLocation.status === 'active' ? 'Connected' : 'Disconnected'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
 
-                <div className="bg-slate-50 rounded-2xl p-5">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Quick Actions</h3>
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => {
-                        setShowDetailDrawer(false);
-                        setSelectedLocationForAnalysis(selectedLocation);
-                        setShowAnalysisDrawer(true);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-200 hover:border-purple-400 transition-colors"
-                    >
-                      <AutoAwesome className="w-5 h-5 text-purple-600" />
-                      <span className="font-medium text-purple-700">AI Profile Analysis</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('reviews')}
-                      className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-primary transition-colors"
-                    >
-                      <Star className="w-5 h-5 text-slate-600" />
-                      <span className="font-medium text-slate-700">View Reviews</span>
-                    </button>
-                    <button
-                      onClick={() => window.open('https://business.google.com', '_blank')}
-                      className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-primary transition-colors"
-                    >
-                      <OpenInNew className="w-5 h-5 text-slate-600" />
-                      <span className="font-medium text-slate-700">Open in Google</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+        .page-container {
+          padding: 24px;
+        }
+
+        .page-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 24px;
+        }
+
+        .page-title {
+          font-family: var(--font-headline);
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: var(--color-text-primary);
+          letter-spacing: -0.02em;
+          margin: 0 0 4px;
+        }
+
+        .page-subtitle {
+          font-size: 14px;
+          color: var(--color-text-muted);
+          margin: 0;
+          display: flex;
+          align-items: center;
+        }
+
+        .table-container {
+          background: var(--color-surface-raised);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .table th {
+          padding: 12px 16px;
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--color-text-muted);
+          background: var(--color-surface);
+          border-bottom: 1px solid var(--color-border);
+          text-align: left;
+        }
+
+        .table td {
+          padding: 16px;
+          border-bottom: 1px solid var(--color-divider);
+          vertical-align: middle;
+        }
+
+        .listing-row:last-child td {
+          border-bottom: none;
+        }
+
+        .listing-row:hover {
+          background: var(--color-surface);
+        }
+
+        .listing-info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .listing-icon {
+          width: 40px;
+          height: 40px;
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--color-text-muted);
+        }
+
+        .listing-name {
+          font-weight: 600;
+          color: var(--color-text-primary);
+          margin-bottom: 2px;
+        }
+
+        .listing-address {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          color: var(--color-text-muted);
+        }
+
+        .listing-account {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .account-badge {
+          width: 24px;
+          height: 24px;
+          background: #ea4335;
+          color: white;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .listing-rating {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .rating-value {
+          font-weight: 600;
+          color: var(--color-text-primary);
+        }
+
+        .rating-count {
+          color: var(--color-text-muted);
+          font-size: 12px;
+        }
+
+        .listing-sync {
+          font-size: 13px;
+          color: var(--color-text-muted);
+        }
+
+        .listing-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          justify-content: flex-end;
+        }
+
+        .empty-card {
+          padding: 0;
+        }
+
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 64px 24px;
+          text-align: center;
+        }
+
+        .empty-icon {
+          width: 80px;
+          height: 80px;
+          background: var(--color-surface);
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--color-text-disabled);
+          margin-bottom: 20px;
+        }
+
+        .empty-title {
+          font-family: var(--font-headline);
+          font-size: 20px;
+          font-weight: 600;
+          color: var(--color-text-primary);
+          margin: 0 0 8px;
+        }
+
+        .empty-desc {
+          font-size: 14px;
+          color: var(--color-text-muted);
+          margin: 0 0 24px;
+          max-width: 320px;
+        }
+
+        /* Drawer */
+        .drawer-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.4);
+          z-index: 100;
+          animation: fadeIn 0.2s ease;
+        }
+
+        .drawer {
+          position: fixed;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          width: 420px;
+          max-width: 100%;
+          background: var(--color-surface-raised);
+          border-left: 1px solid var(--color-border);
+          z-index: 101;
+          display: flex;
+          flex-direction: column;
+          animation: slideIn 0.25s ease;
+        }
+
+        @keyframes slideIn {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .drawer-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--color-border);
+          background: var(--color-primary);
+          color: white;
+        }
+
+        .drawer-close {
+          width: 32px;
+          height: 32px;
+          border: none;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          transition: background 0.15s;
+        }
+
+        .drawer-close:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        .drawer-title {
+          flex: 1;
+          font-family: var(--font-headline);
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .drawer-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 24px;
+        }
+
+        .detail-section {
+          margin-bottom: 24px;
+        }
+
+        .detail-name {
+          font-family: var(--font-headline);
+          font-size: 22px;
+          font-weight: 700;
+          color: var(--color-text-primary);
+          margin: 0 0 8px;
+        }
+
+        .detail-rating {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--color-text-primary);
+        }
+
+        .detail-reviews {
+          color: var(--color-text-muted);
+          font-weight: 400;
+        }
+
+        .detail-info-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .detail-info-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .detail-info-label {
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--color-text-muted);
+          margin-bottom: 2px;
+        }
+
+        .detail-info-value {
+          font-size: 14px;
+          color: var(--color-text-primary);
+        }
+
+        .detail-info-value a {
+          color: var(--color-accent);
+          text-decoration: none;
+        }
+
+        .detail-info-value a:hover {
+          text-decoration: underline;
+        }
+
+        .detail-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .detail-actions .btn {
+          flex: 1;
+        }
+
+        @media (max-width: 768px) {
+          .page-container {
+            padding: 16px;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -13,10 +13,10 @@ import {
   FilterList,
   ThumbUp,
   ThumbDown,
-  CheckCircle,
-  Cancel,
+  TrendingUp,
+  TrendingDown,
 } from '@mui/icons-material';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, Legend, ComposedChart, Line } from 'recharts';
+import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts';
 import { apiGet } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -57,7 +57,6 @@ interface LocationData {
   website?: string;
   totalReviews: number;
   averageRating: number;
-  // Health fields
   hasBusinessName: boolean;
   hasAddress: boolean;
   hasWebsite: boolean;
@@ -81,70 +80,46 @@ function getInitials(name: string): string {
 }
 
 function getAvatarColor(name: string): string {
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+  const colors = ['#1e3a5f', '#0ea5e9', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#ef4444'];
   const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
   return colors[index];
 }
 
 function ReviewCard({ review }: { review: Review }) {
   return (
-    <div className={`p-4 rounded-xl border ${review.isPositive ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
+    <div className={`review-card ${review.isPositive ? 'review-card-positive' : 'review-card-negative'}`}>
+      <div className="review-card-header">
         {review.authorPhoto ? (
-          <img
-            src={review.authorPhoto}
-            alt={review.author}
-            className="w-10 h-10 rounded-full object-cover"
-          />
+          <img src={review.authorPhoto} alt={review.author} className="review-avatar" />
         ) : (
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-            style={{ backgroundColor: getAvatarColor(review.author) }}
-          >
+          <div className="review-avatar review-avatar-initials" style={{ backgroundColor: getAvatarColor(review.author) }}>
             {getInitials(review.author)}
           </div>
         )}
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-semibold text-slate-900 text-sm">{review.author}</span>
-            <div className="flex items-center gap-2">
-              {review.isPositive ? (
-                <ThumbUp className="w-4 h-4 text-green-600" />
-              ) : (
-                <ThumbDown className="w-4 h-4 text-red-600" />
-              )}
-              <div className="flex text-amber-400">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`w-3 h-3 ${star <= review.rating ? 'text-amber-400' : 'text-slate-300'}`}
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  />
-                ))}
-              </div>
-            </div>
+        <div className="review-card-info">
+          <div className="review-author">{review.author}</div>
+          <div className="review-meta">
+            <span className="review-location">{review.location}</span>
+            <span className="review-separator">·</span>
+            <span className="review-date">{review.date}</span>
           </div>
-          <p className="text-xs text-slate-600 mb-1">{review.location}</p>
-          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{review.text}</p>
-          <p className="text-[10px] text-slate-400 mt-2">{review.date}</p>
+        </div>
+        <div className="review-rating">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star key={star} sx={{ fontSize: 14, color: star <= review.rating ? '#f59e0b' : '#e2e8f0', fontVariationSettings: "'FILL' 1" }} />
+          ))}
         </div>
       </div>
-
+      <p className="review-text">{review.text}</p>
       {review.replied && review.replyText && (
-        <div className="mt-3 ml-13 pl-3 border-l-2 border-green-200">
-          <div className="flex items-center gap-1 text-xs text-green-600 mb-1">
-            <Reply className="w-3 h-3" />
-            <span>Your reply</span>
-          </div>
-          <p className="text-xs text-slate-600">{review.replyText}</p>
+        <div className="review-reply">
+          <Reply sx={{ fontSize: 14, color: 'var(--color-success)' }} />
+          <span className="review-reply-text">{review.replyText}</span>
         </div>
       )}
-
       {!review.replied && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg">
-          <AccessTime className="w-3 h-3" />
+        <div className="review-pending">
+          <AccessTime sx={{ fontSize: 14 }} />
           <span>Pending reply</span>
         </div>
       )}
@@ -152,101 +127,30 @@ function ReviewCard({ review }: { review: Review }) {
   );
 }
 
-function LocationHealthCard({ locations }: { locations: LocationData[] }) {
-  const { t } = useLanguage();
-  const totalReviews = locations.reduce((acc, loc) => acc + (loc.totalReviews || 0), 0);
-  const avgRating = locations.length > 0
-    ? (locations.reduce((acc, loc) => acc + (loc.averageRating || 0), 0) / locations.length).toFixed(1)
-    : '0.0';
-
-  const avgHealthScore = locations.length > 0
-    ? Math.round(locations.reduce((acc, loc) => acc + (loc.healthScore || 0), 0) / locations.length)
-    : 0;
-
-  const mainLocation = locations[0] || null;
-
-  const getHealthStatus = (score: number) => {
-    if (score >= 80) return { label: t('dashboard.excellent'), color: 'text-green-600', bg: 'bg-green-50', barColor: 'bg-green-500' };
-    if (score >= 60) return { label: t('dashboard.good'), color: 'text-blue-600', bg: 'bg-blue-50', barColor: 'bg-blue-500' };
-    if (score >= 40) return { label: t('dashboard.needsAttention'), color: 'text-amber-600', bg: 'bg-amber-50', barColor: 'bg-amber-500' };
-    return { label: t('dashboard.poor'), color: 'text-red-600', bg: 'bg-red-50', barColor: 'bg-red-500' };
-  };
-
-  const status = getHealthStatus(avgHealthScore);
-
-  const checklistItems = mainLocation ? [
-    { label: t('dashboard.businessName'), done: mainLocation.hasBusinessName },
-    { label: t('dashboard.address'), done: mainLocation.hasAddress },
-    { label: t('dashboard.website'), done: mainLocation.hasWebsite },
-    { label: t('dashboard.phoneNumber'), done: mainLocation.hasPhone },
-    { label: t('dashboard.numberOfReviews'), done: mainLocation.totalReviews > 0 },
-  ] : [];
-
+function StatCard({ icon, label, value, change, color, index }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  change?: number;
+  color: string;
+  index: number;
+}) {
+  const isPositive = change && change > 0;
   return (
-    <div className="bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold font-headline">Location Health</h3>
+    <div className="stat-card animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+      <div className="stat-icon" style={{ backgroundColor: `${color}15`, color }}>
+        {icon}
       </div>
-
-      {/* Overall Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="text-center p-3 bg-slate-50 rounded-xl">
-          <div className={`text-2xl font-bold ${status.color}`}>{avgHealthScore}</div>
-          <div className="text-[10px] text-slate-500">/ 100</div>
-        </div>
-        <div className="text-center p-3 bg-slate-50 rounded-xl">
-          <div className="text-2xl font-bold text-primary flex items-center justify-center gap-1">
-            {avgRating} <span className="text-amber-400 text-lg">★</span>
+      <div className="stat-content">
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">{label}</div>
+        {change !== undefined && (
+          <div className={`stat-change ${isPositive ? 'stat-change-positive' : 'stat-change-negative'}`}>
+            {isPositive ? <TrendingUp sx={{ fontSize: 14 }} /> : <TrendingDown sx={{ fontSize: 14 }} />}
+            <span>{Math.abs(change)}%</span>
           </div>
-          <div className="text-[10px] text-slate-500">/ 5</div>
-        </div>
-        <div className="text-center p-3 bg-slate-50 rounded-xl">
-          <div className="text-2xl font-bold text-primary">{totalReviews}</div>
-          <div className="text-[10px] text-slate-500">reviews</div>
-        </div>
+        )}
       </div>
-
-      {/* Health Progress Bar */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between text-xs mb-1">
-          <span className="font-medium text-slate-600">{t('dashboard.health')}</span>
-          <span className={`font-bold ${status.color}`}>{avgHealthScore}%</span>
-        </div>
-        <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${status.barColor}`}
-            style={{ width: `${avgHealthScore}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Checklist */}
-      <div className="space-y-2">
-        <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">{t('dashboard.profileCompleteness') || t('dashboard.profileCompleteness')}</div>
-        {checklistItems.map((item, idx) => (
-          <div key={idx} className="flex items-center gap-2">
-            {item.done ? (
-              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-            ) : (
-              <Cancel className="w-4 h-4 text-red-400 flex-shrink-0" />
-            )}
-            <span className={`text-xs ${item.done ? 'text-slate-600' : 'text-slate-400'}`}>
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Location Selector */}
-      {locations.length > 1 && (
-        <div className="mt-4 pt-4 border-t border-slate-100">
-          <select className="w-full p-2 text-xs border border-slate-200 rounded-lg">
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>{loc.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
     </div>
   );
 }
@@ -260,22 +164,14 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
   const [reviewFilter, setReviewFilter] = useState<'all' | 'positive' | 'negative'>('all');
 
   const [embedMetrics, setEmbedMetrics] = useState<EmbedListingMetrics>({
-    searchViews: 0,
-    mapViews: 0,
-    websiteClicks: 0,
-    directionRequests: 0,
-    phoneCalls: 0,
-    publishedPosts: 0,
-    avgPostingTime: 0,
-    avgResponseTime: 0,
-    responsePercentage: 0,
+    searchViews: 0, mapViews: 0, websiteClicks: 0, directionRequests: 0,
+    phoneCalls: 0, publishedPosts: 0, avgPostingTime: 0, avgResponseTime: 0, responsePercentage: 0,
   });
 
   const [recentReviews, setRecentReviews] = useState<Review[]>([]);
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [impressionsData, setImpressionsData] = useState<ChartData[]>([]);
   const [actionsData, setActionsData] = useState<ChartData[]>([]);
-  const [reviewTrendsData, setReviewTrendsData] = useState<ChartData[]>([]);
 
   const periodOptions: Record<string, { label: string; days: number }> = {
     '7days': { label: t('dashboard.last7Days'), days: 7 },
@@ -284,234 +180,81 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
     '12months': { label: t('dashboard.last12Months'), days: 365 },
   };
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [selectedLocation, selectedPeriod]);
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { fetchDashboardData(); }, [selectedLocation, selectedPeriod]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch EmbedSocial locations - this has the real data!
       const embedRes = await apiGet('/api/embedsocial/locations');
       let embedLocations: any[] = [];
       if (embedRes.ok) {
         const data = await embedRes.json();
         embedLocations = Array.isArray(data) ? data : (data.data || []);
-        console.log('[Dashboard] Embed locations:', embedLocations.length);
       }
 
-      // First try to fetch reviews from EmbedSocial (has real data)
       let reviews: Review[] = [];
-      let embedReviews: any[] = [];
-      try {
-        const embedReviewsRes = await apiGet('/api/embedsocial/reviews');
-        console.log('[Dashboard] EmbedSocial reviews response status:', embedReviewsRes.status);
-        if (embedReviewsRes.ok) {
-          const embedReviewsData = await embedReviewsRes.json();
-          console.log('[Dashboard] EmbedSocial reviews raw JSON:', JSON.stringify(embedReviewsData)?.slice(0, 500));
-          embedReviews = Array.isArray(embedReviewsData) ? embedReviewsData : (embedReviewsData.data || embedReviewsData.items || []);
-          console.log('[Dashboard] EmbedSocial reviews count:', embedReviews.length);
-
-          reviews = embedReviews.map((r: any) => {
-            console.log('[Dashboard] Processing review:', r.authorName, 'rating:', r.rating);
-            return {
-              id: r.id,
-              author: r.authorName || 'Anonymous User',
-              authorPhoto: r.authorPhoto || r.profilePhotoUrl || null,
-              rating: r.rating || 0,
-              location: r.sourceName || embedLocations[0]?.name || 'Google',
-              date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '',
-              text: r.captionText || r.text || '',
-              replied: r.replies && r.replies.length > 0,
-              replyText: undefined,
-              isPositive: (r.rating || 0) >= 4,
-            };
-          });
-        } else {
-          console.log('[Dashboard] EmbedSocial reviews fetch failed, status:', embedReviewsRes.status);
-        }
-      } catch (e) {
-        console.log('[Dashboard] EmbedSocial reviews fetch error:', e);
+      const embedReviewsRes = await apiGet('/api/embedsocial/reviews');
+      if (embedReviewsRes.ok) {
+        const embedReviewsData = await embedReviewsRes.json();
+        const embedReviews = Array.isArray(embedReviewsData) ? embedReviewsData : [];
+        reviews = embedReviews.map((r: any) => ({
+          id: r.id, author: r.authorName || 'Anonymous', authorPhoto: r.authorPhoto || null,
+          rating: r.rating || 0, location: r.sourceName || 'Google',
+          date: r.originalCreatedOn ? new Date(r.originalCreatedOn).toLocaleDateString() : '',
+          text: r.captionText || r.text || '', replied: !!(r.replies?.length),
+          replyText: r.replies?.[0]?.text, isPositive: (r.rating || 0) >= 4,
+        }));
       }
-
-      console.log('[Dashboard] Total reviews after EmbedSocial fetch:', reviews.length);
-
-      // If no EmbedSocial reviews, try database
-      if (reviews.length === 0) {
-        const reviewsRes = await apiGet('/api/reviews');
-        if (reviewsRes.ok) {
-          const reviewsData = await reviewsRes.json();
-          const rawReviews = reviewsData.reviews || [];
-
-          reviews = rawReviews.map((r: any) => ({
-            id: r.id,
-            author: r.reviewerName || r.author || 'Anonymous User',
-            authorPhoto: null,
-            rating: r.rating || 0,
-            location: r.locationName || r.location || 'Unknown',
-            date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '',
-            text: r.comment || r.text || '',
-            replied: !!r.replyText,
-            replyText: r.replyText,
-            isPositive: (r.rating || 0) >= 4,
-          }));
-        }
-      }
-
-      console.log('[Dashboard] Total reviews to display:', reviews.length);
       setRecentReviews(reviews);
 
-      // Fetch local locations
       const locationsRes = await apiGet('/api/locations');
       let localLocations: any[] = [];
-      if (locationsRes.ok) {
-        localLocations = await locationsRes.json();
-      }
+      if (locationsRes.ok) localLocations = await locationsRes.json();
 
-      // Enrich locations with EmbedSocial data and calculate health scores
-      // Use EmbedSocial data if available, otherwise use local data
       const enrichedLocations: LocationData[] = [];
-
-      // First, add locations from EmbedSocial (these have real reviews and rating data)
       for (const embedLoc of embedLocations) {
-        const localLoc = localLocations.find((l: any) =>
-          l.embedSocialLocationId === embedLoc.id ||
-          l.googlePlaceId === embedLoc.googleId
-        );
-
-        const name = localLoc?.name || embedLoc.name || 'Unnamed Location';
+        const localLoc = localLocations.find((l: any) => l.embedSocialLocationId === embedLoc.id);
+        const name = localLoc?.name || embedLoc.name || 'Location';
         const address = localLoc?.address || embedLoc.address || '';
         const phone = localLoc?.phone || embedLoc.phoneNumber || '';
         const website = localLoc?.website || embedLoc.websiteUrl || '';
         const totalReviews = embedLoc.totalReviews || 0;
         const averageRating = embedLoc.averageRating || 0;
 
-        // Calculate health score based on profile completeness
-        // Note: description, openingHours, category not available from EmbedSocial API
         let healthScore = 100;
-        const hasBusinessName = name.trim().length >= 2;
-        const hasAddress = address.trim().length >= 5;
-        const hasWebsite = website.length > 0;
-        const hasPhone = phone.length > 0;
-
-        if (!hasBusinessName) healthScore -= 20;
-        if (!hasAddress) healthScore -= 25;
-        if (!hasWebsite) healthScore -= 15;
-        if (!hasPhone) healthScore -= 15;
+        if (!name) healthScore -= 20;
+        if (!address) healthScore -= 25;
+        if (!website) healthScore -= 15;
+        if (!phone) healthScore -= 15;
         if (totalReviews === 0) healthScore -= 15;
         if (averageRating > 0 && averageRating < 3.5) healthScore -= 10;
 
         enrichedLocations.push({
-          id: localLoc?.id || embedLoc.id,
-          name,
-          address,
-          phone,
-          website,
-          totalReviews,
-          averageRating,
-          hasBusinessName,
-          hasAddress,
-          hasWebsite,
-          hasPhone,
-          healthScore: Math.max(0, healthScore),
+          id: localLoc?.id || embedLoc.id, name, address, phone, website,
+          totalReviews, averageRating, hasBusinessName: !!name, hasAddress: !!address,
+          hasWebsite: !!website, hasPhone: !!phone, healthScore: Math.max(0, healthScore),
         });
       }
-
-      // Then add any local locations that don't have EmbedSocial data
-      for (const localLoc of localLocations) {
-        const hasEmbedData = embedLocations.some((e: any) =>
-          e.id === localLoc.embedSocialLocationId ||
-          e.googleId === localLoc.googlePlaceId
-        );
-
-        if (!hasEmbedData) {
-          const totalReviews = localLoc.totalReviews || 0;
-          const averageRating = localLoc.averageRating || 0;
-
-          let healthScore = 100;
-          const hasBusinessName = !!(localLoc.name && localLoc.name.trim().length >= 2);
-          const hasAddress = !!(localLoc.address && localLoc.address.trim().length >= 5);
-          const hasWebsite = !!(localLoc.website || localLoc.websiteUrl);
-          const hasPhone = !!(localLoc.phone);
-
-          if (!hasBusinessName) healthScore -= 20;
-          if (!hasAddress) healthScore -= 25;
-          if (!hasWebsite) healthScore -= 15;
-          if (!hasPhone) healthScore -= 15;
-          if (totalReviews === 0) healthScore -= 15;
-          if (averageRating > 0 && averageRating < 3.5) healthScore -= 10;
-
-          enrichedLocations.push({
-            id: localLoc.id,
-            name: localLoc.name || 'Unnamed Location',
-            address: localLoc.address || '',
-            phone: localLoc.phone || '',
-            website: localLoc.website || localLoc.websiteUrl || '',
-            totalReviews,
-            averageRating,
-            hasBusinessName,
-            hasAddress,
-            hasWebsite,
-            hasPhone,
-            healthScore: Math.max(0, healthScore),
-          });
-        }
-      }
-
-      // If no locations at all, create a default one with EmbedSocial data
-      if (enrichedLocations.length === 0 && embedLocations.length > 0) {
-        const embedLoc = embedLocations[0];
-        enrichedLocations.push({
-          id: embedLoc.id,
-          name: embedLoc.name || 'Location',
-          address: embedLoc.address || '',
-          phone: embedLoc.phoneNumber || '',
-          website: embedLoc.websiteUrl || '',
-          totalReviews: embedLoc.totalReviews || 0,
-          averageRating: embedLoc.averageRating || 0,
-          hasBusinessName: true,
-          hasAddress: !!(embedLoc.address),
-          hasWebsite: !!(embedLoc.websiteUrl),
-          hasPhone: !!(embedLoc.phoneNumber),
-          healthScore: 80,
-        });
-      }
-
       setLocations(enrichedLocations);
 
-      // Calculate total reviews and average from EmbedSocial data
-      const totalReviewsFromEmbed = embedLocations.reduce((acc: number, loc: any) => acc + (loc.totalReviews || 0), 0);
-      const avgRatingFromEmbed = embedLocations.length > 0
-        ? embedLocations.reduce((acc: number, loc: any) => acc + (loc.averageRating || 0), 0) / embedLocations.length
-        : 0;
+      const totalReviews = embedLocations.reduce((acc: number, loc: any) => acc + (loc.totalReviews || 0), 0);
+      const avgRating = embedLocations.length > 0 ? embedLocations.reduce((acc: number, loc: any) => acc + (loc.averageRating || 0), 0) / embedLocations.length : 0;
 
-      // Fetch metrics from EmbedSocial
       try {
         const metricsRes = await apiGet(`/api/embedsocial/metrics?period=${selectedPeriod}`);
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json();
           setEmbedMetrics({
-            // Use real data from EmbedSocial if available
-            searchViews: metricsData.searchViews || 0,
-            mapViews: metricsData.mapViews || 0,
-            websiteClicks: metricsData.websiteClicks || 0,
-            directionRequests: metricsData.directionRequests || 0,
-            phoneCalls: metricsData.phoneCalls || 0,
-            publishedPosts: metricsData.publishedPosts || embedLocations.length,
-            avgPostingTime: metricsData.avgPostingTime || 0,
-            avgResponseTime: metricsData.avgResponseTime || 0,
+            searchViews: metricsData.searchViews || 0, mapViews: metricsData.mapViews || 0,
+            websiteClicks: metricsData.websiteClicks || 0, directionRequests: metricsData.directionRequests || 0,
+            phoneCalls: metricsData.phoneCalls || 0, publishedPosts: metricsData.publishedPosts || embedLocations.length,
+            avgPostingTime: metricsData.avgPostingTime || 0, avgResponseTime: metricsData.avgResponseTime || 0,
             responsePercentage: metricsData.responsePercentage || 0,
           });
         }
-      } catch (e) {
-        console.log('Metrics fetch error:', e);
-      }
+      } catch (e) { /* ignore */ }
 
-      // Fetch chart data
       try {
         const chartRes = await apiGet(`/api/embedsocial/chart-data?period=${selectedPeriod}`);
         if (chartRes.ok) {
@@ -519,36 +262,7 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
           if (chartData.impressions) setImpressionsData(chartData.impressions);
           if (chartData.actions) setActionsData(chartData.actions);
         }
-      } catch (e) {
-        console.log('Chart data fetch error:', e);
-      }
-
-      // Fetch review trends from EmbedSocial
-      try {
-        const trendsRes = await apiGet(`/api/embedsocial/review-trends?period=${selectedPeriod}`);
-        if (trendsRes.ok) {
-          const trendsData = await trendsRes.json();
-          if (trendsData.reviewTrends) {
-            setReviewTrendsData(trendsData.reviewTrends);
-          }
-        }
-      } catch (e) {
-        console.log('Review trends fetch error:', e);
-        // Fallback to generated data if API fails
-        const days = periodOptions[selectedPeriod].days;
-        const reviewTrends: ChartData[] = [];
-        for (let i = days - 1; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          reviewTrends.push({
-            date: dateStr,
-            reviews: Math.floor(Math.random() * 8) + 1,
-            replies: Math.floor(Math.random() * 6) + 1,
-          });
-        }
-        setReviewTrendsData(reviewTrends);
-      }
+      } catch (e) { /* ignore */ }
 
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -557,301 +271,668 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
     }
   };
 
-  const filteredReviews = reviewFilter === 'all'
-    ? recentReviews
-    : recentReviews.filter(r => reviewFilter === 'positive' ? r.isPositive : !r.isPositive);
-
-  const secondaryMetrics = [
-    { icon: <AccessTime className="w-4 h-4" />, label: t('dashboard.averPostingTime'), value: `${embedMetrics.avgPostingTime}d` },
-    { icon: <Reply className="w-4 h-4" />, label: t('dashboard.averResponseTime'), value: `${embedMetrics.avgResponseTime}h` },
-    { icon: <CheckCircle className="w-4 h-4" />, label: t('dashboard.responsePct'), value: `${embedMetrics.responsePercentage}%` },
-  ];
+  const filteredReviews = reviewFilter === 'all' ? recentReviews : recentReviews.filter(r => reviewFilter === 'positive' ? r.isPositive : !r.isPositive);
 
   if (!mounted || loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm text-slate-500">Loading dashboard data...</p>
+      <div className="loading-container">
+        <div className="loading-spinner" />
+        <p className="loading-text">Loading dashboard...</p>
       </div>
     );
   }
 
-  return (
-    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
-      {/* Page Header with Filters */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div>
-          <h2 className="text-2xl font-extrabold font-headline text-on-surface mb-1">Dashboard</h2>
-          <p className="text-slate-500 text-sm">Performance overview across all your business locations</p>
-        </div>
+  const avgHealthScore = locations.length > 0 ? Math.round(locations.reduce((acc, loc) => acc + loc.healthScore, 0) / locations.length) : 0;
+  const avgRating = locations.length > 0 ? (locations.reduce((acc, loc) => acc + loc.averageRating, 0) / locations.length).toFixed(1) : '0.0';
+  const totalReviews = locations.reduce((acc, loc) => acc + loc.totalReviews, 0);
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm border border-slate-100 px-3 py-2">
-            <FilterList className="w-4 h-4 text-slate-400" />
+  return (
+    <div className="dashboard-container">
+      {/* Header */}
+      <header className="dashboard-header">
+        <div className="dashboard-header-content">
+          <div>
+            <h1 className="page-title">Overview</h1>
+            <p className="page-subtitle">Performance across all your business locations</p>
+          </div>
+          <div className="dashboard-controls">
             <select
+              className="input select"
               value={selectedLocation}
               onChange={(e) => setSelectedLocation(e.target.value)}
-              className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer"
             >
               <option value="all">All Locations</option>
               {locations.map(loc => (
                 <option key={loc.id} value={loc.id}>{loc.name}</option>
               ))}
             </select>
-          </div>
-
-          <div className="flex items-center bg-white rounded-xl shadow-sm border border-slate-100 px-3 py-2">
             <select
+              className="input select"
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer"
             >
               <option value="7days">{t('dashboard.last7Days')}</option>
               <option value="30days">{t('dashboard.last30Days')}</option>
               <option value="90days">{t('dashboard.last90Days')}</option>
               <option value="12months">{t('dashboard.last12Months')}</option>
             </select>
+            <button className="btn-icon" onClick={fetchDashboardData} title="Refresh">
+              <Refresh sx={{ fontSize: 20 }} />
+            </button>
           </div>
+        </div>
+      </header>
 
-          <button
-            onClick={fetchDashboardData}
-            className="p-2 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-500 hover:text-primary transition-colors"
-          >
-            <Refresh className="w-4 h-4" />
-          </button>
+      {/* Stats Grid */}
+      <div className="stats-grid">
+        <StatCard
+          index={0} icon={<Search sx={{ fontSize: 22 }} />}
+          label="Search Views" value={embedMetrics.searchViews > 0 ? embedMetrics.searchViews.toLocaleString() : '—'}
+          color="#1e3a5f"
+        />
+        <StatCard
+          index={1} icon={<Explore sx={{ fontSize: 22 }} />}
+          label="Map Views" value={embedMetrics.mapViews > 0 ? embedMetrics.mapViews.toLocaleString() : '—'}
+          color="#8b5cf6"
+        />
+        <StatCard
+          index={2} icon={<Language sx={{ fontSize: 22 }} />}
+          label="Website Clicks" value={embedMetrics.websiteClicks > 0 ? embedMetrics.websiteClicks.toLocaleString() : '—'}
+          color="#10b981"
+        />
+        <StatCard
+          index={3} icon={<Directions sx={{ fontSize: 22 }} />}
+          label="Directions" value={embedMetrics.directionRequests > 0 ? embedMetrics.directionRequests.toLocaleString() : '—'}
+          color="#f59e0b"
+        />
+        <StatCard
+          index={4} icon={<Phone sx={{ fontSize: 22 }} />}
+          label="Phone Calls" value={embedMetrics.phoneCalls > 0 ? embedMetrics.phoneCalls.toLocaleString() : '—'}
+          color="#ef4444"
+        />
+        <StatCard
+          index={5} icon={<Send sx={{ fontSize: 22 }} />}
+          label="Published Posts" value={embedMetrics.publishedPosts > 0 ? embedMetrics.publishedPosts.toLocaleString() : '—'}
+          color="#0ea5e9"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="charts-grid">
+        {/* Impressions Chart */}
+        <div className="card chart-card">
+          <div className="card-header">
+            <h3 className="card-title">Search Impressions</h3>
+            <span className="card-subtitle">Views over time</span>
+          </div>
+          <div className="card-body">
+            <div className="chart-container">
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={impressionsData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorSearch" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#1e3a5f" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#1e3a5f" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorMap" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} stroke="#e2e8f0" tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} stroke="#e2e8f0" tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }} />
+                  <Area type="monotone" dataKey="searchViews" stroke="#1e3a5f" strokeWidth={2} fill="url(#colorSearch)" name="Search" />
+                  <Area type="monotone" dataKey="mapViews" stroke="#0ea5e9" strokeWidth={2} fill="url(#colorMap)" name="Map" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions Chart */}
+        <div className="card chart-card">
+          <div className="card-header">
+            <h3 className="card-title">User Actions</h3>
+            <span className="card-subtitle">Clicks, calls, and directions</span>
+          </div>
+          <div className="card-body">
+            <div className="chart-container">
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={actionsData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} stroke="#e2e8f0" tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} stroke="#e2e8f0" tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }} />
+                  <Area type="monotone" dataKey="websiteClicks" stroke="#10b981" strokeWidth={2} fill="#10b981" fillOpacity={0.15} name="Website" />
+                  <Area type="monotone" dataKey="directionRequests" stroke="#f59e0b" strokeWidth={2} fill="#f59e0b" fillOpacity={0.15} name="Directions" />
+                  <Line type="monotone" dataKey="phoneCalls" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Calls" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Bento Grid Layout */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Primary Metrics Row */}
-        <div className="col-span-12">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                <Search className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
-                  {embedMetrics.searchViews > 0 ? embedMetrics.searchViews.toLocaleString() : '—'}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500 block mt-1">Search Views</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
-                <Explore className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
-                  {embedMetrics.mapViews > 0 ? embedMetrics.mapViews.toLocaleString() : '—'}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500 block mt-1">Map Views</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
-                <Language className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
-                  {embedMetrics.websiteClicks > 0 ? embedMetrics.websiteClicks.toLocaleString() : '—'}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500 block mt-1">Website Clicks</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600">
-                <Directions className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
-                  {embedMetrics.directionRequests > 0 ? embedMetrics.directionRequests.toLocaleString() : '—'}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500 block mt-1">Direction Requests</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-              <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600">
-                <Phone className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
-                  {embedMetrics.phoneCalls > 0 ? embedMetrics.phoneCalls.toLocaleString() : '—'}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500 block mt-1">Phone Calls</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 flex flex-col gap-3" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-              <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center text-cyan-600">
-                <Send className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-2xl font-extrabold font-headline tracking-tight text-slate-900">
-                  {embedMetrics.publishedPosts > 0 ? embedMetrics.publishedPosts.toLocaleString() : '—'}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500 block mt-1">Published Posts</span>
-              </div>
-            </div>
+      {/* Bottom Row */}
+      <div className="dashboard-bottom-grid">
+        {/* Location Health */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">Location Health</h3>
           </div>
-        </div>
-
-        {/* Secondary Metrics Row */}
-        <div className="col-span-12">
-          <div className="flex items-center gap-4 flex-wrap">
-            {secondaryMetrics.map((metric, i) => (
-              <div key={i} className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 shadow-sm">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  {metric.icon}
+          <div className="card-body">
+            <div className="health-stats">
+              <div className="health-stat">
+                <div className="health-score" style={{ color: avgHealthScore >= 80 ? 'var(--color-success)' : avgHealthScore >= 60 ? 'var(--color-warning)' : 'var(--color-error)' }}>
+                  {avgHealthScore}
                 </div>
-                <div>
-                  <div className="text-lg font-bold text-slate-900">{metric.value}</div>
-                  <div className="text-[10px] text-slate-500">{metric.label}</div>
-                </div>
+                <div className="health-label">Health Score</div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Chart 1: Impressions */}
-        <div className="col-span-12 lg:col-span-6 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h3 className="text-lg font-bold font-headline">Overview: Impressions</h3>
-              <p className="text-xs text-slate-400 mt-1">Search views and map views over time</p>
+              <div className="health-stat">
+                <div className="health-score">{avgRating} <Star sx={{ fontSize: 16, color: '#f59e0b', fontVariationSettings: "'FILL' 1" }} /></div>
+                <div className="health-label">Avg Rating</div>
+              </div>
+              <div className="health-stat">
+                <div className="health-score">{totalReviews.toLocaleString()}</div>
+                <div className="health-label">Total Reviews</div>
+              </div>
+            </div>
+            <div className="health-progress">
+              <div className="health-progress-bar">
+                <div className="health-progress-fill" style={{
+                  width: `${avgHealthScore}%`,
+                  backgroundColor: avgHealthScore >= 80 ? 'var(--color-success)' : avgHealthScore >= 60 ? 'var(--color-warning)' : 'var(--color-error)'
+                }} />
+              </div>
             </div>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={impressionsData}>
-                <defs>
-                  <linearGradient id="colorSearch" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#60a5fa" stopOpacity={0.05}/>
-                  </linearGradient>
-                  <linearGradient id="colorMap" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.05}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
-                <Area type="monotone" dataKey="searchViews" stroke="#60a5fa" strokeWidth={2} fill="url(#colorSearch)" name="Search Views" />
-                <Area type="monotone" dataKey="mapViews" stroke="#a78bfa" strokeWidth={2} fill="url(#colorMap)" name="Map Views" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
         </div>
 
-        {/* Chart 2: Actions */}
-        <div className="col-span-12 lg:col-span-6 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h3 className="text-lg font-bold font-headline">Overview: Actions</h3>
-              <p className="text-xs text-slate-400 mt-1">Website clicks, directions, and calls over time</p>
+        {/* Recent Reviews */}
+        <div className="card reviews-card">
+          <div className="card-header">
+            <div className="card-header-row">
+              <h3 className="card-title">Recent Reviews</h3>
+              <div className="review-filters">
+                <button className={`review-filter-btn ${reviewFilter === 'all' ? 'active' : ''}`} onClick={() => setReviewFilter('all')}>
+                  All ({recentReviews.length})
+                </button>
+                <button className={`review-filter-btn ${reviewFilter === 'positive' ? 'active positive' : ''}`} onClick={() => setReviewFilter('positive')}>
+                  <ThumbUp sx={{ fontSize: 14 }} /> {filteredReviews.length}
+                </button>
+                <button className={`review-filter-btn ${reviewFilter === 'negative' ? 'active negative' : ''}`} onClick={() => setReviewFilter('negative')}>
+                  <ThumbDown sx={{ fontSize: 14 }} /> {filteredReviews.length}
+                </button>
+              </div>
             </div>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={actionsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
-                <Area type="monotone" dataKey="websiteClicks" stroke="#4ade80" strokeWidth={2} fill="#4ade80" fillOpacity={0.2} name="Website Clicks" />
-                <Area type="monotone" dataKey="directionRequests" stroke="#fb923c" strokeWidth={2} fill="#fb923c" fillOpacity={0.2} name="Direction Requests" />
-                <Line type="monotone" dataKey="phoneCalls" stroke="#f87171" strokeWidth={2} dot={{ r: 3 }} name="Phone Calls" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Location Health Card */}
-        <div className="col-span-12 lg:col-span-4">
-          <LocationHealthCard locations={locations} />
-        </div>
-
-        {/* Recent Activity with Reviews */}
-        <div className="col-span-12 lg:col-span-8 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold font-headline">Recent Activity</h3>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setReviewFilter('all')}
-                className={`px-3 py-1 text-xs rounded-full transition-colors ${reviewFilter === 'all' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-              >
-                All ({recentReviews.length})
-              </button>
-              <button
-                onClick={() => setReviewFilter('positive')}
-                className={`px-3 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${reviewFilter === 'positive' ? 'bg-green-500 text-white' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-              >
-                <ThumbUp className="w-3 h-3" />
-                Positive ({recentReviews.filter(r => r.isPositive).length})
-              </button>
-              <button
-                onClick={() => setReviewFilter('negative')}
-                className={`px-3 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${reviewFilter === 'negative' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-              >
-                <ThumbDown className="w-3 h-3" />
-                Negative ({recentReviews.filter(r => !r.isPositive).length})
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          <div className="card-body reviews-list">
             {filteredReviews.length > 0 ? (
-              filteredReviews.slice(0, 5).map((review) => (
+              filteredReviews.slice(0, 4).map((review) => (
                 <ReviewCard key={review.id} review={review} />
               ))
             ) : (
-              <div className="text-center py-8 text-slate-400">
-                <Star className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">No reviews yet</p>
+              <div className="empty-state">
+                <Star sx={{ fontSize: 48, color: 'var(--color-text-disabled)' }} />
+                <div className="empty-state-title">No reviews yet</div>
+                <div className="empty-state-description">Reviews will appear here when customers leave feedback</div>
               </div>
             )}
           </div>
         </div>
-
-        {/* Review Trends */}
-        <div className="col-span-12 bg-white rounded-xl p-6" style={{ boxShadow: '0px 12px 32px rgba(25, 28, 29, 0.06)' }}>
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h3 className="text-lg font-bold font-headline">Review Trends</h3>
-              <p className="text-xs text-slate-400 mt-1">New reviews vs responses over time</p>
-            </div>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={reviewTrendsData}>
-                <defs>
-                  <linearGradient id="colorReviews" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#003d9b" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#003d9b" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorReplies" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
-                <Area type="monotone" dataKey="reviews" stroke="#003d9b" strokeWidth={2} fill="url(#colorReviews)" name="Reviews" />
-                <Area type="monotone" dataKey="replies" stroke="#22c55e" strokeWidth={2} fill="url(#colorReplies)" name="Replies" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
+
+      <style>{`
+        .dashboard-container {
+          padding: 24px;
+          max-width: 1600px;
+          margin: 0 auto;
+        }
+
+        .dashboard-header {
+          margin-bottom: 24px;
+        }
+
+        .dashboard-header-content {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+        }
+
+        .page-title {
+          font-family: var(--font-headline);
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: var(--color-text-primary);
+          letter-spacing: -0.02em;
+          margin: 0 0 4px;
+        }
+
+        .page-subtitle {
+          font-size: 14px;
+          color: var(--color-text-muted);
+          margin: 0;
+        }
+
+        .dashboard-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .dashboard-controls .input {
+          width: auto;
+          min-width: 140px;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        @media (max-width: 1200px) {
+          .stats-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+          .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 480px) {
+          .stats-grid { grid-template-columns: 1fr; }
+        }
+
+        .stat-card {
+          background: var(--color-surface-raised);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          padding: 16px;
+          display: flex;
+          gap: 12px;
+          transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+          border-color: var(--color-border-strong);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .stat-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .stat-content {
+          min-width: 0;
+        }
+
+        .stat-value {
+          font-family: var(--font-headline);
+          font-size: 24px;
+          font-weight: 700;
+          color: var(--color-text-primary);
+          letter-spacing: -0.02em;
+          line-height: 1.1;
+        }
+
+        .stat-label {
+          font-size: 12px;
+          color: var(--color-text-muted);
+          margin-top: 2px;
+        }
+
+        .stat-change {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          font-size: 11px;
+          font-weight: 600;
+          margin-top: 4px;
+        }
+
+        .stat-change-positive { color: var(--color-success); }
+        .stat-change-negative { color: var(--color-error); }
+
+        .charts-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 20px;
+          margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) {
+          .charts-grid { grid-template-columns: 1fr; }
+        }
+
+        .chart-card .card-header {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+        }
+
+        .card-title {
+          font-family: var(--font-headline);
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--color-text-primary);
+          margin: 0;
+        }
+
+        .card-subtitle {
+          font-size: 12px;
+          color: var(--color-text-muted);
+        }
+
+        .chart-container {
+          margin-top: 8px;
+        }
+
+        .dashboard-bottom-grid {
+          display: grid;
+          grid-template-columns: 360px 1fr;
+          gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+          .dashboard-bottom-grid { grid-template-columns: 1fr; }
+        }
+
+        .health-stats {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .health-stat {
+          text-align: center;
+        }
+
+        .health-score {
+          font-family: var(--font-headline);
+          font-size: 24px;
+          font-weight: 700;
+          color: var(--color-text-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+        }
+
+        .health-label {
+          font-size: 11px;
+          color: var(--color-text-muted);
+          margin-top: 2px;
+        }
+
+        .health-progress {
+          margin-top: 8px;
+        }
+
+        .health-progress-bar {
+          height: 8px;
+          background: var(--color-surface);
+          border-radius: 999px;
+          overflow: hidden;
+        }
+
+        .health-progress-fill {
+          height: 100%;
+          border-radius: 999px;
+          transition: width 0.6s ease;
+        }
+
+        .card-header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+        }
+
+        .review-filters {
+          display: flex;
+          gap: 4px;
+        }
+
+        .review-filter-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px;
+          font-size: 12px;
+          font-weight: 500;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          background: var(--color-surface);
+          color: var(--color-text-secondary);
+          transition: all 0.15s ease;
+        }
+
+        .review-filter-btn:hover {
+          background: var(--color-border);
+        }
+
+        .review-filter-btn.active {
+          background: var(--color-primary);
+          color: white;
+        }
+
+        .review-filter-btn.active.positive {
+          background: var(--color-success);
+        }
+
+        .review-filter-btn.active.negative {
+          background: var(--color-error);
+        }
+
+        .reviews-card {
+          max-height: 500px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .reviews-list {
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          flex: 1;
+        }
+
+        .review-card {
+          padding: 14px;
+          border-radius: 10px;
+          background: var(--color-surface);
+          transition: all 0.15s ease;
+        }
+
+        .review-card:hover {
+          background: var(--color-border);
+        }
+
+        .review-card-positive {
+          border-left: 3px solid var(--color-success);
+        }
+
+        .review-card-negative {
+          border-left: 3px solid var(--color-error);
+        }
+
+        .review-card-header {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+
+        .review-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 999px;
+          object-fit: cover;
+          flex-shrink: 0;
+        }
+
+        .review-avatar-initials {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        .review-card-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .review-author {
+          font-weight: 600;
+          font-size: 14px;
+          color: var(--color-text-primary);
+        }
+
+        .review-meta {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          color: var(--color-text-muted);
+          margin-top: 2px;
+        }
+
+        .review-separator {
+          opacity: 0.5;
+        }
+
+        .review-rating {
+          display: flex;
+          gap: 1px;
+        }
+
+        .review-text {
+          font-size: 13px;
+          color: var(--color-text-secondary);
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .review-reply {
+          display: flex;
+          align-items: flex-start;
+          gap: 6px;
+          margin-top: 10px;
+          padding: 8px 10px;
+          background: var(--color-success-bg);
+          border-radius: 6px;
+          font-size: 12px;
+          color: var(--color-text-secondary);
+        }
+
+        .review-reply-text {
+          flex: 1;
+        }
+
+        .review-pending {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 10px;
+          font-size: 12px;
+          color: var(--color-warning);
+        }
+
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          gap: 16px;
+        }
+
+        .loading-spinner {
+          width: 32px;
+          height: 32px;
+          border: 3px solid var(--color-border);
+          border-top-color: var(--color-primary);
+          border-radius: 999px;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+          font-size: 14px;
+          color: var(--color-text-muted);
+        }
+
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 48px 24px;
+          text-align: center;
+        }
+
+        .empty-state-title {
+          font-family: var(--font-headline);
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--color-text-primary);
+          margin: 16px 0 8px;
+        }
+
+        .empty-state-description {
+          font-size: 13px;
+          color: var(--color-text-muted);
+          max-width: 280px;
+        }
+
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slide-up {
+          animation: slideUp 0.3s ease-out both;
+        }
+
+        @media (max-width: 768px) {
+          .dashboard-container {
+            padding: 16px;
+          }
+
+          .page-title {
+            font-size: 1.5rem;
+          }
+
+          .dashboard-controls {
+            width: 100%;
+          }
+
+          .dashboard-controls .input {
+            flex: 1;
+            min-width: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
