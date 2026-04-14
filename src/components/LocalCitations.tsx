@@ -103,6 +103,7 @@ export function LocalCitationsInner() {
 
   return (
     <div className="citations-container">
+      <div className="citations-wrapper">
       <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('seo.localCitations')}</h1>
@@ -205,10 +206,39 @@ export function LocalCitationsInner() {
         </table>
       </section>
       </div>
+      </div>
     </div>
   );
 }
 
 export function LocalCitations() {
   return <LocalCitationsInner />;
+}
+
+// CSS styles
+const styles = `
+.citations-container {
+  min-height: 100vh;
+  background: var(--color-surface);
+}
+
+.citations-wrapper {
+  padding-left: 256px;
+  padding: 24px;
+  max-width: 1400px;
+}
+
+@media (max-width: 1023px) {
+  .citations-wrapper {
+    padding-left: 0;
+    padding: 16px;
+  }
+}
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
 }
