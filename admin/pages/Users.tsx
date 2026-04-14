@@ -13,6 +13,7 @@ import {
   Clock,
   AlertCircle,
   ArrowLeft,
+  LogOut,
 } from 'lucide-react';
 import { apiGet, apiDelete } from '../utils/api';
 

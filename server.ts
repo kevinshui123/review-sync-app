@@ -3956,7 +3956,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
               businessRank = i + 1;
             }
 
-            // Only add actual competitors (exclude user's own business from display list)
+            // Track unique competitors for the aggregated topCompetitors list (excludes user's business)
             if (!isTarget) {
               const key = r.title || `competitor-${i}`;
               const existing = competitorMap.get(key);
@@ -3973,21 +3973,24 @@ The review should sound natural, authentic, and written by a real customer. Keep
                   bestRank: i + 1,
                   rankAtPoints: [idx],
                   thumbnail: r.thumbnail || null,
+                  types: Array.isArray(r.types) ? r.types : (r.type ? [r.type] : []),
                 });
               }
-              // Add to display competitors (top 5 only, no user business)
-              if (competitors.length < 5) {
-                competitors.push({
-                  rank: i + 1,
-                  name: r.title,
-                  address: r.address,
-                  rating: r.rating,
-                  reviews: r.reviews,
-                  phone: r.phone,
-                  isTarget: false,
-                  thumbnail: r.thumbnail || null,
-                });
-              }
+            }
+
+            // Add to display competitors (top 20, includes user business)
+            if (competitors.length < 20) {
+              competitors.push({
+                rank: i + 1,
+                name: r.title,
+                address: r.address,
+                rating: r.rating,
+                reviews: r.reviews,
+                phone: r.phone,
+                isTarget,
+                thumbnail: r.thumbnail || null,
+                types: Array.isArray(r.types) ? r.types : (r.type ? [r.type] : []),
+              });
             }
           }
 
@@ -4005,7 +4008,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
             lng: pointLng,
             businessRank,
             totalResults: localResults.length,
-            competitors: competitors.slice(0, 5), // top 5 per point for display
+            competitors, // all up to 20 competitors (includes user business)
             hasData: localResults.length > 0,
           };
         } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Map,
@@ -6,7 +6,8 @@ import {
   TrendingUp,
   Place,
   OpenInNew,
-  AutoAwesome,
+  Close,
+  Star,
 } from '@mui/icons-material';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { apiGet, apiPost } from '../utils/api';
@@ -48,6 +49,18 @@ interface BusinessInfo {
   lng?: number;
 }
 
+interface Competitor {
+  rank: number;
+  name: string;
+  address: string;
+  rating: number | null;
+  reviews: number | null;
+  phone: string;
+  isTarget: boolean;
+  thumbnail?: string | null;
+  types?: string[];
+}
+
 interface GridPoint {
   idx: number;
   lat: number;
@@ -55,16 +68,7 @@ interface GridPoint {
   businessRank: number | null;
   totalResults: number;
   hasData: boolean;
-  competitors: {
-    rank: number;
-    name: string;
-    address: string;
-    rating: number | null;
-    reviews: number | null;
-    phone: string;
-    isTarget: boolean;
-    thumbnail?: string | null;
-  }[];
+  competitors: Competitor[];
 }
 
 interface GridSummary {
@@ -87,6 +91,91 @@ interface LocalSearchGridResult {
 
 interface LocalSearchGridProps {
   setActiveTab?: (tab: string) => void;
+}
+
+function formatTypes(types: string[] | undefined): string {
+  if (!types || types.length === 0) return '—';
+  const display = types.slice(0, 2).map(t =>
+    t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  );
+  return display.join(', ');
+}
+
+function RankingRow({ competitor, businessName }: { competitor: Competitor; businessName: string }) {
+  const rankColor = getRankColor(competitor.rank);
+
+  return (
+    <tr className={`hover:bg-slate-50 ${competitor.isTarget ? 'bg-blue-50' : ''}`}>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+            style={{ backgroundColor: rankColor }}
+          >
+            {competitor.rank}
+          </span>
+          {competitor.isTarget && (
+            <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded">
+              YOU
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          {competitor.thumbnail ? (
+            <img
+              src={competitor.thumbnail}
+              alt={competitor.name}
+              className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <div className={`${competitor.thumbnail ? 'hidden' : ''} w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0`}>
+            <Place className="w-6 h-6 text-slate-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-800 truncate">
+              {competitor.name}
+            </p>
+            <p className="text-xs text-slate-400 truncate">{competitor.address || '—'}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-center">
+        {competitor.rating !== null && competitor.rating !== undefined ? (
+          <div className="flex items-center justify-center gap-1">
+            <Star className="w-3.5 h-3.5 text-yellow-500" />
+            <span className="text-sm font-semibold text-slate-700">{competitor.rating.toFixed(1)}</span>
+          </div>
+        ) : (
+          <span className="text-sm text-slate-400">—</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-center">
+        {competitor.reviews !== null && competitor.reviews !== undefined ? (
+          <span className="text-sm text-slate-600">{competitor.reviews.toLocaleString()}</span>
+        ) : (
+          <span className="text-sm text-slate-400">—</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-center">
+        <span className="text-xs text-slate-500 max-w-[120px] truncate block">
+          {formatTypes(competitor.types)}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-center">
+        {competitor.phone ? (
+          <span className="text-sm text-slate-600">{competitor.phone}</span>
+        ) : (
+          <span className="text-sm text-slate-400">—</span>
+        )}
+      </td>
+    </tr>
+  );
 }
 
 export function LocalSearchGrid({ setActiveTab }: LocalSearchGridProps) {
@@ -355,6 +444,64 @@ export function LocalSearchGrid({ setActiveTab }: LocalSearchGridProps) {
               </MapContainer>
             </div>
           </div>
+
+          {/* Point Detail Panel */}
+          {selectedPoint && (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold">Point #{selectedPoint.idx + 1} — {selectedPoint.totalResults} Results</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {selectedPoint.businessRank !== null
+                      ? `Your business ranks #${selectedPoint.businessRank}`
+                      : 'Your business not ranked in top results'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedPoint(null)}
+                  className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <Close className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase w-28">Rank</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Business</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-24">Rating</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-24">Reviews</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-32">Category</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-32">Phone</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {selectedPoint.competitors.length > 0 ? (
+                      selectedPoint.competitors.map((comp, i) => (
+                        <RankingRow
+                          key={i}
+                          competitor={comp}
+                          businessName={businessInfo?.name || ''}
+                        />
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">
+                          No data for this point yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {selectedPoint.businessRank === null && selectedPoint.totalResults > 20 && (
+                <div className="px-6 py-3 bg-amber-50 border-t border-amber-100 text-xs text-amber-700">
+                  Your business was not found in the top 20 results. Consider expanding your local SEO efforts.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Grid Points Table */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

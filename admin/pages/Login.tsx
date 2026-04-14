@@ -29,8 +29,8 @@ export default function AdminLogin() {
       localStorage.setItem('admin_token', data.token);
       localStorage.setItem('admin_user', JSON.stringify(data.admin));
 
-      // Navigate to dashboard
-      navigate('/admin');
+      // Navigate to dashboard immediately after saving
+      navigate('/admin', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.');
     } finally {

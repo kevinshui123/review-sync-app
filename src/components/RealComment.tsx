@@ -18,7 +18,7 @@ import {
   TrendingUp,
   Camera,
 } from '@mui/icons-material';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles, Zap } from 'lucide-react';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
