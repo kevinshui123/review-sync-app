@@ -381,8 +381,7 @@ ${photoContext}
   }
 
   return (
-    <div className="real-comment-container">
-      <div className="real-comment-wrapper">
+    <div className="real-comment-container" style={{ padding: '24px 24px 24px 280px', maxWidth: '1600px', margin: '0 auto', minHeight: '100vh', background: 'var(--color-surface)' }}>
       <div className="animate-fade-in">
       {/* Header */}
       <div className="mb-8">
@@ -855,34 +854,5 @@ ${photoContext}
         </div>
       )}
     </div>
-    </div>
   );
-}
-
-// CSS styles
-const realCommentStyles = `
-.real-comment-container {
-  min-height: 100vh;
-  background: var(--color-surface);
-}
-
-.real-comment-wrapper {
-  padding-left: 256px;
-  padding: 24px;
-  max-width: 1400px;
-}
-
-@media (max-width: 1023px) {
-  .real-comment-wrapper {
-    padding-left: 0;
-    padding: 16px;
-  }
-}
-`;
-
-// Inject styles
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.textContent = realCommentStyles;
-  document.head.appendChild(styleSheet);
 }
