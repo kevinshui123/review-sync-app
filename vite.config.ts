@@ -34,6 +34,12 @@ export default defineConfig(({ mode }) => {
           ecma: 2015,
         },
       },
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          admin: path.resolve(__dirname, 'admin/index.html'),
+        },
+      },
     },
     server: {
       host: '0.0.0.0',

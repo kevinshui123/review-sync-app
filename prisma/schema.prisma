@@ -221,3 +221,50 @@ model AIAgent {
 
   @@index([tenantId])
 }
+
+// ==========================================
+// Admin Models
+// ==========================================
+
+model Admin {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("admin") // 'admin', 'super_admin'
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ==========================================
+// Real Comment Submission Model
+// ==========================================
+
+model RealCommentSubmission {
+  id          String   @id @default(uuid())
+  tenantId   String
+  userId     String?
+  userEmail  String?
+
+  // Review details
+  location    String   // Store name
+  locationId  String?
+  content     String   // Review text content
+  rating      Int      // 1-5 stars
+  photos      String   @default("[]") // JSON array of base64 strings or URLs
+  submitDate String?  // Date selected by user
+
+  // Admin review status
+  status      String   @default("pending") // 'pending', 'approved', 'completed', 'rejected'
+  adminNote   String?  // Note from admin
+  reviewedAt  DateTime?
+  reviewedBy  String?  // Admin ID who reviewed
+
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+}

@@ -8,6 +8,8 @@ import { authMiddleware, generateToken, AuthRequest } from './src/server/auth.js
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { Auth } from 'googleapis';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 // Instantiate the Prisma Client
 const prisma = new PrismaClient();
@@ -841,6 +843,282 @@ async function startServer() {
     } catch (error: any) {
       console.error('Test EmbedSocial connection error:', error);
       res.status(500).json({ error: 'Connection test failed', details: error.message });
+    }
+  });
+
+  // ==========================================
+  // Admin Authentication API Routes
+  // ==========================================
+
+  // Admin login
+  app.post('/api/admin/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      // Find admin
+      const admin = await prisma.admin.findUnique({ where: { email } });
+      if (!admin) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      // Verify password
+      const isValid = await bcrypt.compare(password, admin.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      // Generate admin token (different from user token)
+      const adminToken = jwt.sign(
+        { adminId: admin.id, role: admin.role },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      res.json({
+        success: true,
+        admin: {
+          id: admin.id,
+          email: admin.email,
+          name: admin.name,
+          role: admin.role,
+        },
+        token: adminToken,
+      });
+    } catch (error: any) {
+      console.error('[admin] Login error:', error);
+      res.status(500).json({ error: 'Login failed' });
+    }
+  });
+
+  // Admin middleware
+  const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized: No token provided' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { adminId?: string; role?: string; userId?: string; tenantId?: string };
+
+      // Check if this is an admin token
+      if (!decoded.adminId) {
+        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+      }
+
+      (req as any).adminId = decoded.adminId;
+      (req as any).adminRole = decoded.role;
+      next();
+    } catch (error) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    }
+  };
+
+  // Get all users (admin only)
+  app.get('/api/admin/users', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const users = await prisma.user.findMany({
+        include: {
+          tenants: {
+            include: {
+              locations: true,
+              commentTasks: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Transform data
+      const transformedUsers = users.map(user => ({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        createdAt: user.createdAt,
+        tenants: user.tenants.map(tenant => ({
+          id: tenant.id,
+          name: tenant.name,
+          locationCount: tenant.locations.length,
+          taskCount: tenant.commentTasks.length,
+          isConfigured: tenant.isConfigured,
+        })),
+      }));
+
+      res.json({ users: transformedUsers, total: users.length });
+    } catch (error: any) {
+      console.error('[admin] Get users error:', error);
+      res.status(500).json({ error: 'Failed to fetch users' });
+    }
+  });
+
+  // Get user by ID (admin only)
+  app.get('/api/admin/users/:id', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      const user = await prisma.user.findUnique({
+        where: { id },
+        include: {
+          tenants: {
+            include: {
+              locations: true,
+              commentTasks: true,
+              realCommentSubmissions: {
+                orderBy: { createdAt: 'desc' },
+                take: 50,
+              },
+            },
+          },
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json({ user });
+    } catch (error: any) {
+      console.error('[admin] Get user error:', error);
+      res.status(500).json({ error: 'Failed to fetch user' });
+    }
+  });
+
+  // Update user (admin only)
+  app.put('/api/admin/users/:id', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, email } = req.body;
+
+      const user = await prisma.user.update({
+        where: { id },
+        data: {
+          ...(name && { name }),
+          ...(email && { email }),
+        },
+      });
+
+      res.json({ success: true, user });
+    } catch (error: any) {
+      console.error('[admin] Update user error:', error);
+      res.status(500).json({ error: 'Failed to update user' });
+    }
+  });
+
+  // Delete user (admin only)
+  app.delete('/api/admin/users/:id', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      await prisma.user.delete({ where: { id } });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[admin] Delete user error:', error);
+      res.status(500).json({ error: 'Failed to delete user' });
+    }
+  });
+
+  // Get all real comment submissions (admin only)
+  app.get('/api/admin/real-comments', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { status, tenantId } = req.query;
+
+      const where: any = {};
+      if (status) where.status = status;
+      if (tenantId) where.tenantId = tenantId;
+
+      const submissions = await prisma.realCommentSubmission.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Parse photos JSON
+      const parsed = submissions.map(s => ({
+        ...s,
+        photos: JSON.parse(s.photos),
+      }));
+
+      res.json({ submissions: parsed, total: submissions.length });
+    } catch (error: any) {
+      console.error('[admin] Get real comments error:', error);
+      res.status(500).json({ error: 'Failed to fetch submissions' });
+    }
+  });
+
+  // Mark real comment as completed (admin only)
+  app.put('/api/admin/real-comments/:id/complete', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { adminNote } = req.body;
+
+      const submission = await prisma.realCommentSubmission.update({
+        where: { id },
+        data: {
+          status: 'completed',
+          adminNote: adminNote || null,
+          reviewedAt: new Date(),
+          reviewedBy: (req as any).adminId,
+        },
+      });
+
+      console.log(`[ADMIN] Real comment ${id} marked as completed by admin ${(req as any).adminId}`);
+
+      res.json({ success: true, submission });
+    } catch (error: any) {
+      console.error('[admin] Complete real comment error:', error);
+      res.status(500).json({ error: 'Failed to update submission' });
+    }
+  });
+
+  // Reject real comment (admin only)
+  app.put('/api/admin/real-comments/:id/reject', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { adminNote } = req.body;
+
+      const submission = await prisma.realCommentSubmission.update({
+        where: { id },
+        data: {
+          status: 'rejected',
+          adminNote: adminNote || null,
+          reviewedAt: new Date(),
+          reviewedBy: (req as any).adminId,
+        },
+      });
+
+      res.json({ success: true, submission });
+    } catch (error: any) {
+      console.error('[admin] Reject real comment error:', error);
+      res.status(500).json({ error: 'Failed to reject submission' });
+    }
+  });
+
+  // Get admin dashboard stats
+  app.get('/api/admin/stats', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const [totalUsers, totalTenants, totalSubmissions, pendingSubmissions] = await Promise.all([
+        prisma.user.count(),
+        prisma.tenant.count(),
+        prisma.realCommentSubmission.count(),
+        prisma.realCommentSubmission.count({ where: { status: 'pending' } }),
+      ]);
+
+      res.json({
+        totalUsers,
+        totalTenants,
+        totalSubmissions,
+        pendingSubmissions,
+      });
+    } catch (error: any) {
+      console.error('[admin] Stats error:', error);
+      res.status(500).json({ error: 'Failed to fetch stats' });
     }
   });
 
@@ -4015,6 +4293,8 @@ Return ONLY this JSON structure, nothing else:
   app.post('/api/real-comment/submit', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const { location, locationId, content, rating, photos, date } = req.body;
+      const userId = req.userId;
+      const tenantId = req.tenantId;
 
       // Validate required fields
       if (!content || !content.trim()) {
@@ -4025,45 +4305,38 @@ Return ONLY this JSON structure, nothing else:
         return res.status(400).json({ error: 'Rating must be between 1 and 5' });
       }
 
-      // Log the submission for admin to review
-      const reviewSubmission = {
-        id: `rc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        location,
-        locationId,
-        content: content.trim(),
-        rating,
-        photos: photos || [],
-        date: date || new Date().toISOString(),
-        submittedAt: new Date().toISOString(),
-        status: 'pending_review',
-      };
+      // Save to database
+      const submission = await prisma.realCommentSubmission.create({
+        data: {
+          tenantId: tenantId || 'default',
+          userId: userId || null,
+          location: location || 'Unknown',
+          locationId: locationId || null,
+          content: content.trim(),
+          rating: parseInt(rating),
+          photos: JSON.stringify(photos || []),
+          submitDate: date || null,
+          status: 'pending',
+        },
+      });
 
-      // Log to console for admin visibility
+      // Log to console for visibility
       console.log('='.repeat(60));
       console.log('[REAL COMMENT SUBMISSION]');
       console.log('='.repeat(60));
-      console.log('ID:', reviewSubmission.id);
+      console.log('ID:', submission.id);
+      console.log('Tenant:', tenantId);
+      console.log('User:', userId);
       console.log('Location:', location);
-      console.log('Location ID:', locationId);
       console.log('Rating:', rating, 'stars');
-      console.log('Date:', date);
-      console.log('Content:', content);
+      console.log('Content:', content.substring(0, 100) + '...');
       console.log('Photos:', photos?.length || 0, 'photo(s)');
-      console.log('Submitted at:', reviewSubmission.submittedAt);
       console.log('='.repeat(60));
 
-      // Store in memory for now (could be saved to database)
-      if (!global.realCommentSubmissions) {
-        global.realCommentSubmissions = [];
-      }
-      global.realCommentSubmissions.push(reviewSubmission);
-
-      // Return success
       res.json({
         success: true,
-        id: reviewSubmission.id,
+        id: submission.id,
         message: 'Review submission received successfully',
-        review: reviewSubmission,
       });
     } catch (error: any) {
       console.error('[real-comment] Submission error:', error);
@@ -4071,17 +4344,76 @@ Return ONLY this JSON structure, nothing else:
     }
   });
 
-  // Get all real comment submissions (for admin review)
+  // Get all real comment submissions (for current tenant)
   app.get('/api/real-comment/submissions', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const submissions = global.realCommentSubmissions || [];
-      res.json({ submissions, count: submissions.length });
+      const tenantId = req.tenantId;
+      const submissions = await prisma.realCommentSubmission.findMany({
+        where: { tenantId: tenantId || 'default' },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Parse photos JSON for each submission
+      const parsedSubmissions = submissions.map(s => ({
+        ...s,
+        photos: JSON.parse(s.photos),
+      }));
+
+      res.json({ submissions: parsedSubmissions, count: submissions.length });
     } catch (error: any) {
       console.error('[real-comment] Fetch error:', error);
       res.status(500).json({ error: 'Failed to fetch submissions' });
     }
   });
+
+  // Update submission status (mark as completed)
+  app.put('/api/real-comment/submissions/:id/complete', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { adminNote } = req.body;
+
+      const submission = await prisma.realCommentSubmission.update({
+        where: { id },
+        data: {
+          status: 'completed',
+          adminNote: adminNote || null,
+          reviewedAt: new Date(),
+          reviewedBy: req.userId,
+        },
+      });
+
+      console.log('[REAL COMMENT] Marked as completed:', id);
+
+      res.json({ success: true, submission });
+    } catch (error: any) {
+      console.error('[real-comment] Update error:', error);
+      res.status(500).json({ error: 'Failed to update submission' });
+    }
   });
+
+  // Reject submission
+  app.put('/api/real-comment/submissions/:id/reject', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { adminNote } = req.body;
+
+      const submission = await prisma.realCommentSubmission.update({
+        where: { id },
+        data: {
+          status: 'rejected',
+          adminNote: adminNote || null,
+          reviewedAt: new Date(),
+          reviewedBy: req.userId,
+        },
+      });
+
+      res.json({ success: true, submission });
+    } catch (error: any) {
+      console.error('[real-comment] Reject error:', error);
+      res.status(500).json({ error: 'Failed to reject submission' });
+    }
+  });
+});
 
   // ==========================================
   // Tenant Listing Management (multi-tenant EmbedSocial)
