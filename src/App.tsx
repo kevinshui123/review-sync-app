@@ -16,6 +16,7 @@ import { RealComment } from './components/RealComment';
 import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
+import { LandingPage } from './pages/LandingPage';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -144,9 +145,9 @@ function AppContent() {
     );
   }
 
-  // Not logged in
+  // Not logged in - show landing page
   if (!user) {
-    return <AuthPage />;
+    return <LandingPage />;
   }
 
   // Not configured
