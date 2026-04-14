@@ -5332,8 +5332,39 @@ IMPORTANT RULES:
   }
 
   // Start the server
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Server running on http://localhost:${PORT}`);
+
+    // Create default admin account if not exists
+    try {
+      const defaultAdminEmail = process.env.ADMIN_EMAIL || 'admin@pinkernel.com';
+      const defaultAdminPassword = process.env.ADMIN_PASSWORD || 'admin123456';
+      const defaultAdminName = process.env.ADMIN_NAME || 'Administrator';
+
+      const existingAdmin = await prisma.admin.findUnique({
+        where: { email: defaultAdminEmail }
+      });
+
+      if (!existingAdmin) {
+        const passwordHash = await bcrypt.hash(defaultAdminPassword, 10);
+        await prisma.admin.create({
+          data: {
+            email: defaultAdminEmail,
+            passwordHash,
+            name: defaultAdminName,
+            role: 'admin',
+          },
+        });
+        console.log('='.repeat(50));
+        console.log('Default admin account created!');
+        console.log(`Email: ${defaultAdminEmail}`);
+        console.log(`Password: ${defaultAdminPassword}`);
+        console.log('Please change the password after first login!');
+        console.log('='.repeat(50));
+      }
+    } catch (error) {
+      console.error('Failed to create default admin:', error);
+    }
   });
 }
 
