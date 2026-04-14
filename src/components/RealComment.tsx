@@ -853,6 +853,7 @@ ${photoContext}
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
