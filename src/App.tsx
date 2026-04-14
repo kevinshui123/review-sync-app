@@ -21,6 +21,7 @@ import { SalesDoc } from './components/SalesDoc';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AppLoader } from './components/AppLoader';
 import AuthPage from './pages/AuthPage';
 import { apiGet } from './utils/api';
 
@@ -61,7 +62,8 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<'app' | 'sales-doc'>('app');
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isZh = language === 'zh';
 
   const handleBackToLanding = () => {
     setShowAuth(false);
@@ -155,9 +157,8 @@ function AppContent() {
   // Wait for client-side hydration to complete
   if (!mounted) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-surface gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-slate-500">{t('app.loading')}</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-surface">
+        <AppLoader message={t('app.loading')} subMessage={isZh ? '正在加载应用...' : 'Loading application...'} />
       </div>
     );
   }
@@ -165,9 +166,8 @@ function AppContent() {
   // Auth loading state
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-surface gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-slate-500">{t('app.loading')}</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-surface">
+        <AppLoader message={isZh ? '正在验证身份...' : 'Verifying authentication...'} subMessage={isZh ? '请稍候' : 'Please wait'} />
       </div>
     );
   }
@@ -193,8 +193,8 @@ function AppContent() {
   // Not configured
   if (isConfigured === null) {
     return (
-      <div className="flex items-center justify-center h-screen bg-surface">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex flex-col items-center justify-center h-screen bg-surface">
+        <AppLoader message={isZh ? '正在检查配置...' : 'Checking configuration...'} />
       </div>
     );
   }
