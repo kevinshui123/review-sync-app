@@ -857,18 +857,30 @@ async function startServer() {
     try {
       const { email, password } = req.body;
 
+      console.log('[admin login] Attempt:', email);
+
       if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required' });
       }
 
       // Find admin
       const admin = await prisma.admin.findUnique({ where: { email } });
+      console.log('[admin login] Admin found:', admin ? 'yes' : 'no');
       if (!admin) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
+      console.log('[admin login] Password hash in DB:', admin.passwordHash);
+
       // Verify password
-      const isValid = await bcrypt.compare(password, admin.passwordHash);
+      let isValid = false;
+      try {
+        isValid = await bcrypt.compare(password, admin.passwordHash);
+        console.log('[admin login] Password valid:', isValid);
+      } catch (err: any) {
+        console.error('[admin login] bcrypt compare error:', err.message);
+      }
+
       if (!isValid) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
