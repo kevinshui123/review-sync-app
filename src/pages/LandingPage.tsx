@@ -21,7 +21,6 @@ interface PricingTier {
 }
 
 export function LandingPage() {
-  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
