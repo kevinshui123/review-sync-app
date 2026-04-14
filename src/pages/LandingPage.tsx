@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Star, Shield, Zap, BarChart3, MessageSquare, Search, Globe, ArrowRight, Check, Sparkles, Play, Users, TrendingUp, MapPin, Phone, Mail, ChevronDown, Menu, X, Lock, Award, Target, Rocket, FileSearch, Bot, Send, UserCheck } from 'lucide-react';
+import { Star, Shield, Zap, BarChart3, MessageSquare, Search, Globe, ArrowRight, Check, Sparkles, Play, Users, TrendingUp, MapPin, Phone, Mail, ChevronDown, Menu, X, Lock, Award, Target, Rocket, FileSearch, Bot, Send, UserCheck, Headphones } from 'lucide-react';
 
 interface LandingPageProps {
   onShowAuth: () => void;
