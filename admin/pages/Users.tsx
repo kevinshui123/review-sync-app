@@ -47,7 +47,7 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await apiGet('/api/admin/users');
+      const res = await apiGet('/admin/users');
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users);
@@ -66,7 +66,7 @@ export default function UsersPage() {
 
     setDeleting(userId);
     try {
-      const res = await apiDelete(`/api/admin/users/${userId}`);
+      const res = await apiDelete(`/admin/users/${userId}`);
       if (res.ok) {
         setUsers(users.filter(u => u.id !== userId));
         if (selectedUser?.id === userId) {

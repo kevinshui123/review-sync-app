@@ -56,8 +56,8 @@ export default function RealCommentsPage() {
   const fetchSubmissions = async () => {
     try {
       const url = statusFilter !== 'all'
-        ? `/api/admin/real-comments?status=${statusFilter}`
-        : '/api/admin/real-comments';
+        ? `/admin/real-comments?status=${statusFilter}`
+        : '/admin/real-comments';
       const res = await apiGet(url);
       if (res.ok) {
         const data = await res.json();
@@ -73,7 +73,7 @@ export default function RealCommentsPage() {
   const handleComplete = async (id: string) => {
     setProcessing(id);
     try {
-      const res = await apiPut(`/api/admin/real-comments/${id}/complete`, {});
+      const res = await apiPut(`/admin/real-comments/${id}/complete`, {});
       if (res.ok) {
         setSubmissions(submissions.map(s =>
           s.id === id ? { ...s, status: 'completed' } : s
@@ -93,7 +93,7 @@ export default function RealCommentsPage() {
   const handleReject = async (id: string, note: string) => {
     setProcessing(id);
     try {
-      const res = await apiPut(`/api/admin/real-comments/${id}/reject`, { adminNote: note });
+      const res = await apiPut(`/admin/real-comments/${id}/reject`, { adminNote: note });
       if (res.ok) {
         setSubmissions(submissions.map(s =>
           s.id === id ? { ...s, status: 'rejected' } : s

@@ -42,7 +42,7 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const res = await apiGet('/api/admin/stats');
+      const res = await apiGet('/admin/stats');
       if (res.ok) {
         const data = await res.json();
         setStats(data);
