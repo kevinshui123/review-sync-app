@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express, { Response } from 'express';
+import express, { Response, Request, NextFunction } from 'express';
 import PDFDocument from 'pdfkit';
 import authRoutes from './src/server/authRoutes.js';
 import oauthRoutes from './src/server/oauthRoutes.js';
@@ -8,8 +8,10 @@ import { authMiddleware, generateToken, AuthRequest } from './src/server/auth.js
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { Auth } from 'googleapis';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Instantiate the Prisma Client
 const prisma = new PrismaClient();
@@ -4413,7 +4415,6 @@ Return ONLY this JSON structure, nothing else:
       res.status(500).json({ error: 'Failed to reject submission' });
     }
   });
-});
 
   // ==========================================
   // Tenant Listing Management (multi-tenant EmbedSocial)

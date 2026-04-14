@@ -62,6 +62,7 @@ model Tenant {
   tenantListings TenantListing[]
   automations Automation[]
   aiAgents   AIAgent[]
+  realCommentSubmissions RealCommentSubmission[]
 }
 
 model Location {
@@ -259,6 +260,9 @@ model RealCommentSubmission {
   adminNote   String?  // Note from admin
   reviewedAt  DateTime?
   reviewedBy  String?  // Admin ID who reviewed
+
+  // Relations
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Metadata
   createdAt   DateTime @default(now())
