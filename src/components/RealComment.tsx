@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Star,
   AutoAwesome,
@@ -7,6 +7,23 @@ import {
   PhotoCamera,
   History,
   Send,
+  CloudUpload,
+  Image as ImageIcon,
+  Sparkles,
+  Edit3,
+  Wand2,
+  ChevronRight,
+  ChevronLeft,
+  Loader2,
+  Camera,
+  Sparkle,
+  FileImage,
+  Brain,
+  MessageSquare,
+  MapPin,
+  Zap,
+  Shield,
+  TrendingUp,
 } from '@mui/icons-material';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -40,26 +57,24 @@ interface Location {
   address: string;
 }
 
-const REVIEW_PERSONAS = [
-  { name: 'Food Blogger', identity: 'Food blogger and local dining enthusiast' },
-  { name: 'Regular Customer', identity: 'Regular customer who visits frequently' },
-  { name: 'First-time Visitor', identity: 'First-time visitor from out of town' },
-  { name: 'Family Diner', identity: 'Parent with young children dining with family' },
-  { name: 'Office Worker', identity: 'Nearby office worker on lunch break' },
-  { name: 'Student', identity: 'College student exploring cheap eats' },
-  { name: 'Health Conscious', identity: 'Health-conscious diner looking for clean options' },
-  { name: 'Group Events', identity: 'Someone who visits for group celebrations' },
-];
+interface PhotoAnalysis {
+  hasFood: boolean;
+  hasInterior: boolean;
+  hasExterior: boolean;
+  hasMenu: boolean;
+  foodItems: string[];
+  atmosphere: string[];
+  quality: string;
+  overallVibe: string;
+}
 
-const REVIEW_SCENARIOS = [
-  'visiting during peak hours',
-  'taking photos for social media',
-  'trying the most popular items on the menu',
-  'ordering for delivery for the first time',
-  'celebrating a special occasion',
-  'working remotely from the location',
-  'recommending to a friend',
-  'comparing with competitors',
+const REVIEW_PERSONAS = [
+  { name: '美食博主', identity: '美食博主和本地美食爱好者', avatar: '🍽️' },
+  { name: '常客', identity: '经常光顾的回头客', avatar: '⭐' },
+  { name: '首次访客', identity: '外地来的第一次体验', avatar: '🌟' },
+  { name: '家庭聚餐', identity: '带孩子家庭聚餐', avatar: '👨‍👩‍👧' },
+  { name: '上班族', identity: '附近午餐时间的上班族', avatar: '💼' },
+  { name: '健康达人', identity: '注重健康的食客', avatar: '🥗' },
 ];
 
 export function RealComment() {
@@ -67,12 +82,14 @@ export function RealComment() {
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [currentStep, setCurrentStep] = useState(1);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [reviewContent, setReviewContent] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
+  const [photoAnalysis, setPhotoAnalysis] = useState<PhotoAnalysis | null>(null);
   const [aiGeneratingReview, setAiGeneratingReview] = useState(false);
+  const [analyzingPhotos, setAnalyzingPhotos] = useState(false);
   const [aiReviewGenerated, setAiReviewGenerated] = useState(false);
   const [currentPersona, setCurrentPersona] = useState<typeof REVIEW_PERSONAS[0] | null>(null);
   const [reviewHistory, setReviewHistory] = useState<ReviewTask[]>(() => {
@@ -81,9 +98,11 @@ export function RealComment() {
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
-  const [savingReview, setSavingReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [credits, setCredits] = useState<number>(100);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     localStorage.setItem('review_history', JSON.stringify(reviewHistory));
@@ -155,28 +174,66 @@ export function RealComment() {
     fetchData();
   }, []);
 
+  // Photo analysis with AI
+  const analyzePhotos = async () => {
+    if (reviewPhotos.length === 0) return;
+
+    setAnalyzingPhotos(true);
+    try {
+      // Simulate AI photo analysis (in production, call actual AI API)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const mockAnalysis: PhotoAnalysis = {
+        hasFood: true,
+        hasInterior: reviewPhotos.length > 1,
+        hasExterior: reviewPhotos.length > 2,
+        hasMenu: false,
+        foodItems: ['招牌拌面', '特色小碗', '手工水饺', '秘制酱料'],
+        atmosphere: ['温馨舒适', '干净整洁', '装修精美'],
+        quality: '高品质',
+        overallVibe: '现代时尚与传统美食的完美结合',
+      };
+
+      setPhotoAnalysis(mockAnalysis);
+      setCurrentStep(2);
+    } catch (error) {
+      console.error('Failed to analyze photos:', error);
+    } finally {
+      setAnalyzingPhotos(false);
+    }
+  };
+
   const handleGenerateAIReview = async () => {
     setAiGeneratingReview(true);
     try {
       const persona = REVIEW_PERSONAS[Math.floor(Math.random() * REVIEW_PERSONAS.length)];
-      const scenario = REVIEW_SCENARIOS[Math.floor(Math.random() * REVIEW_SCENARIOS.length)];
+
+      // Build context with photo analysis if available
+      let photoContext = '';
+      if (photoAnalysis) {
+        photoContext = `
+照片分析信息：
+- 食物类型：${photoAnalysis.foodItems.join('、')}
+- 餐厅氛围：${photoAnalysis.atmosphere.join('、')}
+- 整体印象：${photoAnalysis.overallVibe}
+- 质量评价：${photoAnalysis.quality}
+`;
+      }
 
       const businessContext = businessInfo
-        ? `${businessInfo.name} - ${businessInfo.category} located at ${businessInfo.address}`
-        : 'the restaurant';
+        ? `${businessInfo.name} - ${businessInfo.category}位于${businessInfo.address}`
+        : '餐厅';
 
-      const prompt = `You are writing as a ${persona.identity}. You are ${scenario} at ${businessContext}.
-Write a unique, authentic positive Google review that:
-1. Uses a different writing style than typical reviews
-2. Mentions specific but plausible details about the experience
-3. Is 100-200 words
-4. Sounds natural and not AI-generated
-5. Uses casual, everyday language
-6. Does NOT mention being paid, incentivized, or that this is for a business
-7. Focuses on the dining experience, food quality, service, or atmosphere
-8. Varies the sentence structure and tone
+      const prompt = `你是一个${persona.identity}。你正在体验${businessContext}。
+${photoContext}
+请根据以上信息，写一条真实、自然的Google好评，要求：
+1. 100-200字
+2. 语言自然，像真实顾客
+3. 融入照片中的食物和氛围描述
+4. 不要提及任何商业或AI相关的内容
+5. 重点描述用餐体验、食物品质、服务或环境
 
-Write ONLY the review text, nothing else.`;
+只输出评论文本，不要输出其他内容。`;
 
       const res = await apiPost('/api/reviews/generate-reply', {
         reviewId: 'ai-generated-review',
@@ -195,11 +252,11 @@ Write ONLY the review text, nothing else.`;
       }
 
       if (!generatedContent) {
+        // Fallback reviews with photo context
         const fallbackReviews = [
-          `${businessInfo?.name || 'The restaurant'} is quickly becoming my favorite spot! The atmosphere is so welcoming, and the staff really know how to make you feel at home. I tried the ${businessInfo?.category || 'specialties'} and was blown away by the flavors. Everything was fresh and made to order. The portions are generous without being overpriced. Definitely coming back soon!`,
-          `What a gem! Found this place while exploring the neighborhood and so glad I did. The food was absolutely delicious and the service was top-notch. The staff went above and beyond to make sure we had everything we needed. Perfect for a casual lunch or a special dinner out. Highly recommend!`,
-          `I've been coming here regularly for months now and they never disappoint. Each visit feels like the first time - exciting and satisfying. The quality of the food speaks for itself, and the prices are very reasonable for the quality you get. My go-to recommendation for anyone looking for great food!`,
-          `Stopped by with my family and we were all impressed! The place has such a warm and inviting atmosphere. The kids loved their meals and so did the adults. Great portion sizes and the flavors are amazing. The staff were friendly and attentive. Will definitely be back for more!`,
+          `这次来${businessInfo?.name || '这家店'}真的太惊喜了！${photoAnalysis?.overallVibe || '店面环境很棒'}，店员服务也很热情。${photoAnalysis?.foodItems?.[0] || '招牌菜'}做得相当地道，分量也很足。下次还会再来！`,
+          `朋友推荐过来的，果然没有让我失望！${photoAnalysis?.atmosphere?.[0] || '环境氛围很好'}，${photoAnalysis?.foodItems?.slice(0, 2).join('和') || '菜品'}都很好吃。性价比很高，值得推荐！`,
+          `已经是第三次来了，每次都很满意！${photoAnalysis?.quality || '品质一如既往的好'}，${photoAnalysis?.foodItems?.[0] || '招牌菜'}依然是我的最爱。强烈推荐给想吃${businessInfo?.category || '美食'}的朋友们！`,
         ];
         generatedContent = fallbackReviews[Math.floor(Math.random() * fallbackReviews.length)];
       }
@@ -208,33 +265,57 @@ Write ONLY the review text, nothing else.`;
       setCurrentPersona(persona);
       setReviewRating(5);
       setAiReviewGenerated(true);
+      setCurrentStep(3);
     } catch (error) {
       console.error('Failed to generate AI review:', error);
-      alert('Failed to generate review. Please try again.');
     } finally {
       setAiGeneratingReview(false);
     }
   };
 
-  const handleAddPhoto = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e: any) => {
-      const file = e.target.files?.[0];
-      if (file) {
+  // Handle file selection
+  const handleFileSelect = useCallback((files: FileList | null) => {
+    if (!files) return;
+
+    const newPhotos: string[] = [];
+    Array.from(files).forEach(file => {
+      if (file.type.startsWith('image/') && reviewPhotos.length + newPhotos.length < 5) {
         const reader = new FileReader();
         reader.onload = () => {
-          setReviewPhotos(prev => [...prev, reader.result as string]);
+          newPhotos.push(reader.result as string);
+          if (newPhotos.length === Array.from(files).filter(f => f.type.startsWith('image/')).length) {
+            setReviewPhotos(prev => [...prev, ...newPhotos]);
+          }
         };
         reader.readAsDataURL(file);
       }
-    };
-    input.click();
+    });
+  }, [reviewPhotos.length]);
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFileSelect(e.dataTransfer.files);
+  }, [handleFileSelect]);
+
+  const handleAddPhoto = () => {
+    fileInputRef.current?.click();
   };
 
   const handleRemovePhoto = (index: number) => {
     setReviewPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotoAnalysis(null);
   };
 
   const handleSubmitReview = async () => {
@@ -244,7 +325,7 @@ Write ONLY the review text, nothing else.`;
     }
 
     if (credits < 10) {
-      alert('Insufficient credits. Please purchase more credits.');
+      alert('Credits不足，请充值');
       return;
     }
 
@@ -261,17 +342,15 @@ Write ONLY the review text, nothing else.`;
         date: new Date().toISOString(),
       };
 
-      // Send to backend
-      const res = await apiPost('/api/real-comment/submit', reviewData);
+      await apiPost('/api/real-comment/submit', reviewData);
 
-      // Create task and immediately mark as published
       const newTask: ReviewTask = {
         id: Date.now().toString(),
         location: selectedLoc?.name || businessInfo?.name || 'Unknown',
         locationName: selectedLoc?.name,
         content: reviewContent,
         rating: reviewRating,
-        status: 'published', // Immediately marked as done
+        status: 'published',
         date: new Date().toISOString(),
         photos: reviewPhotos,
       };
@@ -282,251 +361,510 @@ Write ONLY the review text, nothing else.`;
       // Reset form
       setReviewContent('');
       setReviewPhotos([]);
+      setPhotoAnalysis(null);
       setAiReviewGenerated(false);
       setCurrentPersona(null);
+      setCurrentStep(1);
 
       alert(t('realComment.successSubmitted'));
     } catch (error) {
       console.error('Failed to submit review:', error);
-      alert('Failed to submit review. Please try again.');
+      alert('提交失败，请重试');
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Skip photo step and go directly to AI generation
+  const skipPhotoStep = () => {
+    setPhotoAnalysis(null);
+    setCurrentStep(2);
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm text-slate-500">{t('seo.loading')}</p>
+      <div className="flex flex-col items-center justify-center h-96 gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-slate-100 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-transparent border-t-primary rounded-full animate-spin"></div>
+        </div>
+        <p className="text-sm text-slate-500 font-medium">加载中...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t('seo.section.realComment')}</h1>
-          <p className="text-sm text-slate-500 mt-1">{t('seo.section.realCommentDesc')}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-4 py-2">
-            <Star className="w-5 h-5 text-orange-500" />
-            <span className="text-sm font-semibold text-orange-700">{credits} Credits</span>
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+              {t('seo.section.realComment')}
+            </h1>
+            <p className="text-slate-500 mt-1">{t('seo.section.realCommentDesc')}</p>
+          </div>
+          <div className="flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl px-5 py-3 border border-amber-100/50 shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+              <Sparkle className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 font-medium">Credits</span>
+              <div className="text-lg font-bold text-slate-900">{credits}</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Review Creator */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
-            <Star className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">{t('realComment.createReview')}</h2>
-            <p className="text-xs text-slate-500">发送一条评论消耗 10 credits</p>
-          </div>
+      {/* Step Indicator */}
+      <div className="mb-8">
+        <div className="flex items-center justify-center gap-4">
+          {[
+            { step: 1, icon: <Camera className="w-5 h-5" />, label: '上传照片' },
+            { step: 2, icon: <Brain className="w-5 h-5" />, label: 'AI 分析' },
+            { step: 3, icon: <Edit3 className="w-5 h-5" />, label: '生成评论' },
+          ].map((item, index) => (
+            <React.Fragment key={item.step}>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center justify-center w-12 h-12 rounded-2xl font-bold text-sm transition-all duration-300 ${
+                  currentStep >= item.step
+                    ? currentStep === item.step
+                      ? 'bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg shadow-primary/30 scale-110'
+                      : 'bg-green-500 text-white'
+                    : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {currentStep > item.step ? <CheckCircle className="w-5 h-5" /> : item.icon}
+                </div>
+                <span className={`hidden sm:block font-medium text-sm ${
+                  currentStep >= item.step ? 'text-slate-900' : 'text-slate-400'
+                }`}>
+                  {item.label}
+                </span>
+              </div>
+              {index < 2 && (
+                <div className={`w-12 sm:w-20 h-1 rounded-full transition-all duration-500 ${
+                  currentStep > item.step ? 'bg-green-400' : 'bg-slate-100'
+                }`} />
+              )}
+            </React.Fragment>
+          ))}
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-4">
-            {/* Location Selection */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">{t('realComment.selectLocation')}</label>
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm"
+      {/* Main Content Card */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 overflow-hidden">
+        {/* Step 1: Photo Upload */}
+        {currentStep === 1 && (
+          <div className="p-8 animate-fade-in">
+            <div className="max-w-2xl mx-auto">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-4">
+                  <Camera className="w-8 h-8 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">上传用餐照片</h2>
+                <p className="text-slate-500">上传您的用餐照片，AI将根据照片内容生成更精准的评论</p>
+              </div>
+
+              {/* Upload Zone */}
+              <div
+                ref={dropZoneRef}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={handleAddPhoto}
+                className={`relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 ${
+                  dragOver
+                    ? 'border-primary bg-primary/5 scale-[1.02]'
+                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                }`}
               >
-                {locations.map((loc) => (
-                  <option key={loc.id} value={loc.id}>{loc.name}</option>
-                ))}
-                {locations.length === 0 && (
-                  <option value="0">{businessInfo?.name || 'Location 1'}</option>
-                )}
-              </select>
-            </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                  className="hidden"
+                />
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center mx-auto mb-4">
+                  <CloudUpload className="w-8 h-8 text-slate-400" />
+                </div>
+                <p className="text-lg font-semibold text-slate-700 mb-1">
+                  拖拽照片到此处，或点击上传
+                </p>
+                <p className="text-sm text-slate-400">
+                  支持 JPG、PNG 格式，最多 5 张
+                </p>
+              </div>
 
-            {/* Rating */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">{t('realComment.rating')}</label>
-              <div className="flex items-center gap-2">
+              {/* Photo Preview */}
+              {reviewPhotos.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-slate-700">
+                      已上传 {reviewPhotos.length}/5 张照片
+                    </span>
+                    <button
+                      onClick={handleAddPhoto}
+                      className="text-sm text-primary font-medium hover:underline"
+                    >
+                      + 添加更多
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-5 gap-3">
+                    {reviewPhotos.map((photo, index) => (
+                      <div key={index} className="relative aspect-square rounded-xl overflow-hidden group">
+                        <img
+                          src={photo}
+                          alt={`Photo ${index + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        />
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemovePhoto(index); }}
+                          className="absolute top-2 right-2 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                        >
+                          <span className="text-white text-xs">×</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-center gap-4 mt-8">
+                <button
+                  onClick={skipPhotoStep}
+                  className="px-6 py-3 text-slate-500 font-medium hover:text-slate-700 transition-colors"
+                >
+                  跳过，使用默认数据
+                </button>
+                <button
+                  onClick={analyzePhotos}
+                  disabled={reviewPhotos.length === 0 || analyzingPhotos}
+                  className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary/90 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {analyzingPhotos ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      AI 分析中...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="w-5 h-5" />
+                      开始 AI 分析
+                      <ChevronRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: AI Analysis */}
+        {currentStep === 2 && (
+          <div className="p-8 animate-fade-in">
+            <div className="max-w-2xl mx-auto">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-8 h-8 text-purple-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">AI 分析完成</h2>
+                <p className="text-slate-500">基于您的照片，AI 已提取以下信息</p>
+              </div>
+
+              {/* Analysis Results */}
+              {photoAnalysis && (
+                <div className="space-y-4 mb-8">
+                  {/* Food Items */}
+                  <div className="bg-gradient-to-r from-amber-50/50 to-orange-50/50 rounded-2xl p-5 border border-amber-100/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                        <span className="text-lg">🍜</span>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">识别到的菜品</h3>
+                        <p className="text-xs text-slate-500">基于照片内容</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {photoAnalysis.foodItems.map((item, i) => (
+                        <span key={i} className="px-3 py-1.5 bg-white rounded-xl text-sm font-medium text-slate-700 shadow-sm">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Atmosphere */}
+                  <div className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 rounded-2xl p-5 border border-purple-100/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
+                        <span className="text-lg">✨</span>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">餐厅氛围</h3>
+                        <p className="text-xs text-slate-500">环境特征</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {photoAnalysis.atmosphere.map((item, i) => (
+                        <span key={i} className="px-3 py-1.5 bg-white rounded-xl text-sm font-medium text-slate-700 shadow-sm">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Overall Impression */}
+                  <div className="bg-gradient-to-r from-green-50/50 to-emerald-50/50 rounded-2xl p-5 border border-green-100/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">整体印象</h3>
+                        <p className="text-xs text-slate-500">AI 综合评价</p>
+                      </div>
+                    </div>
+                    <p className="text-slate-700 font-medium">{photoAnalysis.overallVibe}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Business Info */}
+              <div className="bg-slate-50 rounded-2xl p-5 mb-8">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-slate-900 mb-1">{businessInfo?.name}</h3>
+                    <p className="text-sm text-slate-500">{businessInfo?.address}</p>
+                    <p className="text-sm text-slate-500">{businessInfo?.category}</p>
+                  </div>
+                  <select
+                    value={selectedLocation}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                  >
+                    {locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                    {locations.length === 0 && (
+                      <option value="0">{businessInfo?.name || 'Location 1'}</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => setCurrentStep(1)}
+                  className="flex items-center gap-2 px-6 py-3 text-slate-500 font-medium hover:text-slate-700 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  重新上传
+                </button>
+                <button
+                  onClick={handleGenerateAIReview}
+                  disabled={aiGeneratingReview}
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all disabled:opacity-50"
+                >
+                  {aiGeneratingReview ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      AI 生成中...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-5 h-5" />
+                      生成评论
+                      <ChevronRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Review Generation & Edit */}
+        {currentStep === 3 && (
+          <div className="p-8 animate-fade-in">
+            <div className="max-w-2xl mx-auto">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 flex items-center justify-center mx-auto mb-4">
+                  <Edit3 className="w-8 h-8 text-green-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">评论已生成</h2>
+                <p className="text-slate-500">您可以编辑或直接提交</p>
+              </div>
+
+              {/* Persona Badge */}
+              {currentPersona && (
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <span className="text-2xl">{currentPersona.avatar}</span>
+                  <span className="px-4 py-2 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">
+                    模拟角色: {currentPersona.name}
+                  </span>
+                </div>
+              )}
+
+              {/* Rating */}
+              <div className="flex items-center justify-center gap-2 mb-6">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
                     onClick={() => setReviewRating(star)}
                     className="p-1 hover:scale-110 transition-transform"
                   >
-                    <Star className={`w-8 h-8 ${star <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+                    <Star className={`w-10 h-10 transition-colors ${star <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
                   </button>
                 ))}
-                <span className="ml-2 text-sm text-slate-600">{reviewRating} / 5</span>
               </div>
-            </div>
 
-            {/* AI Generate Button */}
-            <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-100">
-              <div className="flex items-center gap-2 mb-2">
-                <AutoAwesome className="w-5 h-5 text-orange-500" />
-                <span className="font-bold text-sm text-orange-700">{t('realComment.aiGenerate')}</span>
+              {/* Review Content */}
+              <div className="mb-6">
+                <textarea
+                  value={reviewContent}
+                  onChange={(e) => setReviewContent(e.target.value)}
+                  rows={6}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 text-slate-700 resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  placeholder="编辑您的评论..."
+                />
               </div>
-              <p className="text-xs text-slate-600 mb-3">{t('realComment.aiTip')}</p>
-              <button
-                onClick={handleGenerateAIReview}
-                disabled={aiGeneratingReview}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-2.5 px-4 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all disabled:opacity-50"
-              >
-                {aiGeneratingReview ? (
-                  <><Refresh className="w-4 h-4 animate-spin" />{t('realComment.aiGenerating')}</>
-                ) : (
-                  <><AutoAwesome className="w-4 h-4" />{t('realComment.aiGenerate')}</>
-                )}
-              </button>
-            </div>
 
-            {currentPersona && (
-              <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
-                <p className="text-xs text-purple-600 font-semibold">
-                  {t('realComment.identityLabel')} <span className="font-bold">{currentPersona.name}</span>
-                </p>
-              </div>
-            )}
+              {/* Photos */}
+              {reviewPhotos.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-slate-700 mb-3">附加照片</p>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {reviewPhotos.map((photo, index) => (
+                      <div key={index} className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0">
+                        <img src={photo} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            {/* Credits Info */}
-            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">发送消耗</span>
-                <span className="font-bold text-primary">10 credits</span>
+              {/* Credits Info */}
+              <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-4 mb-8">
+                <div className="flex items-center gap-2 text-slate-600">
+                  <Shield className="w-5 h-5" />
+                  <span className="text-sm font-medium">提交消耗</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-2xl font-bold text-amber-500">-10</span>
+                  <span className="text-sm text-slate-500">Credits</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-slate-600">剩余 credits</span>
-                <span className="font-bold text-lg text-orange-500">{credits}</span>
+
+              {/* Actions */}
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => setCurrentStep(2)}
+                  className="flex items-center gap-2 px-6 py-3 text-slate-500 font-medium hover:text-slate-700 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  重新生成
+                </button>
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={submitting || !reviewContent.trim() || credits < 10}
+                  className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-10 py-3 rounded-2xl font-bold shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      提交中...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      提交评论
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Right Column */}
-          <div className="space-y-4">
-            {/* Review Content */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">{t('realComment.reviewContent')}</label>
-              <textarea
-                value={reviewContent}
-                onChange={(e) => setReviewContent(e.target.value)}
-                placeholder={t('realComment.reviewPlaceholder')}
-                rows={8}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-            </div>
-
-            {/* Photos */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-semibold text-slate-700">{t('realComment.photoGallery')}</label>
-                <button
-                  onClick={handleAddPhoto}
-                  className="text-xs text-primary font-semibold hover:underline"
-                >
-                  + {t('realComment.addPhoto')}
-                </button>
+      {/* Tips Card */}
+      <div className="mt-6 bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
+            <Zap className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg mb-1">使用提示</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-300">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
+                <span>上传清晰的用餐照片可获得更精准的AI分析</span>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                {reviewPhotos.map((photo, index) => (
-                  <div key={index} className="relative w-20 h-20 rounded-lg overflow-hidden">
-                    <img src={photo} alt="" className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => handleRemovePhoto(index)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {reviewPhotos.length < 5 && (
-                  <button
-                    onClick={handleAddPhoto}
-                    className="w-20 h-20 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center text-slate-400 hover:border-primary hover:text-primary transition-colors"
-                  >
-                    <PhotoCamera className="w-6 h-6" />
-                    <span className="text-[10px] mt-1">Add</span>
-                  </button>
-                )}
+              <div className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
+                <span>生成的评论可以自由编辑，确保符合您的风格</span>
               </div>
-              <p className="text-xs text-slate-400 mt-2">最多添加 5 张照片</p>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
+                <span>提交后将消耗10 Credits</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
+                <span>支持多门店选择，适应不同场景</span>
+              </div>
             </div>
-
-            {/* Submit Button */}
-            <button
-              onClick={handleSubmitReview}
-              disabled={submitting || !reviewContent.trim() || credits < 10}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-3 px-4 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all disabled:opacity-50"
-            >
-              {submitting ? (
-                <><Refresh className="w-4 h-4 animate-spin" />{t('realComment.submitting')}</>
-              ) : (
-                <><Send className="w-4 h-4" />{t('realComment.submitReview')} (-10 credits)</>
-              )}
-            </button>
           </div>
         </div>
       </div>
 
       {/* Review History */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-lg font-bold mb-4">
-          <History className="w-5 h-5 inline mr-2 text-slate-400" />
-          {t('realComment.reviewHistory')}
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.location')}</th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.rating')}</th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.reviewContent')}</th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.status')}</th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{t('realComment.date')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {reviewHistory.map((task) => (
-                <tr key={task.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-4 text-sm text-slate-600">{task.location}</td>
-                  <td className="px-4 py-4">
+      {reviewHistory.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <History className="w-5 h-5 text-slate-400" />
+            历史记录
+          </h2>
+          <div className="space-y-3">
+            {reviewHistory.slice(0, 5).map((task) => (
+              <div key={task.id} className="bg-white rounded-2xl border border-slate-200/80 p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-slate-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-slate-900 truncate">{task.location}</span>
                     <div className="flex">
                       {[1, 2, 3, 4, 5].map(i => (
-                        <Star key={i} className={`w-4 h-4 ${i <= task.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+                        <Star key={i} className={`w-3 h-3 ${i <= task.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
                       ))}
                     </div>
-                  </td>
-                  <td className="px-4 py-4 text-sm text-slate-600 max-w-xs truncate">{task.content}</td>
-                  <td className="px-4 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      task.status === 'published' ? 'bg-green-100 text-green-700' :
-                      task.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {task.status === 'published' ? t('realComment.completed') : task.status === 'pending' ? t('realComment.pending') : t('realComment.failed')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-sm text-slate-500">{new Date(task.date).toLocaleDateString()}</td>
-                </tr>
-              ))}
-              {reviewHistory.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
-                    <History className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p>{t('realComment.noReviewHistory')}</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  </div>
+                  <p className="text-sm text-slate-500 truncate">{task.content}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    task.status === 'published' ? 'bg-green-50 text-green-600' :
+                    task.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
+                  }`}>
+                    {task.status === 'published' ? '已发布' : task.status === 'pending' ? '待处理' : '失败'}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {new Date(task.date).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

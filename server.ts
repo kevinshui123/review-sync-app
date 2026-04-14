@@ -5336,8 +5336,21 @@ IMPORTANT RULES:
     });
     app.use(vite.middlewares);
   } else {
+    // Production: Serve admin and main frontends separately
     const distPath = path.join(process.cwd(), 'dist');
+    const adminDistPath = path.join(process.cwd(), 'dist', 'admin');
+
+    // Serve admin static files for /admin/* routes
+    app.use('/admin', express.static(adminDistPath));
+    app.use('/admin/assets', express.static(path.join(adminDistPath, 'assets')));
+
+    // Serve main static files
     app.use(express.static(distPath));
+
+    // SPA fallback: /admin/* → admin/index.html, all others → index.html
+    app.get('/admin/*', (req, res) => {
+      res.sendFile(path.join(adminDistPath, 'index.html'));
+    });
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

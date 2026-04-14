@@ -10,9 +10,12 @@ import {
   Business,
   AutoAwesome,
   CheckCircle,
+  RocketLaunch,
+  Lightbulb,
 } from '@mui/icons-material';
 import type { AIAgent } from '../types/automation';
 import { AIAgentEditor } from './AIAgentEditor';
+import { apiPost } from '../utils/api';
 
 interface AIAgentTeamProps {
   agents: AIAgent[];
@@ -24,6 +27,30 @@ export function AIAgentTeam({ agents, onRefresh }: AIAgentTeamProps) {
   const [editingAgent, setEditingAgent] = useState<AIAgent | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [isCreatingDefault, setIsCreatingDefault] = useState(false);
+
+  // 创建默认Agent
+  const createDefaultAgent = async () => {
+    setIsCreatingDefault(true);
+    try {
+      const res = await apiPost('/api/ai-agents', {
+        name: '智能助手',
+        description: '一个友好、专业的AI助手，可以帮助您自动回复客户评价',
+        tone: 'friendly',
+        personality: '热情、专业、乐于助人',
+        expertise: ['客户服务', '评价回复', '问题解决'],
+        customInstructions: '请用友好、专业的语气回复客户的评价。对于好评，表达感谢；对于差评，表达歉意并提供解决方案。回复要简洁、自然，像真人与客户交流一样。',
+        model: 'gemini',
+      });
+      if (res.ok) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to create default agent:', error);
+    } finally {
+      setIsCreatingDefault(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -95,21 +122,105 @@ export function AIAgentTeam({ agents, onRefresh }: AIAgentTeamProps) {
 
         {/* Agents Grid */}
         {agents.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm text-center">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mx-auto mb-4">
-              <SmartToy className="w-10 h-10 text-purple-500" />
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+            {/* 引导头部 */}
+            <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl p-6 text-white mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Lightbulb className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">创建您的 AI 助手</h3>
+                  <p className="text-white/80 text-sm">AI 助手将帮助您自动回复客户评价</p>
+                </div>
+              </div>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">No AI Agents Yet</h3>
-            <p className="text-slate-500 mb-6 max-w-md mx-auto">
-              Create custom AI agents with different personalities, tones, and expertise to handle various review scenarios.
-            </p>
-            <button
-              onClick={() => { setEditingAgent(null); setShowEditor(true); }}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all"
-            >
-              <Add className="w-5 h-5" />
-              Create Your First Agent
-            </button>
+
+            {/* 选项卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 快速创建默认助手 */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200 hover:border-green-300 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                    <RocketLaunch className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">快速开始</h4>
+                    <p className="text-sm text-slate-500">一键创建，立即可用</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 mb-4">
+                  创建一个预配置好的 AI 助手，适合大多数场景，无需任何设置。
+                </p>
+                <button
+                  onClick={createDefaultAgent}
+                  disabled={isCreatingDefault}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-5 py-3 rounded-xl font-bold text-sm shadow-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50"
+                >
+                  {isCreatingDefault ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      创建中...
+                    </>
+                  ) : (
+                    <>
+                      <RocketLaunch className="w-5 h-5" />
+                      创建默认助手
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* 自定义创建 */}
+              <div className="bg-slate-50 rounded-2xl p-6 border-2 border-slate-200 hover:border-slate-300 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                    <Add className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">自定义创建</h4>
+                    <p className="text-sm text-slate-500">按照您的需求配置</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 mb-4">
+                  从头开始创建自定义 AI 助手，配置专属的个性、语气和专业领域。
+                </p>
+                <button
+                  onClick={() => { setEditingAgent(null); setShowEditor(true); }}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-3 rounded-xl font-bold text-sm shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all"
+                >
+                  <Add className="w-5 h-5" />
+                  自定义创建
+                </button>
+              </div>
+            </div>
+
+            {/* 特性说明 */}
+            <div className="mt-6 pt-6 border-t border-slate-100">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mb-2">
+                    <RecordVoiceOver className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700">多种语气风格</span>
+                  <span className="text-xs text-slate-400">专业、友好、富有同理心</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mb-2">
+                    <Psychology className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700">智能学习</span>
+                  <span className="text-xs text-slate-400">理解不同场景的回复</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700">持续优化</span>
+                  <span className="text-xs text-slate-400">根据反馈不断提升</span>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

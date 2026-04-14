@@ -16,6 +16,10 @@ import {
   AccessTime,
   LocationOn,
   FilterList,
+  RocketLaunch,
+  ArrowForward,
+  Star,
+  Lightbulb,
 } from '@mui/icons-material';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api';
@@ -37,6 +41,203 @@ export function Automations({ setActiveTab }: AutomationsProps) {
   const [activeView, setActiveView] = useState<'automations' | 'agents'>('automations');
   const [menuAnchor, setMenuAnchor] = useState<{ el: HTMLElement; id: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [isCreatingDefaultAgent, setIsCreatingDefaultAgent] = useState(false);
+
+  // 创建默认Agent
+  const createDefaultAgent = async () => {
+    setIsCreatingDefaultAgent(true);
+    try {
+      const res = await apiPost('/api/ai-agents', {
+        name: '智能助手',
+        description: '一个友好、专业的AI助手，可以帮助您自动回复客户评价',
+        tone: 'friendly',
+        personality: '热情、专业、乐于助人',
+        expertise: ['客户服务', '评价回复', '问题解决'],
+        customInstructions: '请用友好、专业的语气回复客户的评价。对于好评，表达感谢；对于差评，表达歉意并提供解决方案。回复要简洁、自然，像真人与客户交流一样。',
+        model: 'gemini',
+      });
+      if (res.ok) {
+        const newAgent = await res.json();
+        setAgents([...agents, newAgent]);
+        // 自动创建第一个自动化
+        setTimeout(() => {
+          setEditingAutomation(null);
+          setShowNewModal(true);
+        }, 300);
+      }
+    } catch (error) {
+      console.error('Failed to create default agent:', error);
+    } finally {
+      setIsCreatingDefaultAgent(false);
+    }
+  };
+
+  // 快速开始引导流程
+  const renderGuidedFlow = () => {
+    const steps = [
+      {
+        icon: <SmartToy className="w-6 h-6" />,
+        title: '创建 AI 助手',
+        description: '首先创建一个 AI 助手，它将帮您自动回复评价',
+        action: agents.length === 0 ? (
+          <button
+            onClick={createDefaultAgent}
+            disabled={isCreatingDefaultAgent}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50"
+          >
+            {isCreatingDefaultAgent ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                创建中...
+              </>
+            ) : (
+              <>
+                <Add className="w-5 h-5" />
+                创建我的 AI 助手
+              </>
+            )}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 text-green-600">
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-semibold">已完成</span>
+          </div>
+        ),
+        completed: agents.length > 0,
+      },
+      {
+        icon: <Bolt className="w-6 h-6" />,
+        title: '创建自动化规则',
+        description: '设置自动化规则，让 AI 自动处理新评价',
+        action: agents.length > 0 && automations.length === 0 ? (
+          <button
+            onClick={() => { setEditingAutomation(null); setShowNewModal(true); }}
+            className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:bg-primary/90 transition-all"
+          >
+            <Add className="w-5 h-5" />
+            创建自动化
+          </button>
+        ) : automations.length > 0 ? (
+          <div className="flex items-center gap-2 text-green-600">
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-semibold">已完成</span>
+          </div>
+        ) : (
+          <button
+            disabled
+            className="flex items-center gap-2 bg-slate-200 text-slate-400 px-5 py-2.5 rounded-xl font-bold text-sm cursor-not-allowed"
+          >
+            创建自动化
+          </button>
+        ),
+        completed: automations.length > 0,
+        disabled: agents.length === 0,
+      },
+      {
+        icon: <RocketLaunch className="w-6 h-6" />,
+        title: '启动并享受便利',
+        description: '开启自动化，让 AI 7x24 小时为您服务',
+        action: automations.length > 0 && !automations.some(a => a.status === 'live') ? (
+          <button
+            onClick={() => {
+              const draft = automations.find(a => a.status === 'draft');
+              if (draft) {
+                handleToggleStatus(draft);
+              }
+            }}
+            className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:from-green-700 hover:to-emerald-700 transition-all"
+          >
+            <PlayArrow className="w-5 h-5" />
+            启动自动化
+          </button>
+        ) : automations.some(a => a.status === 'live') ? (
+          <div className="flex items-center gap-2 text-green-600">
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-semibold">运行中</span>
+          </div>
+        ) : (
+          <button
+            disabled
+            className="flex items-center gap-2 bg-slate-200 text-slate-400 px-5 py-2.5 rounded-xl font-bold text-sm cursor-not-allowed"
+          >
+            启动自动化
+          </button>
+        ),
+        completed: automations.some(a => a.status === 'live'),
+        disabled: automations.length === 0,
+      },
+    ];
+
+    return (
+      <div className="space-y-6">
+        {/* 引导标题 */}
+        <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-2xl p-6 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Lightbulb className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">快速开始</h3>
+              <p className="text-white/80 text-sm">按照以下步骤，让 AI 助手开始为您工作</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 步骤列表 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {steps.map((step, index) => (
+            <div
+              key={index}
+              className={`bg-white rounded-2xl p-6 border transition-all ${
+                step.disabled
+                  ? 'border-slate-200 opacity-60'
+                  : step.completed
+                  ? 'border-green-200 bg-green-50/30'
+                  : 'border-orange-200 shadow-sm'
+              }`}
+            >
+              {/* 步骤编号和图标 */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  step.completed
+                    ? 'bg-green-100 text-green-600'
+                    : step.disabled
+                    ? 'bg-slate-100 text-slate-400'
+                    : 'bg-gradient-to-br from-orange-500 to-red-500 text-white'
+                }`}>
+                  {step.completed ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    step.icon
+                  )}
+                </div>
+                <div className="flex-1">
+                  <span className="text-xs font-semibold text-slate-400">步骤 {index + 1}</span>
+                  <h4 className="font-bold text-slate-900">{step.title}</h4>
+                </div>
+              </div>
+
+              {/* 描述 */}
+              <p className="text-sm text-slate-500 mb-4">{step.description}</p>
+
+              {/* 操作按钮 */}
+              {step.action}
+            </div>
+          ))}
+        </div>
+
+        {/* 或者跳过 */}
+        <div className="text-center">
+          <button
+            onClick={() => setActiveView('automations')}
+            className="text-slate-500 hover:text-slate-700 text-sm underline underline-offset-4"
+          >
+            我已了解，直接查看自动化列表
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -258,14 +459,18 @@ export function Automations({ setActiveTab }: AutomationsProps) {
         {activeView === 'automations' ? (
           /* Automations List */
           <div className="space-y-4">
-            {automations.length === 0 ? (
+            {automations.length === 0 && agents.length === 0 ? (
+              /* 显示引导流程 */
+              renderGuidedFlow()
+            ) : automations.length === 0 ? (
+              /* 只有Agent但没有自动化 */
               <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm text-center">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center mx-auto mb-4">
                   <Bolt className="w-10 h-10 text-orange-500" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">No Automations Yet</h3>
                 <p className="text-slate-500 mb-6 max-w-md mx-auto">
-                  Create your first automation to automatically reply to reviews or analyze customer feedback.
+                  You have an AI assistant ready. Create your first automation to automatically reply to reviews or analyze customer feedback.
                 </p>
                 <button
                   onClick={() => { setEditingAutomation(null); setShowNewModal(true); }}

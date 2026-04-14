@@ -59,6 +59,22 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { t } = useLanguage();
 
+  // Listen for navigation events from Optimization page
+  useEffect(() => {
+    const handleNavigateTab = (e: CustomEvent) => {
+      const { tab, subTab, locationData } = e.detail;
+      setActiveTab(tab);
+      if (subTab) {
+        setListingsSubTab(subTab);
+      }
+      if (locationData) {
+        setEditLocationData(locationData);
+      }
+    };
+    window.addEventListener('navigate-tab', handleNavigateTab as EventListener);
+    return () => window.removeEventListener('navigate-tab', handleNavigateTab as EventListener);
+  }, []);
+
   useEffect(() => {
     setMounted(true);
   }, []);
