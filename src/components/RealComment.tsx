@@ -9,22 +9,16 @@ import {
   Send,
   CloudUpload,
   Image as ImageIcon,
-  Sparkles,
-  Edit3,
-  Wand2,
-  ChevronRight,
-  ChevronLeft,
-  Loader2,
-  Camera,
-  Sparkle,
-  FileImage,
-  Brain,
-  MessageSquare,
-  MapPin,
-  Zap,
-  Shield,
+  Edit,
+  ArrowForward,
+  ArrowBack,
+  Chat,
+  Place,
+  Security,
   TrendingUp,
+  Camera,
 } from '@mui/icons-material';
+import { Loader2 } from 'lucide-react';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -406,7 +400,7 @@ ${photoContext}
           </div>
           <div className="flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl px-5 py-3 border border-amber-100/50 shadow-sm">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
-              <Sparkle className="w-4 h-4 text-white" />
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
               <span className="text-xs text-slate-500 font-medium">Credits</span>
@@ -421,8 +415,8 @@ ${photoContext}
         <div className="flex items-center justify-center gap-4">
           {[
             { step: 1, icon: <Camera className="w-5 h-5" />, label: '上传照片' },
-            { step: 2, icon: <Brain className="w-5 h-5" />, label: 'AI 分析' },
-            { step: 3, icon: <Edit3 className="w-5 h-5" />, label: '生成评论' },
+            { step: 2, icon: <AutoAwesome className="w-5 h-5" />, label: 'AI 分析' },
+            { step: 3, icon: <Edit className="w-5 h-5" />, label: '生成评论' },
           ].map((item, index) => (
             <React.Fragment key={item.step}>
               <div className="flex items-center gap-3">
@@ -551,9 +545,9 @@ ${photoContext}
                     </>
                   ) : (
                     <>
-                      <Brain className="w-5 h-5" />
+                      <AutoAwesome className="w-5 h-5" />
                       开始 AI 分析
-                      <ChevronRight className="w-5 h-5" />
+                      <ArrowForward className="w-5 h-5" />
                     </>
                   )}
                 </button>
@@ -568,7 +562,7 @@ ${photoContext}
             <div className="max-w-2xl mx-auto">
               <div className="text-center mb-8">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-8 h-8 text-purple-500" />
+                  <AutoAwesome className="w-8 h-8 text-purple-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">AI 分析完成</h2>
                 <p className="text-slate-500">基于您的照片，AI 已提取以下信息</p>
@@ -637,7 +631,7 @@ ${photoContext}
               <div className="bg-slate-50 rounded-2xl p-5 mb-8">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-white" />
+                    <Place className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-bold text-slate-900 mb-1">{businessInfo?.name}</h3>
@@ -665,7 +659,7 @@ ${photoContext}
                   onClick={() => setCurrentStep(1)}
                   className="flex items-center gap-2 px-6 py-3 text-slate-500 font-medium hover:text-slate-700 transition-colors"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ArrowBack className="w-5 h-5" />
                   重新上传
                 </button>
                 <button
@@ -680,9 +674,9 @@ ${photoContext}
                     </>
                   ) : (
                     <>
-                      <Wand2 className="w-5 h-5" />
+                      <AutoAwesome className="w-5 h-5" />
                       生成评论
-                      <ChevronRight className="w-5 h-5" />
+                      <ArrowForward className="w-5 h-5" />
                     </>
                   )}
                 </button>
@@ -697,7 +691,7 @@ ${photoContext}
             <div className="max-w-2xl mx-auto">
               <div className="text-center mb-8">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 flex items-center justify-center mx-auto mb-4">
-                  <Edit3 className="w-8 h-8 text-green-500" />
+                  <Edit className="w-8 h-8 text-green-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">评论已生成</h2>
                 <p className="text-slate-500">您可以编辑或直接提交</p>
@@ -754,7 +748,7 @@ ${photoContext}
               {/* Credits Info */}
               <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-4 mb-8">
                 <div className="flex items-center gap-2 text-slate-600">
-                  <Shield className="w-5 h-5" />
+                  <Security className="w-5 h-5" />
                   <span className="text-sm font-medium">提交消耗</span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -769,7 +763,7 @@ ${photoContext}
                   onClick={() => setCurrentStep(2)}
                   className="flex items-center gap-2 px-6 py-3 text-slate-500 font-medium hover:text-slate-700 transition-colors"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ArrowBack className="w-5 h-5" />
                   重新生成
                 </button>
                 <button
@@ -836,7 +830,7 @@ ${photoContext}
             {reviewHistory.slice(0, 5).map((task) => (
               <div key={task.id} className="bg-white rounded-2xl border border-slate-200/80 p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-slate-400" />
+                  <Chat className="w-5 h-5 text-slate-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
