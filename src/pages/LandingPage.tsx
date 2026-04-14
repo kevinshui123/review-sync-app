@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Star, Shield, Zap, BarChart3, MessageSquare, Search, Globe, ArrowRight, Check, Sparkles, Play, Users, TrendingUp, MapPin, Phone, Mail, ChevronDown, Menu, X, Lock, Award, Target, Rocket, FileSearch, Bot, Send, UserCheck, Headphones } from 'lucide-react';
+import { Star, Shield, Zap, BarChart3, MessageSquare, Search, Globe, ArrowRight, Check, Sparkles, Play, Users, TrendingUp, MapPin, Phone, Mail, ChevronDown, Menu, X, Lock, Award, Target, Rocket, FileSearch, Bot, Send, UserCheck, Headphones, Image as ImageIcon } from 'lucide-react';
 
 interface LandingPageProps {
   onShowAuth: () => void;
@@ -525,7 +525,7 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
                 </div>
                 <div className="benefit-item">
                   <div className="benefit-icon">
-                    <Image size={20} />
+                    <ImageIcon size={20} />
                   </div>
                   <div>
                     <h4>Photo-Enhanced Reviews</h4>
