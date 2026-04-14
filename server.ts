@@ -3924,6 +3924,7 @@ The review should sound natural, authentic, and written by a real customer. Keep
         bestRank: number;
         rankAtPoints: number[];
         thumbnail?: string | null;
+        types: string[];
       }>();
 
       // Scan each grid point in parallel
