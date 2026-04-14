@@ -1781,12 +1781,46 @@ async function startServer() {
         console.log('[locations] Could not enrich with list data:', (e as any).message);
       }
 
-      // Merge EmbedSocial data with DB coordinates
+      // Merge EmbedSocial data with DB coordinates and photos
       for (const listing of allEmbedListings) {
         const dbListing = dbListings.find(l => l.embedSocialListingId === listing.id);
         if (dbListing) {
           listing.latitude = dbListing.latitude ?? null;
           listing.longitude = dbListing.longitude ?? null;
+          // Use stored photo reference if available, otherwise try to get from DB
+          listing.photoReference = dbListing.photoReference ?? null;
+          listing.connectedAt = dbListing.connectedAt ?? null;
+        }
+      }
+
+      // Fetch photos from Google Places API for listings missing photos
+      const tenant = await prisma.tenant.findFirst();
+      const placesApiKey = tenant?.googlePlacesApiKey || process.env.GOOGLE_PLACES_API_KEY;
+
+      if (placesApiKey) {
+        for (const listing of allEmbedListings) {
+          if (!listing.photoReference && listing.googleId) {
+            try {
+              const photoRef = await getPhotoReferenceFromPlaceId(listing.googleId, placesApiKey);
+              if (photoRef) {
+                listing.photoReference = photoRef;
+                // Save to DB for future use
+                const dbListing = dbListings.find(l => l.embedSocialListingId === listing.id);
+                if (dbListing) {
+                  await prisma.tenantListing.update({
+                    where: { id: dbListing.id },
+                    data: { photoReference: photoRef },
+                  });
+                }
+              }
+            } catch (e) {
+              console.log(`[locations] Failed to get photo for ${listing.name}:`, (e as any).message);
+            }
+          }
+          // Generate the full photo URL if we have a photo reference
+          if (listing.photoReference && placesApiKey) {
+            listing.photoUrl = getGooglePhotoUrl(listing.photoReference, placesApiKey, 200);
+          }
         }
       }
 
@@ -1849,7 +1883,7 @@ async function startServer() {
       // Get existing tenant listings
       const existingListings = await prisma.tenantListing.findMany({
         where: { tenantId: req.tenantId! },
-        select: { embedSocialListingId: true, name: true, latitude: true, longitude: true },
+        select: { embedSocialListingId: true, name: true, latitude: true, longitude: true, photoReference: true },
       });
       const existingIds = new Set(existingListings.map(l => l.embedSocialListingId));
 

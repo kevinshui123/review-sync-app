@@ -43,7 +43,8 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   const fetchLocations = async () => {
     setLoading(true);
     try {
-      const res = await apiGet('/api/tenant/listings');
+      // Use embedsocial/locations API which has photo fetching logic
+      const res = await apiGet('/api/embedsocial/locations');
       if (res.ok) {
         const data = await res.json();
         const mapped: Location[] = data.map((tl: any) => ({
@@ -51,13 +52,13 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
           name: tl.name || 'Unknown',
           address: tl.address || '',
           account: 'Google',
-          lastSync: new Date(tl.connectedAt).toLocaleString(),
-          synced: tl.status === 'active',
+          lastSync: tl.connectedAt ? new Date(tl.connectedAt).toLocaleString() : 'N/A',
+          synced: true,
           websiteUrl: tl.websiteUrl,
           phoneNumber: tl.phoneNumber,
           totalReviews: tl.totalReviews || 0,
           averageRating: tl.averageRating || 0,
-          status: tl.status,
+          status: 'active',
           photoUrl: tl.photoUrl || null,
         }));
         setLocations(mapped);
@@ -380,22 +381,28 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
         }
 
         .listing-icon {
-          width: 40px;
-          height: 40px;
+          width: 48px;
+          height: 48px;
           background: var(--color-surface);
           border: 1px solid var(--color-border);
-          border-radius: 8px;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: var(--color-text-muted);
           overflow: hidden;
+          flex-shrink: 0;
         }
 
         .listing-photo {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          transition: transform 0.2s ease;
+        }
+
+        .listing-photo:hover {
+          transform: scale(1.05);
         }
 
         .listing-name {
