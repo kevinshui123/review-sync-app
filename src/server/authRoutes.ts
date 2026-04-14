@@ -1,10 +1,38 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
+import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { generateToken, authMiddleware, AuthRequest } from './auth.js';
 
 const prisma = new PrismaClient();
 const router = Router();
+
+// Configure multer for avatar uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(process.cwd(), 'uploads', 'avatars'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `avatar-${req.userId}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      return cb(null, true);
+    }
+    cb(new Error('Only image files are allowed'));
+  }
+});
 
 // Register with email/password
 router.post('/register', async (req: Request, res: Response) => {
@@ -181,6 +209,84 @@ router.post('/switch-tenant', authMiddleware, async (req: AuthRequest, res: Resp
   } catch (error: any) {
     console.error('[auth] Switch tenant error:', error);
     res.status(500).json({ error: 'Failed to switch tenant', details: error.message });
+  }
+});
+
+// Upload avatar
+router.post('/avatar', authMiddleware, upload.single('avatar'), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Build avatar URL (relative path for local storage)
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+    // Update user avatar in database
+    const user = await prisma.user.update({
+      where: { id: req.userId },
+      data: { avatar: avatarUrl },
+    });
+
+    res.json({
+      success: true,
+      avatar: user.avatar,
+    });
+  } catch (error: any) {
+    console.error('[auth] Avatar upload error:', error);
+    res.status(500).json({ error: 'Failed to upload avatar', details: error.message });
+  }
+});
+
+// Change password
+router.post('/change-password', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    // Get current user
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // If user has a password hash, verify current password
+    if (user.passwordHash) {
+      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+    } else {
+      // User registered via OAuth without password
+      return res.status(400).json({ error: 'Please use OAuth login to change your password' });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error: any) {
+    console.error('[auth] Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password', details: error.message });
   }
 });
 

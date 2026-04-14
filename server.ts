@@ -768,6 +768,13 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Ensure uploads directory exists
+  import fs from 'fs';
+  const uploadsDir = path.join(process.cwd(), 'uploads', 'avatars');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
   // ==========================================
   // Health Check
   // ==========================================
@@ -5437,6 +5444,10 @@ IMPORTANT RULES:
     // Serve admin static files for /admin/* routes
     app.use('/admin', express.static(adminDistPath));
     app.use('/admin/assets', express.static(path.join(adminDistPath, 'assets')));
+
+    // Serve uploaded files (avatars, etc.)
+    const uploadsPath = path.join(process.cwd(), 'uploads');
+    app.use('/uploads', express.static(uploadsPath));
 
     // Serve main static files
     app.use(express.static(distPath));
