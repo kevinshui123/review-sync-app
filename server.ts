@@ -10,6 +10,7 @@ import path from 'path';
 import { Auth } from 'googleapis';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import fs from 'fs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -769,7 +770,6 @@ async function startServer() {
   app.use(express.json());
 
   // Ensure uploads directory exists
-  import fs from 'fs';
   const uploadsDir = path.join(process.cwd(), 'uploads', 'avatars');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });

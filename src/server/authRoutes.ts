@@ -10,20 +10,22 @@ const router = Router();
 
 // Configure multer for avatar uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req: Request, file, cb) => {
     cb(null, path.join(process.cwd(), 'uploads', 'avatars'));
   },
-  filename: (req, file, cb) => {
+  filename: (req: Request, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    cb(null, `avatar-${req.userId}-${uniqueSuffix}${ext}`);
+    const authReq = req as AuthRequest;
+    const userId = authReq.userId || 'unknown';
+    cb(null, `avatar-${userId}-${uniqueSuffix}${ext}`);
   }
 });
 
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
