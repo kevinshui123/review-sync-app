@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   AutoAwesome,
   Refresh,
@@ -31,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import { AppLoader } from './AppLoader';
 
 function getScoreColor(score: number) {
   if (score >= 80) return { color: '#1e3a5f', label: 'Excellent', bg: '#f0f4f8', border: '#1e3a5f', text: '#1e3a5f' };
@@ -87,31 +88,259 @@ const CategoryConfig: Record<string, { icon: React.ReactNode; bg: string; border
   citations: { icon: <Store sx={{ fontSize: 18 }} />, bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
 };
 
-function LoadingState({ message }: { message?: string }) {
-  const { t } = useLanguage();
+function LoadingState({ message, subMessage }: { message?: string; subMessage?: string }) {
   return (
-    <div className="opt-loading">
-      <div className="opt-loading-inner">
-        <div className="opt-orbit">
-          <div className="opt-orbit-ring" />
-          <div className="opt-orbit-core">
-            <Analytics sx={{ fontSize: 28, color: '#1e3a5f' }} />
-          </div>
-          <div className="opt-orbit-dot" />
+    <div className="opt-app-loader-wrapper">
+      <AppLoader message={message} subMessage={subMessage} />
+    </div>
+  );
+}
+
+// Generating Progress Component
+function GeneratingProgress({ startTime, onComplete }: { startTime: number; onComplete?: () => void }) {
+  const { t, language } = useLanguage();
+  const isZh = language === 'zh';
+  const [elapsed, setElapsed] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
+
+  const steps = [
+    isZh ? '正在扫描商家门店...' : 'Scanning business listings...',
+    isZh ? '正在分析评价模式...' : 'Analyzing review patterns...',
+    isZh ? '正在检查引用一致性...' : 'Checking citation consistency...',
+    isZh ? '正在生成优化建议...' : 'Generating recommendations...',
+  ];
+
+  const estimatedTime = 30; // seconds
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - startTime) / 1000);
+      setElapsed(elapsedSeconds);
+
+      // Update step based on elapsed time
+      const progress = elapsedSeconds / estimatedTime;
+      if (progress < 0.25) setCurrentStep(0);
+      else if (progress < 0.5) setCurrentStep(1);
+      else if (progress < 0.75) setCurrentStep(2);
+      else setCurrentStep(3);
+
+      if (progress >= 1 && onComplete) {
+        onComplete();
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [startTime, onComplete]);
+
+  const progress = Math.min((elapsed / estimatedTime) * 100, 95);
+  const remaining = Math.max(estimatedTime - elapsed, 0);
+  const remainingText = remaining > 60
+    ? `${Math.ceil(remaining / 60)} ${isZh ? '分钟' : 'min'}`
+    : `${remaining} ${isZh ? '秒' : 'sec'}`;
+
+  return (
+    <div className="opt-generating">
+      <div className="opt-generating-orb">
+        <div className="opt-gen-ring opt-gen-ring-1" />
+        <div className="opt-gen-ring opt-gen-ring-2" />
+        <div className="opt-gen-ring opt-gen-ring-3" />
+        <div className="opt-gen-core">
+          <Psychology sx={{ fontSize: 36, color: '#fff' }} />
         </div>
-        <div className="opt-loading-text">
-          <span className="opt-loading-title">{message || t('opt.loadingTitle')}</span>
-          <div className="opt-loading-bar">
-            <div className="opt-loading-bar-fill" />
+        <div className="opt-gen-pulse" />
+      </div>
+
+      <div className="opt-generating-content">
+        <h3>{isZh ? 'AI 正在分析中...' : 'AI is analyzing...'}</h3>
+        <p className="opt-gen-subtitle">{isZh ? '这可能需要 30 秒左右' : 'This may take around 30 seconds'}</p>
+
+        <div className="opt-gen-progress-container">
+          <div className="opt-gen-progress-bar">
+            <div className="opt-gen-progress-fill" style={{ width: `${progress}%` }} />
           </div>
+          <div className="opt-gen-progress-info">
+            <span>{Math.round(progress)}%</span>
+            <span>{isZh ? `预计剩余 ${remainingText}` : `~${remainingText} remaining`}</span>
+          </div>
+        </div>
+
+        <div className="opt-gen-steps">
+          {steps.map((step, i) => (
+            <div
+              key={i}
+              className={`opt-gen-step ${i <= currentStep ? 'active' : ''} ${i < currentStep ? 'completed' : ''}`}
+            >
+              <div className="opt-gen-step-icon">
+                {i < currentStep ? (
+                  <CheckCircle sx={{ fontSize: 16, color: '#10b981' }} />
+                ) : i === currentStep ? (
+                  <div className="opt-gen-step-spinner" />
+                ) : (
+                  <div className="opt-gen-step-dot" />
+                )}
+              </div>
+              <span>{step}</span>
+            </div>
+          ))}
         </div>
       </div>
+
+      <style>{`
+        .opt-generating {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 48px 24px;
+          gap: 32px;
+        }
+        .opt-generating-orb {
+          position: relative;
+          width: 140px;
+          height: 140px;
+        }
+        .opt-gen-ring {
+          position: absolute;
+          border-radius: 999px;
+          border: 2px solid transparent;
+          animation: opt-gen-spin linear infinite;
+        }
+        .opt-gen-ring-1 {
+          inset: 0;
+          border-top-color: var(--color-primary, #1e3a5f);
+          animation-duration: 1.5s;
+        }
+        .opt-gen-ring-2 {
+          inset: 16px;
+          border-top-color: var(--color-accent, #0ea5e9);
+          animation-duration: 2s;
+          animation-direction: reverse;
+        }
+        .opt-gen-ring-3 {
+          inset: 32px;
+          border-top-color: var(--color-success, #059669);
+          animation-duration: 1.8s;
+        }
+        @keyframes opt-gen-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .opt-gen-core {
+          position: absolute;
+          inset: 36px;
+          background: linear-gradient(135deg, var(--color-primary, #1e3a5f) 0%, #0f2744 100%);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 0 30px rgba(30, 58, 95, 0.4);
+        }
+        .opt-gen-pulse {
+          position: absolute;
+          inset: 20%;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(79, 172, 254, 0.25) 0%, transparent 70%);
+          animation: opt-gen-pulse 2s ease-out infinite;
+        }
+        @keyframes opt-gen-pulse {
+          0% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+        .opt-generating-content {
+          text-align: center;
+          max-width: 400px;
+        }
+        .opt-generating-content h3 {
+          font-family: var(--font-headline, 'Manrope', sans-serif);
+          font-size: 20px;
+          font-weight: 700;
+          color: var(--color-text-primary, #0f172a);
+          margin: 0 0 8px;
+        }
+        .opt-gen-subtitle {
+          font-size: 14px;
+          color: var(--color-text-muted, #94a3b8);
+          margin: 0 0 24px;
+        }
+        .opt-gen-progress-container {
+          margin-bottom: 32px;
+        }
+        .opt-gen-progress-bar {
+          height: 8px;
+          background: var(--color-border, #e2e8f0);
+          border-radius: 999px;
+          overflow: hidden;
+          margin-bottom: 8px;
+        }
+        .opt-gen-progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--color-primary, #1e3a5f), var(--color-accent, #0ea5e9));
+          border-radius: 999px;
+          transition: width 0.5s ease;
+        }
+        .opt-gen-progress-info {
+          display: flex;
+          justify-content: space-between;
+          font-size: 12px;
+          color: var(--color-text-muted, #94a3b8);
+        }
+        .opt-gen-steps {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          text-align: left;
+        }
+        .opt-gen-step {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 14px;
+          color: var(--color-text-muted, #94a3b8);
+          transition: all 0.3s ease;
+        }
+        .opt-gen-step.active {
+          color: var(--color-text-primary, #0f172a);
+          font-weight: 500;
+        }
+        .opt-gen-step.completed {
+          color: var(--color-success, #059669);
+        }
+        .opt-gen-step-icon {
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .opt-gen-step-dot {
+          width: 8px;
+          height: 8px;
+          background: var(--color-border, #e2e8f0);
+          border-radius: 50%;
+        }
+        .opt-gen-step.active .opt-gen-step-dot {
+          background: var(--color-accent, #0ea5e9);
+          animation: opt-gen-pulse-dot 1s ease-in-out infinite;
+        }
+        @keyframes opt-gen-pulse-dot {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.3); opacity: 0.7; }
+        }
+        .opt-gen-step-spinner {
+          width: 14px;
+          height: 14px;
+          border: 2px solid var(--color-border, #e2e8f0);
+          border-top-color: var(--color-accent, #0ea5e9);
+          border-radius: 50%;
+          animation: opt-gen-spin 0.8s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }
 
 export function Optimization() {
   const { t, language } = useLanguage();
+  const isZh = language === 'zh';
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [seoReport, setSeoReport] = useState<SEOReport | null>(() => {
@@ -119,6 +348,7 @@ export function Optimization() {
     catch { return null; }
   });
   const [seoLoading, setSeoLoading] = useState(false);
+  const [generatingStartTime, setGeneratingStartTime] = useState<number | null>(null);
   const [seoError, setSeoError] = useState<string | null>(null);
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -131,12 +361,13 @@ export function Optimization() {
   const generateSeoReport = useCallback(async () => {
     setSeoLoading(true);
     setSeoError(null);
+    setGeneratingStartTime(Date.now());
     try {
       const res = await apiPost('/api/reports/seo-optimization', { lang: language });
       if (res.ok) { const data = await res.json(); setSeoReport(data); }
       else { const err = await res.json().catch(() => ({ error: 'Request failed' })); setSeoError(err.error); }
     } catch (e: any) { setSeoError(e.message || 'Network error'); }
-    finally { setSeoLoading(false); }
+    finally { setSeoLoading(false); setGeneratingStartTime(null); }
   }, [language]);
 
   useEffect(() => {
@@ -185,7 +416,7 @@ export function Optimization() {
     }
   };
 
-  if (loading) return <LoadingState message="Initializing optimization engine..." />;
+  if (loading) return <LoadingState message={isZh ? '正在初始化优化引擎...' : 'Initializing optimization engine...'} subMessage={isZh ? '正在准备数据...' : 'Getting ready...'} />;
 
   return (
     <div className="opt-container">
@@ -208,12 +439,12 @@ export function Optimization() {
           {seoLoading ? (
             <>
               <div className="opt-btn-spinner" />
-              Analyzing with AI...
+              {isZh ? 'AI 分析中...' : 'Analyzing...'}
             </>
           ) : seoReport ? (
             <>
               <Refresh sx={{ fontSize: 18 }} />
-              Regenerate
+              {isZh ? '重新生成' : 'Regenerate'}
             </>
           ) : (
             <>
@@ -231,7 +462,11 @@ export function Optimization() {
         </div>
       )}
 
-      {seoLoading && !seoReport && (
+      {seoLoading && !seoReport && generatingStartTime && (
+        <GeneratingProgress startTime={generatingStartTime} />
+      )}
+
+      {seoLoading && !seoReport && !generatingStartTime && (
         <div className="opt-analyzing">
           <div className="opt-analyzing-orb">
             <div className="opt-analyzing-ring1" />
@@ -243,14 +478,6 @@ export function Optimization() {
           <div className="opt-analyzing-text">
             <h3>{t('opt.analyzingAi')}</h3>
             <p>{t('opt.evaluating')}</p>
-            <div className="opt-analyzing-steps">
-              {[t('opt.scanning'), t('opt.analyzing'), t('opt.checkingCitations'), t('opt.generatingRecs')].map((step, i) => (
-                <div key={i} className="opt-step">
-                  <CheckCircle sx={{ fontSize: 14, color: '#10b981' }} />
-                  <span>{step}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       )}
@@ -550,51 +777,11 @@ export function Optimization() {
       )}
 
       <style>{`
-        .opt-loading {
-          display: flex; align-items: center; justify-content: center; min-height: 60vh;
-        }
-        .opt-loading-inner {
-          display: flex; flex-direction: column; align-items: center; gap: 24px;
-        }
-        .opt-orbit {
-          position: relative; width: 80px; height: 80px;
-        }
-        .opt-orbit-ring {
-          position: absolute; inset: 0; border-radius: 999px;
-          border: 3px solid #e2e8f0;
-          animation: orbit-spin 2s linear infinite;
-        }
-        @keyframes orbit-spin {
-          from { transform: rotate(0deg); border-color: #e2e8f0; }
-          50% { border-color: #1e3a5f; }
-          to { transform: rotate(360deg); border-color: #e2e8f0; }
-        }
-        .opt-orbit-core {
-          position: absolute; inset: 12px; background: #f8fafc; border-radius: 999px;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .opt-orbit-dot {
-          position: absolute; width: 8px; height: 8px; background: #1e3a5f;
-          border-radius: 999px; top: -4px; left: 50%;
-          transform: translateX(-50%);
-          box-shadow: 0 0 0 3px #fff;
-          animation: orbit-spin 2s linear infinite reverse;
-        }
-        .opt-loading-text { text-align: center; }
-        .opt-loading-title {
-          font-size: 14px; font-weight: 500; color: #475569; display: block; margin-bottom: 8px;
-        }
-        .opt-loading-bar {
-          width: 200px; height: 3px; background: #e2e8f0; border-radius: 999px; overflow: hidden;
-        }
-        .opt-loading-bar-fill {
-          height: 100%; background: #1e3a5f; border-radius: 999px;
-          animation: loading-fill 1.5s ease-in-out infinite;
-        }
-        @keyframes loading-fill {
-          0% { width: 0%; margin-left: 0%; }
-          50% { width: 70%; margin-left: 15%; }
-          100% { width: 0%; margin-left: 100%; }
+        .opt-app-loader-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: calc(100vh - 200px);
         }
 
         .opt-container { padding: 24px; max-width: 1200px; }
