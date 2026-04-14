@@ -36,7 +36,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.theme': 'Theme',
     'nav.light': 'Light',
     'nav.dark': 'Dark',
-    'nav.salesDoc': 'Product Documentation',
+    'nav.salesDoc': 'Feature Docs',
 
     // Header
     'header.search': 'Search...',
@@ -708,7 +708,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.theme': '主题',
     'nav.light': '浅色',
     'nav.dark': '深色',
-    'nav.salesDoc': '产品功能文档',
+    'nav.salesDoc': '功能说明',
 
     // Header
     'header.search': '搜索...',

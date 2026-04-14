@@ -589,17 +589,17 @@ export function SalesDoc() {
           align-items: center;
           gap: 8px;
           padding: 8px 14px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
           border-radius: 10px;
           transition: all 0.2s;
-          color: #94a3b8;
+          color: #3b82f6;
         }
 
         .sales-doc-search.active {
           background: white;
-          border-color: #4facfe;
-          box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
         }
 
         .sales-doc-search-input {
@@ -612,18 +612,18 @@ export function SalesDoc() {
         }
 
         .sales-doc-search-input::placeholder {
-          color: #94a3b8;
+          color: #60a5fa;
         }
 
         .sales-doc-search-clear {
           width: 20px;
           height: 20px;
           border-radius: 999px;
-          background: #e2e8f0;
+          background: #bfdbfe;
           border: none;
           cursor: pointer;
           font-size: 14px;
-          color: #64748b;
+          color: #1e40af;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -735,11 +735,11 @@ export function SalesDoc() {
         }
 
         .sales-doc-nav-item:hover {
-          background: #f8fafc;
+          background: #eff6ff;
         }
 
         .sales-doc-nav-item.active {
-          background: #f1f5f9;
+          background: #dbeafe;
         }
 
         .sales-doc-nav-dot {
@@ -777,8 +777,9 @@ export function SalesDoc() {
         /* Hero */
         .sales-doc-hero {
           padding: 56px 0 48px;
-          border-bottom: 1px solid #f1f5f9;
+          border-bottom: 1px solid #e0e7ff;
           margin-bottom: 40px;
+          background: linear-gradient(180deg, #eff6ff 0%, transparent 100%);
         }
 
         .sales-doc-hero-inner {
@@ -790,12 +791,13 @@ export function SalesDoc() {
           align-items: center;
           gap: 6px;
           padding: 6px 14px;
-          background: #f0f9ff;
-          color: #0284c7;
+          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+          color: #1e40af;
           border-radius: 999px;
           font-size: 12px;
           font-weight: 600;
           margin-bottom: 20px;
+          border: 1px solid #93c5fd;
         }
 
         .sales-doc-hero-title {
@@ -874,13 +876,13 @@ export function SalesDoc() {
         }
 
         .search-icon-blue {
-          color: #0ea5e9;
+          color: #3b82f6;
         }
 
         /* Search Results */
         .sales-doc-search-results {
-          background: #f0f9ff;
-          border: 1px solid #bae6fd;
+          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+          border: 1px solid #bfdbfe;
           border-radius: 10px;
           padding: 12px 16px;
           margin-bottom: 24px;
@@ -891,7 +893,7 @@ export function SalesDoc() {
           align-items: center;
           gap: 8px;
           font-size: 14px;
-          color: #0284c7;
+          color: #1e40af;
         }
 
         /* Categories */
@@ -904,7 +906,7 @@ export function SalesDoc() {
         /* Category Section */
         .category-section {
           background: white;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #c7d2fe;
           border-radius: 16px;
           overflow: hidden;
         }
@@ -922,7 +924,7 @@ export function SalesDoc() {
         }
 
         .category-header:hover {
-          background: #f8fafc;
+          background: #eff6ff;
         }
 
         .category-header-left {
@@ -1006,7 +1008,7 @@ export function SalesDoc() {
         }
 
         .subcategory-header:hover {
-          background: #f8fafc;
+          background: #eff6ff;
         }
 
         .subcategory-header-left {
@@ -1099,16 +1101,17 @@ export function SalesDoc() {
 
         /* Feature Card */
         .feature-card {
-          border: 1px solid #e2e8f0;
+          border: 1px solid #e0e7ff;
           border-radius: 12px;
           border-left-width: 3px;
           background: white;
           overflow: hidden;
-          transition: box-shadow 0.2s;
+          transition: box-shadow 0.2s, border-color 0.2s;
         }
 
         .feature-card:hover {
-          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+          border-color: #bfdbfe;
         }
 
         .feature-card-header {
@@ -1125,7 +1128,7 @@ export function SalesDoc() {
         }
 
         .feature-card-header:hover {
-          background: #f8fafc;
+          background: #f0f9ff;
         }
 
         .feature-card-header-left {
@@ -1174,9 +1177,9 @@ export function SalesDoc() {
           line-height: 1.7;
           margin: 0 0 16px;
           padding: 12px 14px;
-          background: #f8fafc;
+          background: #f0f9ff;
           border-radius: 8px;
-          border-left: 2px solid #e2e8f0;
+          border-left: 2px solid #7dd3fc;
         }
 
         .feature-section {
@@ -1238,6 +1241,8 @@ export function SalesDoc() {
           font-weight: 700;
           flex-shrink: 0;
           margin-top: 1px;
+          background: #dbeafe;
+          color: #1e40af;
         }
 
         .step-text {
@@ -1261,7 +1266,7 @@ export function SalesDoc() {
           color: #475569;
           line-height: 1.5;
           padding: 6px 10px;
-          background: #f0fdf4;
+          background: #eff6ff;
           border-radius: 6px;
         }
 
