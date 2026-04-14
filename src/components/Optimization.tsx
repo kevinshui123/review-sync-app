@@ -87,7 +87,8 @@ const CategoryConfig: Record<string, { icon: React.ReactNode; bg: string; border
   citations: { icon: <Store sx={{ fontSize: 18 }} />, bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
 };
 
-function LoadingState({ message = 'Loading...' }: { message?: string }) {
+function LoadingState({ message }: { message?: string }) {
+  const { t } = useLanguage();
   return (
     <div className="opt-loading">
       <div className="opt-loading-inner">
@@ -99,7 +100,7 @@ function LoadingState({ message = 'Loading...' }: { message?: string }) {
           <div className="opt-orbit-dot" />
         </div>
         <div className="opt-loading-text">
-          <span className="opt-loading-title">{message}</span>
+          <span className="opt-loading-title">{message || t('opt.loadingTitle')}</span>
           <div className="opt-loading-bar">
             <div className="opt-loading-bar-fill" />
           </div>
@@ -217,7 +218,7 @@ export function Optimization() {
           ) : (
             <>
               <AutoAwesome sx={{ fontSize: 18 }} />
-              Start Analysis
+              {t('opt.startAnalysis')}
             </>
           )}
         </button>
@@ -240,10 +241,10 @@ export function Optimization() {
             </div>
           </div>
           <div className="opt-analyzing-text">
-            <h3>AI is analyzing your business profile</h3>
-            <p>Evaluating listings, reviews, citations and more...</p>
+            <h3>{t('opt.analyzingAi')}</h3>
+            <p>{t('opt.evaluating')}</p>
             <div className="opt-analyzing-steps">
-              {['Scanning business listings', 'Analyzing review patterns', 'Checking citation consistency', 'Generating recommendations'].map((step, i) => (
+              {[t('opt.scanning'), t('opt.analyzing'), t('opt.checkingCitations'), t('opt.generatingRecs')].map((step, i) => (
                 <div key={i} className="opt-step">
                   <CheckCircle sx={{ fontSize: 14, color: '#10b981' }} />
                   <span>{step}</span>
@@ -259,10 +260,10 @@ export function Optimization() {
           {/* Section Tabs */}
           <div className="opt-tabs">
             {[
-              { id: 'overview', label: 'Overview', icon: <Speed sx={{ fontSize: 16 }} /> },
-              { id: 'insights', label: 'Insights', icon: <Lightbulb sx={{ fontSize: 16 }} />, count: seoReport.insights?.length },
-              { id: 'competitive', label: 'Competitive', icon: <EmojiEvents sx={{ fontSize: 16 }} />, count: seoReport.competitiveInsights?.length },
-              { id: 'quickwins', label: 'Quick Wins', icon: <LocalFireDepartment sx={{ fontSize: 16 }} />, count: seoReport.quickWins?.length },
+              { id: 'overview', label: t('opt.overview'), icon: <Speed sx={{ fontSize: 16 }} /> },
+              { id: 'insights', label: t('opt.insights'), icon: <Lightbulb sx={{ fontSize: 16 }} />, count: seoReport.insights?.length },
+              { id: 'competitive', label: t('opt.competitive'), icon: <EmojiEvents sx={{ fontSize: 16 }} />, count: seoReport.competitiveInsights?.length },
+              { id: 'quickwins', label: t('opt.quickWins'), icon: <LocalFireDepartment sx={{ fontSize: 16 }} />, count: seoReport.quickWins?.length },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -316,15 +317,15 @@ export function Optimization() {
                 </div>
                 <div className="opt-stat-card">
                   <div className="opt-stat-icon" style={{ background: '#fffbeb', color: '#d97706' }}><LocalFireDepartment sx={{ fontSize: 20 }} /></div>
-                  <div className="opt-stat-info"><div className="opt-stat-value">{seoReport.quickWins?.length || 0}</div><div className="opt-stat-label">Quick Wins</div></div>
+                  <div className="opt-stat-info"><div className="opt-stat-value">{seoReport.quickWins?.length || 0}</div><div className="opt-stat-label">{t('opt.quickWins')}</div></div>
                 </div>
                 <div className="opt-stat-card">
                   <div className="opt-stat-icon" style={{ background: '#fdf4ff', color: '#7e22ce' }}><EmojiEvents sx={{ fontSize: 20 }} /></div>
-                  <div className="opt-stat-info"><div className="opt-stat-value">{seoReport.competitiveInsights?.length || 0}</div><div className="opt-stat-label">Competitor Insights</div></div>
+                  <div className="opt-stat-info"><div className="opt-stat-value">{seoReport.competitiveInsights?.length || 0}</div><div className="opt-stat-label">{t('opt.competitorInsights')}</div></div>
                 </div>
                 <div className="opt-stat-card">
                   <div className="opt-stat-icon" style={{ background: '#fef2f2', color: '#dc2626' }}><Warning sx={{ fontSize: 20 }} /></div>
-                  <div className="opt-stat-info"><div className="opt-stat-value" style={{ color: '#dc2626' }}>{seoReport.insights?.filter((i: any) => i.priority === 'high').length || 0}</div><div className="opt-stat-label">High Priority</div></div>
+                  <div className="opt-stat-info"><div className="opt-stat-value" style={{ color: '#dc2626' }}>{seoReport.insights?.filter((i: any) => i.priority === 'high').length || 0}</div><div className="opt-stat-label">{t('opt.highPriority')}</div></div>
                 </div>
               </div>
 
@@ -334,12 +335,12 @@ export function Optimization() {
                   <div className="opt-qw-header">
                     <div className="opt-qw-icon"><LocalFireDepartment sx={{ fontSize: 20, color: '#ea580c' }} /></div>
                     <div>
-                      <div className="opt-qw-title">Quick Wins</div>
-                      <div className="opt-qw-subtitle">High impact, low effort actions</div>
+                      <div className="opt-qw-title">{t('opt.quickWins')}</div>
+                      <div className="opt-qw-subtitle">{t('opt.quickWinsSubtitle')}</div>
                     </div>
                     {seoReport.quickWins.length > 3 && (
                       <button className="opt-qw-link" onClick={() => setActiveSection('quickwins')}>
-                        View all {seoReport.quickWins.length} →
+                        {t('opt.viewAll')} {seoReport.quickWins.length} →
                       </button>
                     )}
                   </div>
@@ -364,14 +365,14 @@ export function Optimization() {
             <div className="opt-section">
               <div className="opt-section-header">
                 <div>
-                  <h2 className="opt-section-title">Optimization Insights</h2>
-                  <p className="opt-section-subtitle">AI-generated recommendations based on your profile</p>
+                  <h2 className="opt-section-title">{t('opt.recommendations')}</h2>
+                  <p className="opt-section-subtitle">{t('opt.aiGenerated')}</p>
                 </div>
                 <div className="opt-filter-group">
                   {['all', 'high', 'medium', 'low'].map((p) => (
                     <button key={p} className={`opt-filter-btn ${filterPriority === p ? 'active' : ''} ${p}`}
                       onClick={() => setFilterPriority(p)}>
-                      {p === 'all' ? 'All' : p === 'high' ? 'High' : p === 'medium' ? 'Med' : 'Low'}
+                      {p === 'all' ? t('opt.all') : p === 'high' ? t('opt.high') : p === 'medium' ? t('opt.med') : t('opt.low')}
                     </button>
                   ))}
                 </div>
@@ -380,8 +381,8 @@ export function Optimization() {
               {getFilteredInsights().length === 0 ? (
                 <div className="opt-empty-state">
                   <CheckCircle sx={{ fontSize: 48, color: '#10b981' }} />
-                  <h3>All Good!</h3>
-                  <p>No issues found for the selected filter.</p>
+                  <h3>{t('opt.allGood')}</h3>
+                  <p>{t('opt.noIssues')}</p>
                 </div>
               ) : (
                 <div className="opt-insights-grid">
@@ -400,7 +401,7 @@ export function Optimization() {
                           <div className="opt-insight-meta">
                             <span className="opt-priority-badge" style={{ background: prio.bg, color: prio.text, border: `1px solid ${prio.border}` }}>
                               {prio.icon}
-                              {insight.priority === 'high' ? 'High' : insight.priority === 'medium' ? 'Medium' : 'Low'}
+                              {insight.priority === 'high' ? t('opt.high') : insight.priority === 'medium' ? t('opt.med') : t('opt.low')}
                             </span>
                             <span className="opt-category-tag" style={{ color: cat.text }}>{insight.type}</span>
                           </div>
@@ -431,7 +432,7 @@ export function Optimization() {
                               </div>
                             )}
                             <button className="opt-action-btn" onClick={() => handleActionClick(insight)}>
-                              {insight.actionLabel || 'Take Action'}
+                              {insight.actionLabel || t('opt.takeAction')}
                               <ArrowForward sx={{ fontSize: 14 }} />
                             </button>
                           </div>
@@ -449,8 +450,8 @@ export function Optimization() {
             <div className="opt-section">
               <div className="opt-section-header">
                 <div>
-                  <h2 className="opt-section-title">Competitive Analysis</h2>
-                  <p className="opt-section-subtitle">Market insights and strategic opportunities</p>
+                  <h2 className="opt-section-title">{t('opt.competitive')}</h2>
+                  <p className="opt-section-subtitle">{t('opt.marketInsights')}</p>
                 </div>
               </div>
               {seoReport.competitiveInsights && seoReport.competitiveInsights.length > 0 ? (
@@ -463,14 +464,14 @@ export function Optimization() {
                           <div className="opt-comp-icon"><EmojiEvents sx={{ fontSize: 22, color: '#d97706' }} /></div>
                           <span className="opt-priority-badge" style={{ background: prio.bg, color: prio.text, border: `1px solid ${prio.border}` }}>
                             {prio.icon}
-                            {insight.priority === 'high' ? 'High' : insight.priority === 'medium' ? 'Medium' : 'Low'}
+                            {insight.priority === 'high' ? t('opt.high') : insight.priority === 'medium' ? t('opt.med') : t('opt.low')}
                           </span>
                         </div>
                         <h3 className="opt-comp-title">{insight.title}</h3>
                         <p className="opt-comp-desc">{insight.description}</p>
                         {insight.actionSteps && insight.actionSteps.length > 0 && (
                           <div className="opt-steps">
-                            <div className="opt-steps-title">Action Steps</div>
+                            <div className="opt-steps-title">{t('opt.actionSteps')}</div>
                             {insight.actionSteps.map((step, si) => (
                               <div key={si} className="opt-step-item">
                                 <span className="opt-step-num">{si + 1}</span>
@@ -486,8 +487,8 @@ export function Optimization() {
               ) : (
                 <div className="opt-empty-state">
                   <EmojiEvents sx={{ fontSize: 48, color: '#cbd5e1' }} />
-                  <h3>No competitive data yet</h3>
-                  <p>Competitive insights will be generated on next analysis</p>
+                  <h3>{t('opt.marketData')}</h3>
+                  <p>{t('opt.competitiveGenerated')}</p>
                 </div>
               )}
             </div>
@@ -498,8 +499,8 @@ export function Optimization() {
             <div className="opt-section">
               <div className="opt-section-header">
                 <div>
-                  <h2 className="opt-section-title">Quick Wins</h2>
-                  <p className="opt-section-subtitle">High impact, low effort optimization actions</p>
+                  <h2 className="opt-section-title">{t('opt.quickWins')}</h2>
+                  <p className="opt-section-subtitle">{t('opt.highImpactLowEffort')}</p>
                 </div>
               </div>
               {seoReport.quickWins && seoReport.quickWins.length > 0 ? (
@@ -519,8 +520,8 @@ export function Optimization() {
               ) : (
                 <div className="opt-empty-state">
                   <LocalFireDepartment sx={{ fontSize: 48, color: '#cbd5e1' }} />
-                  <h3>No quick wins available</h3>
-                  <p>Quick wins will appear when optimization opportunities are found</p>
+                  <h3>{t('opt.noQuickWins')}</h3>
+                  <p>{t('opt.quickWinsAppear')}</p>
                 </div>
               )}
             </div>
@@ -532,12 +533,12 @@ export function Optimization() {
         <div className="opt-landing">
           <div className="opt-landing-grid">
             {[
-              { icon: <Image sx={{ fontSize: 22 }} />, label: 'Photos' },
-              { icon: <Star sx={{ fontSize: 22 }} />, label: 'Reviews' },
-              { icon: <Description sx={{ fontSize: 22 }} />, label: 'Description' },
-              { icon: <AccessTime sx={{ fontSize: 22 }} />, label: 'Hours' },
-              { icon: <Phone sx={{ fontSize: 22 }} />, label: 'Contact' },
-              { icon: <Verified sx={{ fontSize: 22 }} />, label: 'Verification' },
+              { icon: <Image sx={{ fontSize: 22 }} />, label: t('opt.photos') },
+              { icon: <Star sx={{ fontSize: 22 }} />, label: t('opt.reviews') },
+              { icon: <Description sx={{ fontSize: 22 }} />, label: t('opt.description') },
+              { icon: <AccessTime sx={{ fontSize: 22 }} />, label: t('opt.hours') },
+              { icon: <Phone sx={{ fontSize: 22 }} />, label: t('opt.contact') },
+              { icon: <Verified sx={{ fontSize: 22 }} />, label: t('opt.verification') },
             ].map((item, i) => (
               <div key={i} className="opt-landing-item">
                 <span className="opt-landing-icon">{item.icon}</span>

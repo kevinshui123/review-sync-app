@@ -232,7 +232,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
         {navItem('help', 'nav.help', Help, activeTab === 'help')}
         <button className="nav-item nav-item-inactive">
           <Logout sx={{ fontSize: 20 }} />
-          <span className="nav-label">Sign Out</span>
+          <span className="nav-label">{t('nav.signOut')}</span>
         </button>
       </div>
     </div>

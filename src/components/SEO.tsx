@@ -183,7 +183,7 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
             <div className="opt-orbit-dot" />
           </div>
           <div className="opt-loading-text">
-            <span className="opt-loading-title">Loading SEO data...</span>
+            <span className="opt-loading-title">{t('seo.loadingSeo')}</span>
             <div className="opt-loading-bar">
               <div className="opt-loading-bar-fill" />
             </div>
@@ -239,10 +239,10 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
                 <div className="form-group">
                   <label className="form-label">Grid Density</label>
                   <select className="input select" value={gridSize} onChange={(e) => setGridSize(Number(e.target.value))}>
-                    <option value={3}>3×3 (9 pts)</option>
-                    <option value={5}>5×5 (25 pts)</option>
-                    <option value={7}>7×7 (49 pts)</option>
-                    <option value={9}>9×9 (81 pts)</option>
+                    <option value={3}>3?3 (9 pts)</option>
+                    <option value={5}>5?5 (25 pts)</option>
+                    <option value={7}>7?7 (49 pts)</option>
+                    <option value={9}>9?9 (81 pts)</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -258,37 +258,37 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
                   </button>
                 </div>
               </div>
-              {!businessInfo?.lat && <p className="form-warning">No location coordinates available. Add a listing with coordinates first.</p>}
+              {!businessInfo?.lat && <p className="form-warning">{t('seo.noCoords')}</p>}
             </div>
 
             {gridResult && (
               <>
                 <div className="stats-grid stats-grid-4">
                   <div className="stat-card">
-                    <div className="stat-label">Avg Rank</div>
+                    <div className="stat-label">{t('seo.avgRank')}</div>
                     <div className="stat-value">{gridResult.summary.averageRank ?? '?'}</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Top 3 Positions</div>
+                    <div className="stat-label">{t('seo.rank1to3')}</div>
                     <div className="stat-value" style={{ color: 'var(--color-success)' }}>{gridResult.summary.top3Percent}%</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Top 10 Positions</div>
+                    <div className="stat-label">{t('seo.rank4to10')}</div>
                     <div className="stat-value" style={{ color: 'var(--color-accent)' }}>{gridResult.summary.top10Percent}%</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-label">Points Scanned</div>
+                    <div className="stat-label">{t('seo.pointsScanned')}</div>
                     <div className="stat-value">{gridResult.summary.pointsWithData}</div>
                   </div>
                 </div>
 
                 <div className="card">
                   <div className="card-header-row">
-                    <h3 className="card-title">Search Map</h3>
+                    <h3 className="card-title">{t('seo.searchMap')}</h3>
                     <div className="legend">
-                      <span className="legend-item"><span className="legend-dot" style={{ background: '#10b981' }} /> Rank 1-3</span>
-                      <span className="legend-item"><span className="legend-dot" style={{ background: '#f59e0b' }} /> Rank 4-10</span>
-                      <span className="legend-item"><span className="legend-dot" style={{ background: '#ef4444' }} /> Rank 11+</span>
+                      <span className="legend-item"><span className="legend-dot" style={{ background: '#10b981' }} /> {t('seo.rank1to3')}</span>
+                      <span className="legend-item"><span className="legend-dot" style={{ background: '#f59e0b' }} /> {t('seo.rank4to10')}</span>
+                      <span className="legend-item"><span className="legend-dot" style={{ background: '#ef4444' }} /> {t('seo.rank11plus')}</span>
                     </div>
                   </div>
                   <div className="map-container">
@@ -313,14 +313,14 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
                 </div>
 
                 <div className="card">
-                  <h3 className="card-title" style={{ marginBottom: 16 }}>Grid Points</h3>
+                  <h3 className="card-title" style={{ marginBottom: 16 }}>{t('seo.gridPoints')}</h3>
                   <div className="table-container" style={{ maxHeight: 400 }}>
                     <table className="table">
                       <thead>
                         <tr>
-                          <th>Point</th>
-                          <th>Rank</th>
-                          <th>Results</th>
+                          <th>#</th>
+                          <th>{t('seo.rank')}</th>
+                          <th>{t('seo.results')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -358,7 +358,7 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
         {activeSection2 === 'citations' && (
           <div className="seo-citations-section">
             <div className="section-header-row">
-              <h2 className="section-title">Citations</h2>
+              <h2 className="section-title">{t('seo.citations')}</h2>
             </div>
             <div className="card">
               <div className="business-info-grid">
@@ -382,8 +382,8 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
             </div>
             <div className="empty-state-card card">
               <div className="empty-icon"><Public sx={{ fontSize: 48 }} /></div>
-              <h3>No Citations Found</h3>
-              <p>Sync your listings to discover and track citations across the web.</p>
+              <h3>{t('seo.noCitations')}</h3>
+              <p>{t('seo.noCitationsDesc')}</p>
             </div>
           </div>
         )}

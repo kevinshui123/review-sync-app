@@ -125,7 +125,7 @@ export function LocalSearchGrid() {
     return (
       <div className="lsg-loading">
         <div className="loading-spinner" />
-        <p>Loading...</p>
+        <p>{t('app.loading')}</p>
       </div>
     );
   }
@@ -140,7 +140,7 @@ export function LocalSearchGrid() {
       <div className="card lsg-form">
         <div className="lsg-form-grid">
           <div className="form-group">
-            <label className="form-label">Keyword</label>
+            <label className="form-label">{t('seo.keyword')}</label>
             <input type="text" value={gridKeyword} onChange={(e) => setGridKeyword(e.target.value)}
               className="input" placeholder="e.g. restaurant near me"
               onKeyDown={(e) => e.key === 'Enter' && businessInfo?.lat && handleCreateReport()} />
@@ -163,11 +163,11 @@ export function LocalSearchGrid() {
           <div className="form-group-btn">
             <button className="btn btn-primary" onClick={handleCreateReport} disabled={gridLoading || !gridKeyword.trim() || !businessInfo?.lat}>
               <Search sx={{ fontSize: 18 }} />
-              {gridLoading ? 'Scanning...' : 'Scan'}
+              {gridLoading ? t('reports.scanning') : 'Scan'}
             </button>
           </div>
         </div>
-        {!businessInfo?.lat && <p className="form-warning">No location coordinates available.</p>}
+        {!businessInfo?.lat && <p className="form-warning">{t('seo.noCoords')}</p>}
       </div>
 
       {gridError && <div className="alert-error">{gridError}</div>}
@@ -177,19 +177,19 @@ export function LocalSearchGrid() {
           {/* Stats */}
           <div className="stats-grid stats-grid-4">
             <div className="stat-card">
-              <div className="stat-label">Avg Rank</div>
+              <div className="stat-label">{t('seo.avgRank')}</div>
               <div className="stat-value">{gridResult.summary.averageRank ?? '—'}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Top 3 Positions</div>
+              <div className="stat-label">{t('seo.rank1to3')}</div>
               <div className="stat-value" style={{ color: 'var(--color-success)' }}>{gridResult.summary.top3Percent}%</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Top 10 Positions</div>
+              <div className="stat-label">{t('seo.rank4to10')}</div>
               <div className="stat-value" style={{ color: 'var(--color-accent)' }}>{gridResult.summary.top10Percent}%</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Points Scanned</div>
+              <div className="stat-label">{t('seo.pointsScanned')}</div>
               <div className="stat-value">{gridResult.summary.pointsWithData}</div>
             </div>
           </div>
@@ -197,11 +197,11 @@ export function LocalSearchGrid() {
           {/* Map */}
           <div className="card">
             <div className="card-header-row">
-              <h3 className="card-title">Search Map</h3>
-              <div className="legend">
-                <span className="legend-item"><span className="legend-dot" style={{ background: '#10b981' }} /> Rank 1-3</span>
-                <span className="legend-item"><span className="legend-dot" style={{ background: '#f59e0b' }} /> Rank 4-10</span>
-                <span className="legend-item"><span className="legend-dot" style={{ background: '#ef4444' }} /> Rank 11+</span>
+              <h3 className="card-title">{t('seo.searchMap')}</h3>
+                <div className="legend">
+                  <span className="legend-item"><span className="legend-dot" style={{ background: '#10b981' }} /> {t('seo.rank1to3')}</span>
+                  <span className="legend-item"><span className="legend-dot" style={{ background: '#f59e0b' }} /> {t('seo.rank4to10')}</span>
+                  <span className="legend-item"><span className="legend-dot" style={{ background: '#ef4444' }} /> {t('seo.rank11plus')}</span>
               </div>
             </div>
             <div className="map-container">
@@ -280,7 +280,7 @@ export function LocalSearchGrid() {
 
           {/* All Points */}
           <div className="card">
-            <h3 className="card-title" style={{ marginBottom: 16 }}>All Grid Points</h3>
+            <h3 className="card-title" style={{ marginBottom: 16 }}>{t('seo.gridPoints')}</h3>
             <div className="table-container">
               <table className="table">
                 <thead>
@@ -311,8 +311,8 @@ export function LocalSearchGrid() {
       {!gridResult && !gridLoading && (
         <div className="card empty-card">
           <div className="empty-icon"><Map sx={{ fontSize: 48 }} /></div>
-          <h3 className="empty-title">Local Search Grid Analysis</h3>
-          <p className="empty-desc">Enter a keyword and click Scan to analyze your local search rankings.</p>
+          <h3 className="empty-title">{t('seo.localSearchGrid')}</h3>
+          <p className="empty-desc">{t('seo.scanDesc')}</p>
         </div>
       )}
 
