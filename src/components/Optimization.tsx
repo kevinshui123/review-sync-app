@@ -511,10 +511,11 @@ export function Optimization() {
                       </div>
                     ))}
                   </div>
-          <button
-            onClick={() => setActiveSection('quickwins')}
-            className="mt-4 text-sm text-blue-600 font-medium hover:underline"
-          >
+                  {seoReport.quickWins.length > 3 && (
+                    <button
+                      onClick={() => setActiveSection('quickwins')}
+                      className="mt-4 text-sm text-blue-600 font-medium hover:underline"
+                    >
                       查看全部 {seoReport.quickWins.length} 项 →
                     </button>
                   )}
