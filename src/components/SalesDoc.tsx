@@ -520,8 +520,7 @@ export function SalesDoc() {
       <style>{`
         .sales-doc {
           min-height: 100vh;
-          background: var(--color-surface);
-          color: var(--color-text-primary);
+          background: #f8fafc;
         }
 
         /* Topbar */
@@ -529,8 +528,8 @@ export function SalesDoc() {
           position: sticky;
           top: 0;
           z-index: 100;
-          background: var(--color-surface-raised);
-          border-bottom: 1px solid var(--color-border);
+          background: white;
+          border-bottom: 1px solid #e2e8f0;
           box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
 
@@ -554,7 +553,7 @@ export function SalesDoc() {
         .sales-doc-logo {
           width: 36px;
           height: 36px;
-          background: var(--color-primary);
+          background: #1e3a5f;
           border-radius: 9px;
           display: flex;
           align-items: center;
@@ -566,7 +565,7 @@ export function SalesDoc() {
           font-family: 'Manrope', sans-serif;
           font-size: 15px;
           font-weight: 800;
-          color: var(--color-text-primary);
+          color: #0f172a;
           letter-spacing: -0.02em;
           line-height: 1.1;
         }
@@ -574,7 +573,7 @@ export function SalesDoc() {
         .sales-doc-brand-sub {
           display: block;
           font-size: 10px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
           font-weight: 500;
           letter-spacing: 0.02em;
           margin-top: 1px;
@@ -590,16 +589,16 @@ export function SalesDoc() {
           align-items: center;
           gap: 8px;
           padding: 8px 14px;
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 10px;
           transition: all 0.2s;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .sales-doc-search.active {
-          background: var(--color-surface-raised);
-          border-color: var(--color-accent);
+          background: white;
+          border-color: #4facfe;
           box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
         }
 
@@ -608,23 +607,23 @@ export function SalesDoc() {
           border: none;
           background: transparent;
           font-size: 14px;
-          color: var(--color-text-primary);
+          color: #0f172a;
           outline: none;
         }
 
         .sales-doc-search-input::placeholder {
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .sales-doc-search-clear {
           width: 20px;
           height: 20px;
           border-radius: 999px;
-          background: var(--color-border);
+          background: #e2e8f0;
           border: none;
           cursor: pointer;
           font-size: 14px;
-          color: var(--color-text-secondary);
+          color: #64748b;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -644,10 +643,10 @@ export function SalesDoc() {
           align-items: center;
           gap: 6px;
           padding: 6px 12px;
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
-          color: var(--color-text-primary);
+          color: #0f172a;
           font-size: 12px;
           font-weight: 600;
           cursor: pointer;
@@ -655,7 +654,7 @@ export function SalesDoc() {
         }
 
         .sales-doc-lang-toggle:hover {
-          background: var(--color-border);
+          background: #e2e8f0;
         }
 
         .sales-doc-stats {
@@ -663,20 +662,20 @@ export function SalesDoc() {
           align-items: center;
           gap: 4px;
           font-size: 13px;
-          color: var(--color-text-secondary);
+          color: #64748b;
         }
 
         .sales-doc-stat-num {
           font-weight: 700;
-          color: var(--color-text-primary);
+          color: #0f172a;
         }
 
         .sales-doc-stat-sep {
-          color: var(--color-border-strong);
+          color: #cbd5e1;
         }
 
         .sales-doc-stat-label {
-          color: var(--color-text-secondary);
+          color: #64748b;
         }
 
         /* Layout */
@@ -697,8 +696,8 @@ export function SalesDoc() {
           height: calc(100vh - 60px);
           overflow-y: auto;
           padding: 24px 16px;
-          background: var(--color-surface-raised);
-          border-right: 1px solid var(--color-border);
+          background: white;
+          border-right: 1px solid #e2e8f0;
         }
 
         .sales-doc-sidebar-header {
@@ -709,9 +708,9 @@ export function SalesDoc() {
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.08em;
-          color: var(--color-text-muted);
+          color: #94a3b8;
           padding: 0 8px 12px;
-          border-bottom: 1px solid var(--color-divider);
+          border-bottom: 1px solid #f1f5f9;
           margin-bottom: 12px;
         }
 
@@ -736,11 +735,11 @@ export function SalesDoc() {
         }
 
         .sales-doc-nav-item:hover {
-          background: var(--color-surface);
+          background: #f8fafc;
         }
 
         .sales-doc-nav-item.active {
-          background: var(--color-primary-muted);
+          background: #f1f5f9;
         }
 
         .sales-doc-nav-dot {
@@ -753,13 +752,13 @@ export function SalesDoc() {
         .sales-doc-nav-name {
           font-size: 13px;
           font-weight: 600;
-          color: var(--color-text-primary);
+          color: #0f172a;
           flex: 1;
         }
 
         .sales-doc-nav-en {
           font-size: 11px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
           flex-shrink: 0;
         }
 
@@ -778,7 +777,7 @@ export function SalesDoc() {
         /* Hero */
         .sales-doc-hero {
           padding: 56px 0 48px;
-          border-bottom: 1px solid var(--color-divider);
+          border-bottom: 1px solid #f1f5f9;
           margin-bottom: 40px;
         }
 
@@ -791,8 +790,8 @@ export function SalesDoc() {
           align-items: center;
           gap: 6px;
           padding: 6px 14px;
-          background: var(--color-accent-muted);
-          color: var(--color-accent);
+          background: #f0f9ff;
+          color: #0284c7;
           border-radius: 999px;
           font-size: 12px;
           font-weight: 600;
@@ -803,7 +802,7 @@ export function SalesDoc() {
           font-family: 'Manrope', sans-serif;
           font-size: clamp(2rem, 4vw, 2.75rem);
           font-weight: 800;
-          color: var(--color-text-primary);
+          color: #0f172a;
           letter-spacing: -0.03em;
           line-height: 1.15;
           margin: 0 0 16px;
@@ -811,7 +810,7 @@ export function SalesDoc() {
 
         .sales-doc-hero-subtitle {
           font-size: 16px;
-          color: var(--color-text-secondary);
+          color: #475569;
           line-height: 1.7;
           margin: 0 0 28px;
           max-width: 600px;
@@ -828,12 +827,12 @@ export function SalesDoc() {
           align-items: center;
           gap: 6px;
           padding: 6px 12px;
-          background: var(--color-surface-raised);
-          border: 1px solid var(--color-border);
+          background: white;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
           font-size: 12px;
           font-weight: 500;
-          color: var(--color-text-secondary);
+          color: #475569;
           cursor: pointer;
           transition: all 0.15s;
         }
@@ -841,7 +840,7 @@ export function SalesDoc() {
         .sales-doc-hero-tag:hover {
           border-color: var(--tag-color);
           color: var(--tag-color);
-          background: var(--color-surface);
+          background: rgba(0,0,0,0.02);
         }
 
         .tag-dot {
@@ -854,7 +853,7 @@ export function SalesDoc() {
         .sales-doc-hero-screenshots {
           margin-top: 36px;
           padding-top: 28px;
-          border-top: 1px solid var(--color-divider);
+          border-top: 1px solid #f1f5f9;
         }
 
         .sales-doc-screenshots-header {
@@ -863,7 +862,7 @@ export function SalesDoc() {
           gap: 8px;
           font-size: 13px;
           font-weight: 600;
-          color: var(--color-text-secondary);
+          color: #64748b;
           margin-bottom: 16px;
         }
 
@@ -871,17 +870,17 @@ export function SalesDoc() {
           margin-left: auto;
           font-size: 11px;
           font-weight: 500;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .search-icon-blue {
-          color: var(--color-accent);
+          color: #0ea5e9;
         }
 
         /* Search Results */
         .sales-doc-search-results {
-          background: var(--color-accent-muted);
-          border: 1px solid var(--color-accent);
+          background: #f0f9ff;
+          border: 1px solid #bae6fd;
           border-radius: 10px;
           padding: 12px 16px;
           margin-bottom: 24px;
@@ -892,7 +891,7 @@ export function SalesDoc() {
           align-items: center;
           gap: 8px;
           font-size: 14px;
-          color: var(--color-accent);
+          color: #0284c7;
         }
 
         /* Categories */
@@ -904,8 +903,8 @@ export function SalesDoc() {
 
         /* Category Section */
         .category-section {
-          background: var(--color-surface-raised);
-          border: 1px solid var(--color-border);
+          background: white;
+          border: 1px solid #e2e8f0;
           border-radius: 16px;
           overflow: hidden;
         }
@@ -917,13 +916,13 @@ export function SalesDoc() {
           width: 100%;
           padding: 20px 24px;
           border: none;
-          background: var(--color-surface-raised);
+          background: white;
           cursor: pointer;
           transition: background 0.15s;
         }
 
         .category-header:hover {
-          background: var(--color-surface);
+          background: #f8fafc;
         }
 
         .category-header-left {
@@ -942,13 +941,13 @@ export function SalesDoc() {
           font-family: 'Manrope', sans-serif;
           font-size: 17px;
           font-weight: 700;
-          color: var(--color-text-primary);
+          color: #0f172a;
           letter-spacing: -0.02em;
         }
 
         .category-name-en {
           font-size: 12px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
           font-weight: 500;
         }
 
@@ -960,17 +959,17 @@ export function SalesDoc() {
 
         .category-count {
           font-size: 12px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .category-desc-row {
           padding: 0 24px 20px;
-          border-bottom: 1px solid var(--color-divider);
+          border-bottom: 1px solid #f1f5f9;
         }
 
         .category-desc {
           font-size: 14px;
-          color: var(--color-text-secondary);
+          color: #475569;
           margin: 0;
           line-height: 1.6;
         }
@@ -987,7 +986,7 @@ export function SalesDoc() {
 
         /* SubCategory Section */
         .subcategory-section {
-          border-bottom: 1px solid var(--color-divider);
+          border-bottom: 1px solid #f1f5f9;
         }
 
         .subcategory-section:last-child {
@@ -1007,7 +1006,7 @@ export function SalesDoc() {
         }
 
         .subcategory-header:hover {
-          background: var(--color-surface);
+          background: #f8fafc;
         }
 
         .subcategory-header-left {
@@ -1035,24 +1034,24 @@ export function SalesDoc() {
         .subcategory-name {
           font-size: 14px;
           font-weight: 600;
-          color: var(--color-text-primary);
+          color: #0f172a;
         }
 
         .subcategory-name-en {
           font-size: 11px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .subcategory-header-right {
           display: flex;
           align-items: center;
           gap: 10px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .subcategory-count {
           font-size: 12px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .subcategory-content {
@@ -1066,7 +1065,7 @@ export function SalesDoc() {
 
         .subcategory-desc {
           font-size: 13px;
-          color: var(--color-text-secondary);
+          color: #64748b;
           margin: 0 0 12px;
           line-height: 1.6;
         }
@@ -1078,7 +1077,7 @@ export function SalesDoc() {
         .subcategory-toggle-all {
           font-size: 12px;
           font-weight: 500;
-          color: var(--color-text-secondary);
+          color: #64748b;
           background: none;
           border: none;
           cursor: pointer;
@@ -1088,8 +1087,8 @@ export function SalesDoc() {
         }
 
         .subcategory-toggle-all:hover {
-          background: var(--color-surface);
-          color: var(--color-primary);
+          background: #f1f5f9;
+          color: #1e3a5f;
         }
 
         .feature-cards {
@@ -1100,16 +1099,16 @@ export function SalesDoc() {
 
         /* Feature Card */
         .feature-card {
-          border: 1px solid var(--color-border);
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
           border-left-width: 3px;
-          background: var(--color-surface);
+          background: white;
           overflow: hidden;
           transition: box-shadow 0.2s;
         }
 
         .feature-card:hover {
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
 
         .feature-card-header {
@@ -1126,7 +1125,7 @@ export function SalesDoc() {
         }
 
         .feature-card-header:hover {
-          background: var(--color-surface-raised);
+          background: #f8fafc;
         }
 
         .feature-card-header-left {
@@ -1138,25 +1137,25 @@ export function SalesDoc() {
         .feature-name {
           font-size: 14px;
           font-weight: 600;
-          color: var(--color-text-primary);
+          color: #0f172a;
         }
 
         .feature-name-en {
           font-size: 11px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .feature-card-header-right {
           display: flex;
           align-items: center;
           gap: 4px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
           flex-shrink: 0;
         }
 
         .feature-expand-hint {
           font-size: 11px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .feature-card-body {
@@ -1171,13 +1170,13 @@ export function SalesDoc() {
 
         .feature-description {
           font-size: 13px;
-          color: var(--color-text-secondary);
+          color: #475569;
           line-height: 1.7;
           margin: 0 0 16px;
           padding: 12px 14px;
-          background: var(--color-surface-raised);
+          background: #f8fafc;
           border-radius: 8px;
-          border-left: 2px solid var(--color-border);
+          border-left: 2px solid #e2e8f0;
         }
 
         .feature-section {
@@ -1194,7 +1193,7 @@ export function SalesDoc() {
           gap: 8px;
           font-size: 12px;
           font-weight: 700;
-          color: var(--color-text-primary);
+          color: #0f172a;
           margin-bottom: 10px;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -1243,7 +1242,7 @@ export function SalesDoc() {
 
         .step-text {
           font-size: 13px;
-          color: var(--color-text-secondary);
+          color: #475569;
           line-height: 1.6;
           padding-top: 2px;
         }
@@ -1259,10 +1258,10 @@ export function SalesDoc() {
           align-items: flex-start;
           gap: 8px;
           font-size: 12px;
-          color: var(--color-text-secondary);
+          color: #475569;
           line-height: 1.5;
           padding: 6px 10px;
-          background: var(--color-success-bg);
+          background: #f0fdf4;
           border-radius: 6px;
         }
 
@@ -1275,8 +1274,8 @@ export function SalesDoc() {
         .feature-related-tag {
           font-size: 11px;
           padding: 3px 8px;
-          background: var(--color-surface);
-          color: var(--color-text-secondary);
+          background: #f1f5f9;
+          color: #64748b;
           border-radius: 6px;
           font-weight: 500;
         }
@@ -1285,14 +1284,14 @@ export function SalesDoc() {
         .sales-doc-empty {
           text-align: center;
           padding: 80px 24px;
-          color: var(--color-text-muted);
+          color: #94a3b8;
         }
 
         .sales-doc-empty h3 {
           font-family: 'Manrope', sans-serif;
           font-size: 18px;
           font-weight: 700;
-          color: var(--color-text-secondary);
+          color: #64748b;
           margin: 16px 0 8px;
         }
 

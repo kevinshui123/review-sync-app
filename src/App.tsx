@@ -197,12 +197,9 @@ function AppContent() {
   // Sales Documentation Route - accessible without login
   if (currentRoute === 'sales-doc') {
     return (
-      <ThemeProvider theme={muiTheme}>
-        <CssBaseline />
-        <div style={{ backgroundColor: 'var(--color-surface)', minHeight: '100vh' }}>
-          <SalesDoc />
-        </div>
-      </ThemeProvider>
+      <>
+        <SalesDoc />
+      </>
     );
   }
 
