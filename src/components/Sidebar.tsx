@@ -234,7 +234,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
           onClick={() => window.dispatchEvent(new CustomEvent('go-to-sales-doc'))}
         >
           <MenuBook sx={{ fontSize: 20 }} />
-          <span className="nav-label">产品功能文档</span>
+          <span className="nav-label">{t('nav.salesDoc')}</span>
         </button>
         {navItem('settings', 'nav.settings', Settings, activeTab === 'settings')}
         {navItem('help', 'nav.help', Help, activeTab === 'help')}

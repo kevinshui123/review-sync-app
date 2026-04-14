@@ -296,12 +296,13 @@ function CategorySection({ category, defaultOpen, isZh }: CategorySectionProps) 
 }
 
 export function SalesDoc() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const isZh = language === 'zh';
+  const salesDocTitle = t('nav.salesDoc');
 
   const totalFeatures = CATEGORIES.reduce(
     (acc, cat) => acc + cat.subcategories.reduce((a, sub) => a + sub.features.length, 0),
@@ -369,7 +370,7 @@ export function SalesDoc() {
             </div>
             <div className="sales-doc-brand-text">
               <span className="sales-doc-brand-name">PinKernel</span>
-              <span className="sales-doc-brand-sub">{isZh ? '产品功能文档' : 'Product Documentation'}</span>
+              <span className="sales-doc-brand-sub">{salesDocTitle}</span>
             </div>
           </div>
           <div className="sales-doc-topbar-center">
@@ -442,7 +443,7 @@ export function SalesDoc() {
             <div className="sales-doc-hero-inner">
               <div className="sales-doc-hero-badge">
                 <MenuBook sx={{ fontSize: 14 }} />
-                <span>PinKernel {isZh ? '产品功能文档' : 'Product Documentation'}</span>
+                <span>PinKernel {salesDocTitle}</span>
               </div>
               <h1 className="sales-doc-hero-title">
                 {isZh ? '完整的功能指南' : 'Complete Feature Guide'}
