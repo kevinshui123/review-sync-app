@@ -23,96 +23,90 @@ import {
   Warning,
   Info,
   ChevronRight,
-  FilterList,
   EmojiEvents,
   TrendingDown,
   Store,
+  Analytics,
+  Psychology,
 } from '@mui/icons-material';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
 function getScoreColor(score: number) {
-  if (score >= 80) return { color: '#22c55e', label: 'Excellent', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', gradient: 'from-green-500 to-emerald-600' };
-  if (score >= 60) return { color: '#f59e0b', label: 'Good', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', gradient: 'from-amber-500 to-orange-600' };
-  if (score >= 40) return { color: '#f97316', label: 'Fair', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', gradient: 'from-orange-500 to-red-600' };
-  return { color: '#ef4444', label: 'Needs Work', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', gradient: 'from-red-500 to-pink-600' };
+  if (score >= 80) return { color: '#1e3a5f', label: 'Excellent', bg: '#f0f4f8', border: '#1e3a5f', text: '#1e3a5f' };
+  if (score >= 60) return { color: '#d97706', label: 'Good', bg: '#fffbeb', border: '#d97706', text: '#92400e' };
+  if (score >= 40) return { color: '#ea580c', label: 'Fair', bg: '#fff7ed', border: '#ea580c', text: '#9a3412' };
+  return { color: '#dc2626', label: 'Needs Work', bg: '#fef2f2', border: '#dc2626', text: '#991b1b' };
 }
 
 function getPriorityColor(priority: string) {
   switch (priority.toLowerCase()) {
-    case 'high':
-    case 'critical':
-      return { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', icon: <Warning className="w-4 h-4" /> };
+    case 'high': case 'critical':
+      return { bg: '#fef2f2', text: '#dc2626', border: '#fecaca', icon: <Warning sx={{ fontSize: 14 }} /> };
     case 'medium':
-      return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', icon: <Info className="w-4 h-4" /> };
-    case 'low':
+      return { bg: '#fffbeb', text: '#d97706', border: '#fde68a', icon: <Info sx={{ fontSize: 14 }} /> };
     default:
-      return { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', icon: <Lightbulb className="w-4 h-4" /> };
-  }
-}
-
-function getStatusIcon(status: string) {
-  switch (status) {
-    case 'excellent':
-    case 'good':
-      return <CheckCircle className="w-5 h-5 text-green-500" />;
-    case 'fair':
-      return <TrendingUp className="w-5 h-5 text-amber-500" />;
-    case 'poor':
-    default:
-      return <TrendingDown className="w-5 h-5 text-red-500" />;
+      return { bg: '#f0f9ff', text: '#0284c7', border: '#bae6fd', icon: <Lightbulb sx={{ fontSize: 14 }} /> };
   }
 }
 
 interface BusinessInfo {
-  name: string;
-  address: string;
-  phone: string;
-  website: string;
-  category: string;
-  keywords: string;
-  hours: Record<string, string>;
-  lat?: number;
-  lng?: number;
+  name: string; address: string; phone: string; website: string;
+  category: string; keywords: string; hours: Record<string, string>; lat?: number; lng?: number;
 }
 
 interface Insight {
-  type: string;
-  priority: 'high' | 'medium' | 'low';
-  title: string;
-  description: string;
-  currentValue?: string;
-  suggestedValue?: string;
-  actionType: string;
-  actionLabel?: string;
-  potentialImpact?: string;
+  type: string; priority: 'high' | 'medium' | 'low'; title: string; description: string;
+  currentValue?: string; suggestedValue?: string; actionType: string;
+  actionLabel?: string; potentialImpact?: string;
 }
 
 interface CompetitiveInsight {
-  title: string;
-  description: string;
-  actionSteps?: string[];
-  priority: 'high' | 'medium' | 'low';
+  title: string; description: string; actionSteps?: string[]; priority: 'high' | 'medium' | 'low';
 }
 
 interface QuickWin {
-  action: string;
-  impact?: string;
-  effort?: string;
-  actionType?: string;
+  action: string; impact?: string; effort?: string; actionType?: string;
 }
 
 interface SEOReport {
-  overallScore: number;
-  overallSummary: string;
-  insights: Insight[];
-  competitiveInsights: CompetitiveInsight[];
-  quickWins: QuickWin[];
-  _raw?: {
-    listingsCount: number;
-    metricsAvailable: boolean;
-    reviewsAvailable: number;
-  };
+  overallScore: number; overallSummary: string; insights: Insight[];
+  competitiveInsights: CompetitiveInsight[]; quickWins: QuickWin[];
+  _raw?: { listingsCount: number; metricsAvailable: boolean; reviewsAvailable: number };
+}
+
+const CategoryConfig: Record<string, { icon: React.ReactNode; bg: string; border: string; text: string }> = {
+  photos: { icon: <PhotoCamera sx={{ fontSize: 18 }} />, bg: '#fdf2f8', border: '#fbcfe8', text: '#be185d' },
+  reviews: { icon: <Star sx={{ fontSize: 18 }} />, bg: '#fffbeb', border: '#fde68a', text: '#b45309' },
+  description: { icon: <Description sx={{ fontSize: 18 }} />, bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
+  hours: { icon: <AccessTime sx={{ fontSize: 18 }} />, bg: '#f5f3ff', border: '#ddd6fe', text: '#6d28d9' },
+  contact: { icon: <Phone sx={{ fontSize: 18 }} />, bg: '#ecfeff', border: '#a5f3fc', text: '#0e7490' },
+  website: { icon: <Language sx={{ fontSize: 18 }} />, bg: '#ecfdf5', border: '#a7f3d0', text: '#047857' },
+  location: { icon: <Map sx={{ fontSize: 18 }} />, bg: '#fef9c3', border: '#fef08a', text: '#a16207' },
+  categories: { icon: <Verified sx={{ fontSize: 18 }} />, bg: '#fdf4ff', border: '#e9d5ff', text: '#7e22ce' },
+  citations: { icon: <Store sx={{ fontSize: 18 }} />, bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
+};
+
+function LoadingState({ message = 'Loading...' }: { message?: string }) {
+  return (
+    <div className="opt-loading">
+      <div className="opt-loading-inner">
+        <div className="opt-orbit">
+          <div className="opt-orbit-ring" />
+          <div className="opt-orbit-core">
+            <Analytics sx={{ fontSize: 28, color: '#1e3a5f' }} />
+          </div>
+          <div className="opt-orbit-dot" />
+        </div>
+        <div className="opt-loading-text">
+          <span className="opt-loading-title">{message}</span>
+          <div className="opt-loading-bar">
+            <div className="opt-loading-bar-fill" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function Optimization() {
@@ -120,10 +114,8 @@ export function Optimization() {
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [seoReport, setSeoReport] = useState<SEOReport | null>(() => {
-    try {
-      const saved = localStorage.getItem('seo_report');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
+    try { return localStorage.getItem('seo_report') ? JSON.parse(localStorage.getItem('seo_report')!) : null; }
+    catch { return null; }
   });
   const [seoLoading, setSeoLoading] = useState(false);
   const [seoError, setSeoError] = useState<string | null>(null);
@@ -132,9 +124,7 @@ export function Optimization() {
   const [activeSection, setActiveSection] = useState<'overview' | 'insights' | 'competitive' | 'quickwins'>('overview');
 
   useEffect(() => {
-    if (seoReport) {
-      localStorage.setItem('seo_report', JSON.stringify(seoReport));
-    }
+    if (seoReport) localStorage.setItem('seo_report', JSON.stringify(seoReport));
   }, [seoReport]);
 
   const generateSeoReport = useCallback(async () => {
@@ -142,161 +132,49 @@ export function Optimization() {
     setSeoError(null);
     try {
       const res = await apiPost('/api/reports/seo-optimization', { lang: language });
-      if (res.ok) {
-        const data = await res.json();
-        setSeoReport(data);
-      } else {
-        const err = await res.json().catch(() => ({ error: 'Request failed' }));
-        setSeoError(err.error || 'Failed to generate report');
-      }
-    } catch (e: any) {
-      setSeoError(e.message || 'Network error');
-    } finally {
-      setSeoLoading(false);
-    }
+      if (res.ok) { const data = await res.json(); setSeoReport(data); }
+      else { const err = await res.json().catch(() => ({ error: 'Request failed' })); setSeoError(err.error); }
+    } catch (e: any) { setSeoError(e.message || 'Network error'); }
+    finally { setSeoLoading(false); }
   }, [language]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const locationsRes = await apiGet('/api/embedsocial/locations');
-        let locations: any[] = [];
-        if (locationsRes.ok) {
-          locations = await locationsRes.json();
-        }
+        let locations: any[] = locationsRes.ok ? await locationsRes.json() : [];
         const hasCoords = locations.some((l: any) => l.latitude || l.lat);
         if (locations.length > 0 && !hasCoords) {
-          try {
-            const backfillRes = await apiPost('/api/embedsocial/listings/backfill-coordinates');
-            if (backfillRes.ok) {
-              const refreshed = await apiGet('/api/embedsocial/locations');
-              if (refreshed.ok) locations = await refreshed.json();
-            }
-          } catch (e) {
-            console.warn('[Optimization] Backfill failed:', e);
-          }
+          try { await apiPost('/api/embedsocial/listings/backfill-coordinates'); } catch { /* ignore */ }
+          const refreshed = await apiGet('/api/embedsocial/locations');
+          if (refreshed.ok) locations = await refreshed.json();
         }
         const primary = locations[0];
         if (primary) {
-          setBusinessInfo({
-            name: primary.name || 'Business',
-            address: primary.address || '',
-            phone: primary.phoneNumber || primary.phone || '',
-            website: primary.websiteUrl || '',
-            category: primary.category || '',
-            keywords: 'restaurant, mini bowl, asian food',
-            hours: {},
-            lat: primary.latitude || primary.lat,
-            lng: primary.longitude || primary.lng,
-          });
+          setBusinessInfo({ name: primary.name || 'Business', address: primary.address || '',
+            phone: primary.phoneNumber || '', website: primary.websiteUrl || '',
+            category: primary.category || '', keywords: 'restaurant, mini bowl, asian food', hours: {},
+            lat: primary.latitude || primary.lat, lng: primary.longitude || primary.lng });
         } else {
-          setBusinessInfo({
-            name: 'Mahjong mini bowl-Baltimore',
-            address: '3105 saint pual st, unit A, Baltimore, 21218, US',
-            phone: '(443) 869-2177',
-            website: 'https://mahjong-box.com/',
-            category: 'Restaurant',
-            keywords: 'Asian Food, Mini Bowl, Noodles, Dumplings',
-            hours: {
-              Monday: '11 am - 8 pm', Tuesday: '11 am - 8 pm', Wednesday: '11 am - 8 pm',
-              Thursday: '11 am - 8 pm', Friday: '11 am - 8 pm', Saturday: '11 am - 8 pm', Sunday: '11 am - 8 pm',
-            },
-            lat: 39.3305, lng: -76.6150,
-          });
+          setBusinessInfo({ name: 'Mahjong mini bowl-Baltimore', address: '3105 saint pual st, unit A, Baltimore, 21218, US',
+            phone: '(443) 869-2177', website: 'https://mahjong-box.com/', category: 'Restaurant',
+            keywords: 'Asian Food, Mini Bowl', hours: { Monday: '11 am - 8 pm', Tuesday: '11 am - 8 pm', Wednesday: '11 am - 8 pm', Thursday: '11 am - 8 pm', Friday: '11 am - 8 pm', Saturday: '11 am - 8 pm', Sunday: '11 am - 8 pm' }, lat: 39.3305, lng: -76.6150 });
         }
-      } catch (error) {
-        console.error('Failed to fetch optimization data:', error);
-      } finally {
-        setLoading(false);
-      }
+      } catch (error) { console.error('Failed:', error); }
+      finally { setLoading(false); }
     };
     fetchData();
   }, []);
 
-  const getCategoryIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'photos':
-      case 'photo':
-        return <PhotoCamera className="w-5 h-5" />;
-      case 'reviews':
-      case 'review':
-        return <Star className="w-5 h-5" />;
-      case 'description':
-      case 'business description':
-        return <Description className="w-5 h-5" />;
-      case 'hours':
-      case 'business hours':
-        return <AccessTime className="w-5 h-5" />;
-      case 'contact':
-      case 'phone':
-        return <Phone className="w-5 h-5" />;
-      case 'website':
-      case 'links':
-        return <Language className="w-5 h-5" />;
-      case 'location':
-      case 'address':
-        return <Map className="w-5 h-5" />;
-      case 'categories':
-        return <Verified className="w-5 h-5" />;
-      case 'citations':
-        return <Store className="w-5 h-5" />;
-      default:
-        return <Lightbulb className="w-5 h-5" />;
-    }
-  };
-
-  const getCategoryColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'photos':
-      case 'photo':
-        return { bg: 'from-pink-500 to-rose-500', text: 'text-rose-600', bgLight: 'bg-rose-50' };
-      case 'reviews':
-      case 'review':
-        return { bg: 'from-amber-500 to-orange-500', text: 'text-orange-600', bgLight: 'bg-orange-50' };
-      case 'description':
-      case 'business description':
-        return { bg: 'from-blue-500 to-indigo-500', text: 'text-indigo-600', bgLight: 'bg-indigo-50' };
-      case 'hours':
-      case 'business hours':
-        return { bg: 'from-purple-500 to-violet-500', text: 'text-violet-600', bgLight: 'bg-violet-50' };
-      case 'contact':
-      case 'phone':
-        return { bg: 'from-cyan-500 to-teal-500', text: 'text-teal-600', bgLight: 'bg-teal-50' };
-      case 'website':
-      case 'links':
-        return { bg: 'from-emerald-500 to-green-500', text: 'text-green-600', bgLight: 'bg-green-50' };
-      case 'attributes':
-      case 'categories':
-        return { bg: 'from-fuchsia-500 to-pink-500', text: 'text-pink-600', bgLight: 'bg-pink-50' };
-      default:
-        return { bg: 'from-slate-500 to-gray-500', text: 'text-slate-600', bgLight: 'bg-slate-50' };
-    }
-  };
-
-  const getActionTypeIcon = (actionType: string) => {
-    switch (actionType) {
-      case 'editable':
-        return <Edit className="w-4 h-4" />;
-      case 'citation':
-        return <Store className="w-4 h-4" />;
-      case 'content':
-        return <Description className="w-4 h-4" />;
-      case 'review':
-        return <Star className="w-4 h-4" />;
-      default:
-        return <ArrowForward className="w-4 h-4" />;
-    }
-  };
+  const getCategoryConfig = (type: string) =>
+    CategoryConfig[type.toLowerCase()] || CategoryConfig.citations;
 
   const getFilteredInsights = () => {
     if (!seoReport?.insights) return [];
-    return seoReport.insights.filter(insight => {
-      const priorityMatch = filterPriority === 'all' || insight.priority.toLowerCase() === filterPriority.toLowerCase();
-      return priorityMatch;
-    });
+    return seoReport.insights.filter(insight =>
+      filterPriority === 'all' || insight.priority.toLowerCase() === filterPriority.toLowerCase()
+    );
   };
-
-  const filteredInsights = getFilteredInsights();
 
   const handleActionClick = (insight: Insight) => {
     if (insight.actionType === 'review') {
@@ -306,340 +184,255 @@ export function Optimization() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-slate-100 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
-        </div>
-        <p className="text-sm text-slate-500 font-medium">加载中...</p>
-      </div>
-    );
-  }
+  if (loading) return <LoadingState message="Initializing optimization engine..." />;
 
   return (
-    <div className="animate-fade-in">
+    <div className="opt-container">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-md">
-              <AutoAwesome className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">SEO 优化中心</h1>
-              <p className="text-slate-500 mt-1">{businessInfo?.name}</p>
-            </div>
+      <div className="opt-header">
+        <div className="opt-header-left">
+          <div className="opt-header-icon">
+            <Analytics sx={{ fontSize: 24, color: '#fff' }} />
           </div>
-          <button
-            onClick={generateSeoReport}
-            disabled={seoLoading}
-            className={`flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-2xl transition-all duration-300 shadow-lg ${
-              seoReport
-                ? 'bg-white border-2 border-primary text-primary hover:bg-blue-50'
-                : 'bg-primary text-white hover:opacity-90'
-            } disabled:opacity-50`}
-          >
-            {seoLoading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                AI 分析中...
-              </>
-            ) : seoReport ? (
-              <>
-                <Refresh className="w-5 h-5" />
-                重新分析
-              </>
-            ) : (
-              <>
-                <AutoAwesome className="w-5 h-5" />
-                立即分析
-              </>
-            )}
-          </button>
+          <div>
+            <h1 className="opt-title">Optimization Center</h1>
+            <p className="opt-subtitle">{businessInfo?.name}</p>
+          </div>
         </div>
+        <button
+          onClick={generateSeoReport}
+          disabled={seoLoading}
+          className={`opt-btn ${seoReport ? 'opt-btn-outline' : 'opt-btn-solid'}`}
+        >
+          {seoLoading ? (
+            <>
+              <div className="opt-btn-spinner" />
+              Analyzing with AI...
+            </>
+          ) : seoReport ? (
+            <>
+              <Refresh sx={{ fontSize: 18 }} />
+              Regenerate
+            </>
+          ) : (
+            <>
+              <AutoAwesome sx={{ fontSize: 18 }} />
+              Start Analysis
+            </>
+          )}
+        </button>
       </div>
 
       {seoError && (
-        <div className="mb-6 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
-          <ErrorIcon className="w-5 h-5 text-red-500" />
-          <span className="text-red-700 font-medium">{seoError}</span>
+        <div className="opt-error">
+          <ErrorIcon sx={{ fontSize: 18 }} />
+          {seoError}
+        </div>
+      )}
+
+      {seoLoading && !seoReport && (
+        <div className="opt-analyzing">
+          <div className="opt-analyzing-orb">
+            <div className="opt-analyzing-ring1" />
+            <div className="opt-analyzing-ring2" />
+            <div className="opt-analyzing-core">
+              <Psychology sx={{ fontSize: 32, color: '#fff' }} />
+            </div>
+          </div>
+          <div className="opt-analyzing-text">
+            <h3>AI is analyzing your business profile</h3>
+            <p>Evaluating listings, reviews, citations and more...</p>
+            <div className="opt-analyzing-steps">
+              {['Scanning business listings', 'Analyzing review patterns', 'Checking citation consistency', 'Generating recommendations'].map((step, i) => (
+                <div key={i} className="opt-step">
+                  <CheckCircle sx={{ fontSize: 14, color: '#10b981' }} />
+                  <span>{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
       {seoReport && !seoLoading && (
         <>
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 mb-6 bg-slate-100 p-1 rounded-2xl w-fit">
+          {/* Section Tabs */}
+          <div className="opt-tabs">
             {[
-              { id: 'overview', label: '总览', icon: <Speed className="w-4 h-4" /> },
-              { id: 'insights', label: '优化建议', icon: <Lightbulb className="w-4 h-4" />, count: seoReport.insights?.length || 0 },
-              { id: 'competitive', label: '竞争分析', icon: <EmojiEvents className="w-4 h-4" />, count: seoReport.competitiveInsights?.length || 0 },
-              { id: 'quickwins', label: '快速见效', icon: <LocalFireDepartment className="w-4 h-4" />, count: seoReport.quickWins?.length || 0 },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSection(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  activeSection === tab.id
-                    ? 'bg-white text-primary shadow-md'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-                {tab.count !== undefined && tab.count > 0 && (
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${
-                    activeSection === tab.id ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
+              { id: 'overview', label: 'Overview', icon: <Speed sx={{ fontSize: 16 }} /> },
+              { id: 'insights', label: 'Insights', icon: <Lightbulb sx={{ fontSize: 16 }} />, count: seoReport.insights?.length },
+              { id: 'competitive', label: 'Competitive', icon: <EmojiEvents sx={{ fontSize: 16 }} />, count: seoReport.competitiveInsights?.length },
+              { id: 'quickwins', label: 'Quick Wins', icon: <LocalFireDepartment sx={{ fontSize: 16 }} />, count: seoReport.quickWins?.length },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button key={tab.id} className={`opt-tab ${activeSection === tab.id ? 'active' : ''}`} onClick={() => setActiveSection(tab.id as any)}>
+                  {Icon}
+                  <span>{tab.label}</span>
+                  {tab.count !== undefined && tab.count > 0 && <span className="opt-tab-count">{tab.count}</span>}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Overview Section */}
+          {/* Overview */}
           {activeSection === 'overview' && (
-            <div className="space-y-6">
-              {/* Main Score Card */}
-              <div className={`rounded-3xl p-8 border ${getScoreColor(seoReport.overallScore).border} ${getScoreColor(seoReport.overallScore).bg}`}>
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                  <div className="relative w-40 h-40 flex-shrink-0">
-                    <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-                      <circle cx="60" cy="60" r="52" fill="none" stroke="#e2e8f0" strokeWidth="12" />
-                      <circle
-                        cx="60" cy="60" r="52" fill="none"
-                        stroke={getScoreColor(seoReport.overallScore).color}
-                        strokeWidth="12"
-                        strokeLinecap="round"
-                        strokeDasharray={`${(seoReport.overallScore / 100) * 327} 327`}
-                        className="transition-all duration-1000"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl font-extrabold" style={{ color: getScoreColor(seoReport.overallScore).color }}>
-                        {seoReport.overallScore}
-                      </span>
-                      <span className="text-xs text-slate-400">/ 100</span>
-                    </div>
+            <div className="opt-overview">
+              {/* Score */}
+              <div className="opt-score-card" style={{ borderColor: getScoreColor(seoReport.overallScore).border, background: getScoreColor(seoReport.overallScore).bg }}>
+                <div className="opt-score-ring-container">
+                  <svg viewBox="0 0 140 140" className="opt-score-svg">
+                    <circle cx="70" cy="70" r="60" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="14" />
+                    <circle cx="70" cy="70" r="60" fill="none" stroke={getScoreColor(seoReport.overallScore).color}
+                      strokeWidth="14" strokeLinecap="round"
+                      strokeDasharray={`${(seoReport.overallScore / 100) * 377} 377`}
+                      className="opt-score-progress" />
+                  </svg>
+                  <div className="opt-score-value">
+                    <span className="opt-score-number" style={{ color: getScoreColor(seoReport.overallScore).color }}>{seoReport.overallScore}</span>
+                    <span className="opt-score-denom">/100</span>
                   </div>
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
-                      {getScoreColor(seoReport.overallScore).label === 'Excellent' && <EmojiEvents className="w-6 h-6 text-green-500" />}
-                      <span className={`text-lg font-bold ${getScoreColor(seoReport.overallScore).text}`}>
-                        {getScoreColor(seoReport.overallScore).label}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 leading-relaxed text-lg">{seoReport.overallSummary}</p>
-                    {seoReport._raw && (
-                      <div className="flex items-center gap-4 mt-4 text-sm text-slate-500">
-                        <span>{seoReport._raw.listingsCount} 个 listings</span>
-                        <span>|</span>
-                        <span>{seoReport._raw.reviewsAvailable} 条评论</span>
-                      </div>
-                    )}
+                </div>
+                <div className="opt-score-info">
+                  <div className="opt-score-label" style={{ color: getScoreColor(seoReport.overallScore).text }}>
+                    {getScoreColor(seoReport.overallScore).label}
                   </div>
+                  <p className="opt-score-summary">{seoReport.overallSummary}</p>
+                  {seoReport._raw && (
+                    <div className="opt-score-meta">
+                      <span>{seoReport._raw.listingsCount} listings</span>
+                      <span className="opt-score-meta-dot" />
+                      <span>{seoReport._raw.reviewsAvailable} reviews</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Quick Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                      <Lightbulb className="w-5 h-5 text-blue-500" />
-                    </div>
-                    <span className="text-sm font-medium text-slate-500">优化建议</span>
-                  </div>
-                  <div className="text-2xl font-bold text-slate-800">{seoReport.insights?.length || 0}</div>
+              {/* Quick Stats */}
+              <div className="opt-quick-stats">
+                <div className="opt-stat-card">
+                  <div className="opt-stat-icon" style={{ background: '#eff6ff', color: '#1d4ed8' }}><Lightbulb sx={{ fontSize: 20 }} /></div>
+                  <div className="opt-stat-info"><div className="opt-stat-value">{seoReport.insights?.length || 0}</div><div className="opt-stat-label">Recommendations</div></div>
                 </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center">
-                      <LocalFireDepartment className="w-5 h-5 text-amber-500" />
-                    </div>
-                    <span className="text-sm font-medium text-slate-500">快速见效</span>
-                  </div>
-                  <div className="text-2xl font-bold text-slate-800">{seoReport.quickWins?.length || 0}</div>
+                <div className="opt-stat-card">
+                  <div className="opt-stat-icon" style={{ background: '#fffbeb', color: '#d97706' }}><LocalFireDepartment sx={{ fontSize: 20 }} /></div>
+                  <div className="opt-stat-info"><div className="opt-stat-value">{seoReport.quickWins?.length || 0}</div><div className="opt-stat-label">Quick Wins</div></div>
                 </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
-                      <EmojiEvents className="w-5 h-5 text-blue-500" />
-                    </div>
-                    <span className="text-sm font-medium text-slate-500">竞争洞察</span>
-                  </div>
-                  <div className="text-2xl font-bold text-slate-800">{seoReport.competitiveInsights?.length || 0}</div>
+                <div className="opt-stat-card">
+                  <div className="opt-stat-icon" style={{ background: '#fdf4ff', color: '#7e22ce' }}><EmojiEvents sx={{ fontSize: 20 }} /></div>
+                  <div className="opt-stat-info"><div className="opt-stat-value">{seoReport.competitiveInsights?.length || 0}</div><div className="opt-stat-label">Competitor Insights</div></div>
                 </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-100 to-red-50 flex items-center justify-center">
-                      <Warning className="w-5 h-5 text-red-500" />
-                    </div>
-                    <span className="text-sm font-medium text-slate-500">高优先级</span>
-                  </div>
-                  <div className="text-2xl font-bold text-red-600">
-                    {seoReport.insights?.filter(i => i.priority === 'high').length || 0}
-                  </div>
+                <div className="opt-stat-card">
+                  <div className="opt-stat-icon" style={{ background: '#fef2f2', color: '#dc2626' }}><Warning sx={{ fontSize: 20 }} /></div>
+                  <div className="opt-stat-info"><div className="opt-stat-value" style={{ color: '#dc2626' }}>{seoReport.insights?.filter((i: any) => i.priority === 'high').length || 0}</div><div className="opt-stat-label">High Priority</div></div>
                 </div>
               </div>
 
               {/* Quick Wins Preview */}
               {seoReport.quickWins && seoReport.quickWins.length > 0 && (
-                <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-3xl p-6 border border-orange-100">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-                      <LocalFireDepartment className="w-5 h-5 text-white" />
-                    </div>
+                <div className="opt-qw-preview">
+                  <div className="opt-qw-header">
+                    <div className="opt-qw-icon"><LocalFireDepartment sx={{ fontSize: 20, color: '#ea580c' }} /></div>
                     <div>
-                      <h3 className="font-bold text-slate-800">快速见效建议</h3>
-                      <p className="text-xs text-slate-500">高Impact，低Effort的行动</p>
+                      <div className="opt-qw-title">Quick Wins</div>
+                      <div className="opt-qw-subtitle">High impact, low effort actions</div>
                     </div>
+                    {seoReport.quickWins.length > 3 && (
+                      <button className="opt-qw-link" onClick={() => setActiveSection('quickwins')}>
+                        View all {seoReport.quickWins.length} →
+                      </button>
+                    )}
                   </div>
-                  <div className="space-y-2">
+                  <div className="opt-qw-list">
                     {seoReport.quickWins.slice(0, 3).map((win, i) => (
-                      <div key={i} className="flex items-start gap-3 p-3 bg-white/70 rounded-xl">
-                        <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                          {i + 1}
-                        </span>
-                        <p className="text-sm text-slate-700">{win.action}</p>
+                      <div key={i} className="opt-qw-item">
+                        <span className="opt-qw-num">{i + 1}</span>
+                        <span className="opt-qw-action">{win.action}</span>
+                        {win.impact && (
+                          <span className={`opt-qw-impact ${win.impact}`}>{win.impact}</span>
+                        )}
                       </div>
                     ))}
                   </div>
-                  {seoReport.quickWins.length > 3 && (
-                    <button
-                      onClick={() => setActiveSection('quickwins')}
-                      className="mt-4 text-sm text-blue-600 font-medium hover:underline"
-                    >
-                      查看全部 {seoReport.quickWins.length} 项 →
-                    </button>
-                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* Insights Section */}
+          {/* Insights */}
           {activeSection === 'insights' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
+            <div className="opt-section">
+              <div className="opt-section-header">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">优化建议</h2>
-                  <p className="text-sm text-slate-500 mt-1">基于AI分析的具体优化方案</p>
+                  <h2 className="opt-section-title">Optimization Insights</h2>
+                  <p className="opt-section-subtitle">AI-generated recommendations based on your profile</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-500">优先级:</span>
+                <div className="opt-filter-group">
                   {['all', 'high', 'medium', 'low'].map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setFilterPriority(p)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        filterPriority === p
-                          ? p === 'high' ? 'bg-red-500 text-white' :
-                            p === 'medium' ? 'bg-amber-500 text-white' :
-                            p === 'low' ? 'bg-blue-500 text-white' : 'bg-primary text-white'
-                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                      }`}
-                    >
-                      {p === 'all' ? '全部' : p === 'high' ? '高' : p === 'medium' ? '中' : '低'}
+                    <button key={p} className={`opt-filter-btn ${filterPriority === p ? 'active' : ''} ${p}`}
+                      onClick={() => setFilterPriority(p)}>
+                      {p === 'all' ? 'All' : p === 'high' ? 'High' : p === 'medium' ? 'Med' : 'Low'}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {filteredInsights.length === 0 ? (
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-12 border border-green-200 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/30">
-                    <CheckCircle className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">太棒了！</h3>
-                  <p className="text-slate-500 max-w-md mx-auto">
-                    根据当前筛选条件，没有发现需要优化的问题。继续保持！
-                  </p>
+              {getFilteredInsights().length === 0 ? (
+                <div className="opt-empty-state">
+                  <CheckCircle sx={{ fontSize: 48, color: '#10b981' }} />
+                  <h3>All Good!</h3>
+                  <p>No issues found for the selected filter.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {filteredInsights.map((insight, index) => {
-                    const priorityStyle = getPriorityColor(insight.priority);
-                    const categoryStyle = getCategoryColor(insight.type);
+                <div className="opt-insights-grid">
+                  {getFilteredInsights().map((insight, index) => {
+                    const cat = getCategoryConfig(insight.type);
+                    const prio = getPriorityColor(insight.priority);
                     const isExpanded = expandedCard === `insight-${index}`;
 
                     return (
-                      <div
-                        key={index}
-                        className={`bg-white rounded-2xl border border-slate-200 overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-slate-200/50 ${
-                          isExpanded ? 'ring-2 ring-blue-500/30' : ''
-                        }`}
-                      >
-                        <div
-                          className="p-6 cursor-pointer"
-                          onClick={() => setExpandedCard(isExpanded ? null : `insight-${index}`)}
-                        >
-                          <div className="flex items-start gap-4">
-                            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${categoryStyle.bg} flex items-center justify-center shadow-sm flex-shrink-0`}>
-                              <span className={categoryStyle.text}>
-                                {getCategoryIcon(insight.type)}
-                              </span>
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${priorityStyle.bg} ${priorityStyle.text} flex items-center gap-1`}>
-                                  {priorityStyle.icon}
-                                  {insight.priority === 'high' ? '高优先级' : insight.priority === 'medium' ? '中优先级' : '低优先级'}
-                                </span>
-                                <span className={`px-2 py-1 rounded-lg text-xs font-medium ${categoryStyle.bgLight} ${categoryStyle.text}`}>
-                                  {insight.type}
-                                </span>
-                              </div>
-                              <h3 className="text-lg font-bold text-slate-900 mb-1">{insight.title}</h3>
-                              <p className="text-sm text-slate-500 leading-relaxed">{insight.description}</p>
-                            </div>
-
-                            <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform duration-300 flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                      <div key={index} className={`opt-insight-card ${isExpanded ? 'expanded' : ''}`}
+                        onClick={() => setExpandedCard(isExpanded ? null : `insight-${index}`)}>
+                        <div className="opt-insight-header">
+                          <div className="opt-insight-icon" style={{ background: cat.bg, border: `1px solid ${cat.border}`, color: cat.text }}>
+                            {cat.icon}
                           </div>
+                          <div className="opt-insight-meta">
+                            <span className="opt-priority-badge" style={{ background: prio.bg, color: prio.text, border: `1px solid ${prio.border}` }}>
+                              {prio.icon}
+                              {insight.priority === 'high' ? 'High' : insight.priority === 'medium' ? 'Medium' : 'Low'}
+                            </span>
+                            <span className="opt-category-tag" style={{ color: cat.text }}>{insight.type}</span>
+                          </div>
+                          <ChevronRight sx={{ fontSize: 18, color: '#94a3b8', className: `opt-chevron ${isExpanded ? 'rotated' : ''}` }} />
                         </div>
+                        <h3 className="opt-insight-title">{insight.title}</h3>
+                        <p className="opt-insight-desc">{insight.description}</p>
 
                         {isExpanded && (
-                          <div className="px-6 pb-6 border-t border-slate-100 pt-4">
+                          <div className="opt-insight-detail" onClick={(e) => e.stopPropagation()}>
                             {insight.currentValue && insight.suggestedValue && (
-                              <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div className="bg-slate-50 rounded-xl p-4">
-                                  <div className="text-xs text-slate-400 font-medium mb-1">当前状态</div>
-                                  <div className="text-sm font-semibold text-slate-700">{insight.currentValue}</div>
+                              <div className="opt-comparison-grid">
+                                <div className="opt-comparison-box">
+                                  <div className="opt-comparison-label">Current</div>
+                                  <div className="opt-comparison-value">{insight.currentValue}</div>
                                 </div>
-                                <div className="bg-blue-50 rounded-xl p-4">
-                                  <div className="text-xs text-blue-400 font-medium mb-1">建议目标</div>
-                                  <div className="text-sm font-semibold text-blue-700">{insight.suggestedValue}</div>
+                                <ArrowForward sx={{ fontSize: 16, color: '#94a3b8' }} />
+                                <div className="opt-comparison-box opt-comparison-target">
+                                  <div className="opt-comparison-label">Target</div>
+                                  <div className="opt-comparison-value">{insight.suggestedValue}</div>
                                 </div>
                               </div>
                             )}
-
                             {insight.potentialImpact && (
-                              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-100">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <TrendingUp className="w-4 h-4 text-blue-500" />
-                                  <span className="text-xs font-bold text-blue-600">潜在影响</span>
-                                </div>
-                                <p className="text-sm text-slate-700">{insight.potentialImpact}</p>
+                              <div className="opt-impact">
+                                <TrendingUp sx={{ fontSize: 14, color: '#0ea5e9' }} />
+                                <span>{insight.potentialImpact}</span>
                               </div>
                             )}
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleActionClick(insight);
-                              }}
-                              className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all w-full justify-center"
-                            >
-                              {getActionTypeIcon(insight.actionType)}
-                              {insight.actionLabel || '采取行动'}
-                              <ArrowForward className="w-4 h-4" />
+                            <button className="opt-action-btn" onClick={() => handleActionClick(insight)}>
+                              {insight.actionLabel || 'Take Action'}
+                              <ArrowForward sx={{ fontSize: 14 }} />
                             </button>
                           </div>
                         )}
@@ -651,111 +444,83 @@ export function Optimization() {
             </div>
           )}
 
-          {/* Competitive Insights Section */}
+          {/* Competitive */}
           {activeSection === 'competitive' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">竞争分析</h2>
-                <p className="text-sm text-slate-500 mt-1">了解竞争对手，抓住市场机会</p>
+            <div className="opt-section">
+              <div className="opt-section-header">
+                <div>
+                  <h2 className="opt-section-title">Competitive Analysis</h2>
+                  <p className="opt-section-subtitle">Market insights and strategic opportunities</p>
+                </div>
               </div>
-
               {seoReport.competitiveInsights && seoReport.competitiveInsights.length > 0 ? (
-                <div className="space-y-4">
+                <div className="opt-comp-list">
                   {seoReport.competitiveInsights.map((insight, index) => {
-                    const priorityStyle = getPriorityColor(insight.priority);
-
+                    const prio = getPriorityColor(insight.priority);
                     return (
-                      <div
-                        key={index}
-                        className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all"
-                      >
-                        <div className="p-6">
-                          <div className="flex items-start gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-yellow-100 to-orange-100 flex items-center justify-center flex-shrink-0">
-                              <EmojiEvents className="w-6 h-6 text-yellow-600" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${priorityStyle.bg} ${priorityStyle.text} flex items-center gap-1`}>
-                                  {priorityStyle.icon}
-                                  {insight.priority === 'high' ? '高优先级' : insight.priority === 'medium' ? '中优先级' : '低优先级'}
-                                </span>
-                              </div>
-                              <h3 className="text-lg font-bold text-slate-900">{insight.title}</h3>
-                              <p className="text-sm text-slate-500 mt-1">{insight.description}</p>
-                            </div>
-                          </div>
-
-                          {insight.actionSteps && insight.actionSteps.length > 0 && (
-                            <div className="bg-slate-50 rounded-xl p-4">
-                              <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                <ArrowForward className="w-4 h-4" />
-                                行动步骤
-                              </h4>
-                              <div className="space-y-2">
-                                {insight.actionSteps.map((step, stepIndex) => (
-                                  <div key={stepIndex} className="flex items-start gap-3">
-                                    <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                                      {stepIndex + 1}
-                                    </span>
-                                    <span className="text-sm text-slate-600">{step}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                      <div key={index} className="opt-comp-card">
+                        <div className="opt-comp-header">
+                          <div className="opt-comp-icon"><EmojiEvents sx={{ fontSize: 22, color: '#d97706' }} /></div>
+                          <span className="opt-priority-badge" style={{ background: prio.bg, color: prio.text, border: `1px solid ${prio.border}` }}>
+                            {prio.icon}
+                            {insight.priority === 'high' ? 'High' : insight.priority === 'medium' ? 'Medium' : 'Low'}
+                          </span>
                         </div>
+                        <h3 className="opt-comp-title">{insight.title}</h3>
+                        <p className="opt-comp-desc">{insight.description}</p>
+                        {insight.actionSteps && insight.actionSteps.length > 0 && (
+                          <div className="opt-steps">
+                            <div className="opt-steps-title">Action Steps</div>
+                            {insight.actionSteps.map((step, si) => (
+                              <div key={si} className="opt-step-item">
+                                <span className="opt-step-num">{si + 1}</span>
+                                <span>{step}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="bg-slate-50 rounded-3xl p-12 border border-slate-200 text-center">
-                  <EmojiEvents className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-bold text-slate-700 mb-2">暂无竞争分析数据</h3>
-                  <p className="text-sm text-slate-500">系统将在下次分析时生成竞争洞察</p>
+                <div className="opt-empty-state">
+                  <EmojiEvents sx={{ fontSize: 48, color: '#cbd5e1' }} />
+                  <h3>No competitive data yet</h3>
+                  <p>Competitive insights will be generated on next analysis</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Quick Wins Section */}
+          {/* Quick Wins */}
           {activeSection === 'quickwins' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">快速见效</h2>
-                <p className="text-sm text-slate-500 mt-1">高Impact、低Effort的优化行动</p>
+            <div className="opt-section">
+              <div className="opt-section-header">
+                <div>
+                  <h2 className="opt-section-title">Quick Wins</h2>
+                  <p className="opt-section-subtitle">High impact, low effort optimization actions</p>
+                </div>
               </div>
-
               {seoReport.quickWins && seoReport.quickWins.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="opt-qw-grid">
                   {seoReport.quickWins.map((win, index) => (
-                    <div
-                      key={index}
-                      className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100 hover:shadow-lg transition-all"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-sm">
-                          <span className="text-white font-bold text-lg">{index + 1}</span>
-                        </div>
+                    <div key={index} className="opt-qw-card">
+                      <div className="opt-qw-card-header">
+                        <span className="opt-qw-card-num" style={{ background: '#1e3a5f' }}>{index + 1}</span>
                         {win.impact && (
-                          <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-                            win.impact === 'high' ? 'bg-green-100 text-green-600' :
-                            win.impact === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {win.impact === 'high' ? '高Impact' : win.impact === 'medium' ? '中Impact' : '低Impact'}
-                          </span>
+                          <span className={`opt-qw-impact ${win.impact}`}>{win.impact} Impact</span>
                         )}
                       </div>
-                      <p className="text-slate-700 font-medium leading-relaxed">{win.action}</p>
+                      <p className="opt-qw-card-action">{win.action}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="bg-slate-50 rounded-3xl p-12 border border-slate-200 text-center">
-                  <LocalFireDepartment className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-bold text-slate-700 mb-2">暂无快速见效建议</h3>
-                  <p className="text-sm text-slate-500">系统将在下次分析时生成快速见效建议</p>
+                <div className="opt-empty-state">
+                  <LocalFireDepartment sx={{ fontSize: 48, color: '#cbd5e1' }} />
+                  <h3>No quick wins available</h3>
+                  <p>Quick wins will appear when optimization opportunities are found</p>
                 </div>
               )}
             </div>
@@ -764,32 +529,405 @@ export function Optimization() {
       )}
 
       {!seoReport && !seoLoading && (
-        <div className="bg-slate-50 rounded-3xl p-16 border border-slate-200 text-center">
-          <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-            <AutoAwesome className="w-10 h-10 text-primary" />
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-3">生成您的 SEO 优化报告</h3>
-          <p className="text-slate-500 max-w-lg mx-auto mb-8 leading-relaxed">
-            点击按钮开始分析您的商家信息，AI 将根据多个维度评估您的 SEO 健康状况，
-            并提供可操作的优化建议，帮助您提升本地搜索排名。
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
+        <div className="opt-landing">
+          <div className="opt-landing-grid">
             {[
-              { icon: <Image className="w-5 h-5" />, label: '照片优化' },
-              { icon: <Star className="w-5 h-5" />, label: '评论管理' },
-              { icon: <Description className="w-5 h-5" />, label: '描述完善' },
-              { icon: <AccessTime className="w-5 h-5" />, label: '营业时间' },
-              { icon: <Phone className="w-5 h-5" />, label: '联系信息' },
-              { icon: <Verified className="w-5 h-5" />, label: '信息验证' },
+              { icon: <Image sx={{ fontSize: 22 }} />, label: 'Photos' },
+              { icon: <Star sx={{ fontSize: 22 }} />, label: 'Reviews' },
+              { icon: <Description sx={{ fontSize: 22 }} />, label: 'Description' },
+              { icon: <AccessTime sx={{ fontSize: 22 }} />, label: 'Hours' },
+              { icon: <Phone sx={{ fontSize: 22 }} />, label: 'Contact' },
+              { icon: <Verified sx={{ fontSize: 22 }} />, label: 'Verification' },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
-                <span className="text-blue-500">{item.icon}</span>
-                <span className="text-sm font-medium text-slate-600">{item.label}</span>
+              <div key={i} className="opt-landing-item">
+                <span className="opt-landing-icon">{item.icon}</span>
+                <span className="opt-landing-label">{item.label}</span>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      <style>{`
+        .opt-loading {
+          display: flex; align-items: center; justify-content: center; min-height: 60vh;
+        }
+        .opt-loading-inner {
+          display: flex; flex-direction: column; align-items: center; gap: 24px;
+        }
+        .opt-orbit {
+          position: relative; width: 80px; height: 80px;
+        }
+        .opt-orbit-ring {
+          position: absolute; inset: 0; border-radius: 999px;
+          border: 3px solid #e2e8f0;
+          animation: orbit-spin 2s linear infinite;
+        }
+        @keyframes orbit-spin {
+          from { transform: rotate(0deg); border-color: #e2e8f0; }
+          50% { border-color: #1e3a5f; }
+          to { transform: rotate(360deg); border-color: #e2e8f0; }
+        }
+        .opt-orbit-core {
+          position: absolute; inset: 12px; background: #f8fafc; border-radius: 999px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .opt-orbit-dot {
+          position: absolute; width: 8px; height: 8px; background: #1e3a5f;
+          border-radius: 999px; top: -4px; left: 50%;
+          transform: translateX(-50%);
+          box-shadow: 0 0 0 3px #fff;
+          animation: orbit-spin 2s linear infinite reverse;
+        }
+        .opt-loading-text { text-align: center; }
+        .opt-loading-title {
+          font-size: 14px; font-weight: 500; color: #475569; display: block; margin-bottom: 8px;
+        }
+        .opt-loading-bar {
+          width: 200px; height: 3px; background: #e2e8f0; border-radius: 999px; overflow: hidden;
+        }
+        .opt-loading-bar-fill {
+          height: 100%; background: #1e3a5f; border-radius: 999px;
+          animation: loading-fill 1.5s ease-in-out infinite;
+        }
+        @keyframes loading-fill {
+          0% { width: 0%; margin-left: 0%; }
+          50% { width: 70%; margin-left: 15%; }
+          100% { width: 0%; margin-left: 100%; }
+        }
+
+        .opt-container { padding: 24px; max-width: 1200px; }
+
+        .opt-header {
+          display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;
+        }
+        .opt-header-left { display: flex; align-items: center; gap: 14px; }
+        .opt-header-icon {
+          width: 48px; height: 48px; background: #1e3a5f; border-radius: 12px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .opt-title {
+          font-family: var(--font-headline); font-size: 22px; font-weight: 700;
+          color: #0f172a; letter-spacing: -0.02em; margin: 0;
+        }
+        .opt-subtitle { font-size: 13px; color: #94a3b8; margin: 2px 0 0; }
+
+        .opt-btn {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 10px 18px; font-size: 14px; font-weight: 600;
+          border-radius: 8px; border: none; cursor: pointer; transition: all 0.15s ease;
+        }
+        .opt-btn-solid { background: #1e3a5f; color: white; }
+        .opt-btn-solid:hover { background: #162d4d; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30,58,95,0.3); }
+        .opt-btn-outline { background: white; color: #1e3a5f; border: 1px solid #e2e8f0; }
+        .opt-btn-outline:hover { background: #f8fafc; border-color: #1e3a5f; }
+        .opt-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .opt-btn-spinner {
+          width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+          border-radius: 999px; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .opt-error {
+          display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+          background: #fef2f2; color: #dc2626; border-radius: 8px; font-size: 14px;
+          font-weight: 500; margin-bottom: 16px;
+        }
+
+        .opt-analyzing {
+          display: flex; flex-direction: column; align-items: center;
+          padding: 64px 24px; gap: 32px; text-align: center;
+        }
+        .opt-analyzing-orb {
+          position: relative; width: 120px; height: 120px;
+        }
+        .opt-analyzing-ring1 {
+          position: absolute; inset: 0; border-radius: 999px;
+          border: 2px solid rgba(30,58,95,0.15);
+          animation: pulse-ring 2s ease-out infinite;
+        }
+        .opt-analyzing-ring2 {
+          position: absolute; inset: 12px; border-radius: 999px;
+          border: 2px solid rgba(30,58,95,0.25);
+          animation: pulse-ring 2s ease-out infinite 0.5s;
+        }
+        @keyframes pulse-ring {
+          0% { transform: scale(0.9); opacity: 1; }
+          100% { transform: scale(1.2); opacity: 0; }
+        }
+        .opt-analyzing-core {
+          position: absolute; inset: 28px; background: #1e3a5f; border-radius: 999px;
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 0 32px rgba(30,58,95,0.4);
+        }
+        .opt-analyzing-text h3 {
+          font-family: var(--font-headline); font-size: 20px; font-weight: 700;
+          color: #0f172a; margin: 0 0 8px;
+        }
+        .opt-analyzing-text p { font-size: 14px; color: #64748b; margin: 0 0 20px; }
+        .opt-analyzing-steps { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+        .opt-step {
+          display: flex; align-items: center; gap: 8px; font-size: 13px; color: #475569;
+          animation: fadeInUp 0.3s ease both;
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .opt-tabs {
+          display: flex; gap: 4px; background: white; border: 1px solid #e2e8f0;
+          border-radius: 10px; padding: 4px; margin-bottom: 24px;
+        }
+        .opt-tab {
+          display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+          font-size: 13px; font-weight: 500; border: none; border-radius: 7px;
+          cursor: pointer; background: transparent; color: #64748b; transition: all 0.15s ease;
+        }
+        .opt-tab:hover { background: #f8fafc; color: #1e3a5f; }
+        .opt-tab.active { background: #1e3a5f; color: white; }
+        .opt-tab-count {
+          font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+          background: rgba(0,0,0,0.1);
+        }
+        .opt-tab.active .opt-tab-count { background: rgba(255,255,255,0.2); }
+
+        .opt-overview { display: flex; flex-direction: column; gap: 20px; }
+
+        .opt-score-card {
+          display: flex; align-items: center; gap: 32px; padding: 28px 32px;
+          border: 1px solid; border-radius: 16px;
+        }
+        @media (max-width: 640px) {
+          .opt-score-card { flex-direction: column; text-align: center; }
+        }
+        .opt-score-ring-container {
+          position: relative; width: 140px; height: 140px; flex-shrink: 0;
+        }
+        .opt-score-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .opt-score-progress {
+          transition: stroke-dasharray 1s ease;
+        }
+        .opt-score-value {
+          position: absolute; inset: 0; display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+        }
+        .opt-score-number {
+          font-family: var(--font-headline); font-size: 40px; font-weight: 800;
+          line-height: 1; letter-spacing: -0.03em;
+        }
+        .opt-score-denom { font-size: 12px; color: #94a3b8; font-weight: 500; }
+        .opt-score-label {
+          font-family: var(--font-headline); font-size: 18px; font-weight: 700;
+          margin-bottom: 8px;
+        }
+        .opt-score-summary { font-size: 14px; color: #475569; line-height: 1.6; margin: 0; max-width: 480px; }
+        .opt-score-meta {
+          display: flex; align-items: center; gap: 8px; margin-top: 12px;
+          font-size: 12px; color: #64748b;
+        }
+        .opt-score-meta-dot { width: 3px; height: 3px; background: #cbd5e1; border-radius: 999px; }
+
+        .opt-quick-stats {
+          display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+        }
+        @media (max-width: 900px) { .opt-quick-stats { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px) { .opt-quick-stats { grid-template-columns: 1fr; } }
+        .opt-stat-card {
+          display: flex; align-items: center; gap: 14px; padding: 16px;
+          background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+          transition: all 0.15s ease;
+        }
+        .opt-stat-card:hover { border-color: #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .opt-stat-icon {
+          width: 44px; height: 44px; border-radius: 10px; display: flex;
+          align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .opt-stat-value {
+          font-family: var(--font-headline); font-size: 24px; font-weight: 700; color: #0f172a;
+        }
+        .opt-stat-label { font-size: 12px; color: #94a3b8; }
+
+        .opt-qw-preview {
+          background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;
+        }
+        .opt-qw-header {
+          display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+        }
+        .opt-qw-icon {
+          width: 40px; height: 40px; background: #fff7ed; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .opt-qw-title { font-family: var(--font-headline); font-size: 15px; font-weight: 600; color: #0f172a; }
+        .opt-qw-subtitle { font-size: 11px; color: #94a3b8; }
+        .opt-qw-link {
+          margin-left: auto; font-size: 12px; color: #1e3a5f; font-weight: 600;
+          background: none; border: none; cursor: pointer; white-space: nowrap;
+        }
+        .opt-qw-link:hover { text-decoration: underline; }
+        .opt-qw-list { display: flex; flex-direction: column; gap: 8px; }
+        .opt-qw-item {
+          display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+          background: #f8fafc; border-radius: 8px;
+        }
+        .opt-qw-num {
+          width: 24px; height: 24px; background: #ea580c; color: white;
+          border-radius: 999px; display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 700; flex-shrink: 0;
+        }
+        .opt-qw-action { flex: 1; font-size: 13px; color: #334155; }
+        .opt-qw-impact {
+          font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .opt-qw-impact.high { background: #fef2f2; color: #dc2626; }
+        .opt-qw-impact.medium { background: #fffbeb; color: #d97706; }
+        .opt-qw-impact.low { background: #f0fdf4; color: #16a34a; }
+
+        .opt-section { }
+        .opt-section-header {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+        }
+        .opt-section-title {
+          font-family: var(--font-headline); font-size: 18px; font-weight: 700; color: #0f172a; margin: 0;
+        }
+        .opt-section-subtitle { font-size: 13px; color: #94a3b8; margin: 4px 0 0; }
+
+        .opt-filter-group { display: flex; gap: 4px; }
+        .opt-filter-btn {
+          padding: 5px 12px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0;
+          border-radius: 6px; cursor: pointer; background: white; color: #64748b; transition: all 0.15s ease;
+        }
+        .opt-filter-btn:hover { border-color: #94a3b8; }
+        .opt-filter-btn.active { color: white; border-color: transparent; }
+        .opt-filter-btn.all.active { background: #1e3a5f; }
+        .opt-filter-btn.high.active { background: #dc2626; }
+        .opt-filter-btn.medium.active { background: #d97706; }
+        .opt-filter-btn.low.active { background: #0284c7; }
+
+        .opt-empty-state {
+          display: flex; flex-direction: column; align-items: center; padding: 64px 24px;
+          text-align: center;
+        }
+        .opt-empty-state h3 {
+          font-family: var(--font-headline); font-size: 18px; font-weight: 600;
+          color: #0f172a; margin: 16px 0 8px;
+        }
+        .opt-empty-state p { font-size: 13px; color: #94a3b8; margin: 0; }
+
+        .opt-insights-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px;
+        }
+        @media (max-width: 640px) { .opt-insights-grid { grid-template-columns: 1fr; } }
+        .opt-insight-card {
+          background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;
+          cursor: pointer; transition: all 0.2s ease;
+        }
+        .opt-insight-card:hover { border-color: #94a3b8; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+        .opt-insight-card.expanded { border-color: #1e3a5f; box-shadow: 0 0 0 3px rgba(30,58,95,0.08); }
+        .opt-insight-header {
+          display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+        }
+        .opt-insight-icon {
+          width: 38px; height: 38px; border-radius: 8px; display: flex;
+          align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .opt-insight-meta { display: flex; align-items: center; gap: 6px; flex: 1; flex-wrap: wrap; }
+        .opt-priority-badge {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+        }
+        .opt-category-tag { font-size: 11px; color: #64748b; }
+        .opt-chevron { transition: transform 0.2s ease; }
+        .opt-chevron.rotated { transform: rotate(90deg); }
+        .opt-insight-title {
+          font-family: var(--font-headline); font-size: 15px; font-weight: 600; color: #0f172a; margin: 0 0 6px;
+        }
+        .opt-insight-desc { font-size: 13px; color: #64748b; line-height: 1.5; margin: 0; }
+
+        .opt-insight-detail { border-top: 1px solid #f1f5f9; margin-top: 14px; padding-top: 14px; }
+        .opt-comparison-grid {
+          display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+        }
+        .opt-comparison-box {
+          flex: 1; padding: 10px 12px; background: #f8fafc; border-radius: 8px;
+        }
+        .opt-comparison-target { background: #eff6ff; }
+        .opt-comparison-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 4px; }
+        .opt-comparison-value { font-size: 13px; font-weight: 600; color: #0f172a; }
+        .opt-impact {
+          display: flex; align-items: center; gap: 6px; padding: 10px 12px;
+          background: #f0f9ff; border-radius: 8px; margin-bottom: 12px;
+          font-size: 12px; color: #0369a1;
+        }
+        .opt-action-btn {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          width: 100%; padding: 10px; background: #1e3a5f; color: white;
+          border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+          cursor: pointer; transition: all 0.15s ease;
+        }
+        .opt-action-btn:hover { background: #162d4d; }
+
+        .opt-comp-list { display: flex; flex-direction: column; gap: 12px; }
+        .opt-comp-card {
+          background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;
+        }
+        .opt-comp-header {
+          display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+        }
+        .opt-comp-icon {
+          width: 44px; height: 44px; background: #fffbeb; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .opt-comp-title {
+          font-family: var(--font-headline); font-size: 16px; font-weight: 600; color: #0f172a; margin: 0 0 6px;
+        }
+        .opt-comp-desc { font-size: 13px; color: #64748b; line-height: 1.5; margin: 0 0 14px; }
+        .opt-steps { background: #f8fafc; border-radius: 8px; padding: 14px; }
+        .opt-steps-title {
+          font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+          color: #94a3b8; margin-bottom: 10px;
+        }
+        .opt-step-item {
+          display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; font-size: 13px; color: #334155;
+        }
+        .opt-step-item:last-child { margin-bottom: 0; }
+        .opt-step-num {
+          width: 20px; height: 20px; background: #e2e8f0; color: #475569;
+          border-radius: 999px; display: flex; align-items: center; justify-content: center;
+          font-size: 10px; font-weight: 700; flex-shrink: 0;
+        }
+
+        .opt-qw-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;
+        }
+        .opt-qw-card {
+          background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;
+        }
+        .opt-qw-card-header {
+          display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+        }
+        .opt-qw-card-num {
+          width: 32px; height: 32px; border-radius: 8px; color: white;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 14px; font-weight: 700;
+        }
+        .opt-qw-card-action { font-size: 14px; color: #334155; line-height: 1.5; margin: 0; }
+
+        .opt-landing {
+          padding: 48px 24px; text-align: center;
+          background: white; border: 1px solid #e2e8f0; border-radius: 16px;
+        }
+        .opt-landing-grid {
+          display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 480px; margin: 0 auto;
+        }
+        .opt-landing-item {
+          display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+          background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+        }
+        .opt-landing-icon { color: #1e3a5f; }
+        .opt-landing-label { font-size: 13px; font-weight: 500; color: #334155; }
+      `}</style>
     </div>
   );
 }

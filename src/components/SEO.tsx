@@ -173,9 +173,22 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
 
   if (loading) {
     return (
-      <div className="seo-loading">
-        <div className="loading-spinner" />
-        <p>Loading...</p>
+      <div className="opt-loading">
+        <div className="opt-loading-inner">
+          <div className="opt-orbit">
+            <div className="opt-orbit-ring" />
+            <div className="opt-orbit-core">
+              <Map sx={{ fontSize: 28, color: '#1e3a5f' }} />
+            </div>
+            <div className="opt-orbit-dot" />
+          </div>
+          <div className="opt-loading-text">
+            <span className="opt-loading-title">Loading SEO data...</span>
+            <div className="opt-loading-bar">
+              <div className="opt-loading-bar-fill" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
