@@ -33,7 +33,7 @@ interface BusinessInfo {
   lng?: number;
 }
 
-export function LocalCitations() {
+export function LocalCitationsInner() {
   const { t } = useLanguage();
   const [citations, setCitations] = useState<Citation[]>([]);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
@@ -102,7 +102,8 @@ export function LocalCitations() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="citations-container">
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t('seo.localCitations')}</h1>
         <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">
@@ -203,6 +204,11 @@ export function LocalCitations() {
           </tbody>
         </table>
       </section>
+      </div>
     </div>
   );
+}
+
+export function LocalCitations() {
+  return <LocalCitationsInner />;
 }

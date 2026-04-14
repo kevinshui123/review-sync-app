@@ -784,7 +784,8 @@ export function Optimization() {
           min-height: calc(100vh - 200px);
         }
 
-        .opt-container { padding: 24px; max-width: 1200px; overflow-x: hidden; }
+        .opt-container { padding: 24px 24px 24px 280px; max-width: 100%; overflow-x: hidden; box-sizing: border-box; }
+        @media (max-width: 1023px) { .opt-container { padding-left: 24px; } }
 
         .opt-header {
           display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;

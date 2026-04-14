@@ -406,6 +406,13 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
           height: 100%;
           display: flex;
           flex-direction: column;
+          padding-left: 256px;
+        }
+
+        @media (max-width: 1023px) {
+          .reviews-container {
+            padding-left: 0;
+          }
         }
 
         .reviews-header {
@@ -435,6 +442,34 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
         .reviews-count {
           font-size: 13px;
           color: var(--color-text-muted);
+        }
+
+        .reviews-layout {
+          flex: 1;
+          display: grid;
+          grid-template-columns: 200px 1fr 400px;
+          overflow: hidden;
+          min-height: 0;
+        }
+
+        @media (max-width: 1200px) {
+          .reviews-layout {
+            grid-template-columns: 180px 1fr;
+          }
+          .reviews-detail { display: none; }
+        }
+
+        @media (max-width: 768px) {
+          .reviews-layout {
+            grid-template-columns: 1fr;
+          }
+          .reviews-sidebar { display: none; }
+        }
+
+        @media (min-width: 1024px) {
+          .reviews-layout {
+            grid-template-columns: 200px 1fr 400px;
+          }
         }
 
         .sync-message {
@@ -496,27 +531,6 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
 
         .subnav-btn.active .subnav-badge {
           background: rgba(255,255,255,0.3);
-        }
-
-        .reviews-layout {
-          flex: 1;
-          display: grid;
-          grid-template-columns: 200px 1fr 400px;
-          overflow: hidden;
-        }
-
-        @media (max-width: 1200px) {
-          .reviews-layout {
-            grid-template-columns: 180px 1fr;
-          }
-          .reviews-detail { display: none; }
-        }
-
-        @media (max-width: 768px) {
-          .reviews-layout {
-            grid-template-columns: 1fr;
-          }
-          .reviews-sidebar { display: none; }
         }
 
         .reviews-sidebar {

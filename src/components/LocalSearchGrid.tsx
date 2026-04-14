@@ -322,7 +322,8 @@ export function LocalSearchGrid() {
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .lsg-container { padding: 24px; overflow-x: hidden; max-width: 100%; }
+        .lsg-container { padding: 24px 24px 24px 280px; overflow-x: hidden; max-width: 100%; }
+        @media (max-width: 1023px) { .lsg-container { padding-left: 24px; } }
         .lsg-header { margin-bottom: 20px; }
         .lsg-title {
           font-family: var(--font-headline); font-size: 20px; font-weight: 700; color: var(--color-text-primary);
@@ -359,7 +360,7 @@ export function LocalSearchGrid() {
         .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-text-muted); }
         .legend-dot { width: 10px; height: 10px; border-radius: 999px; }
 
-        .map-container { border-radius: 8px; overflow: hidden; }
+        .map-container { border-radius: 8px; overflow: hidden; max-width: 100%; box-sizing: border-box; }
 
         .table-container { overflow-x: auto; }
         .table tbody tr.selected { background: var(--color-primary-muted); }

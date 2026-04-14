@@ -381,7 +381,8 @@ ${photoContext}
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="real-comment-container">
+      <div className="animate-fade-in">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -852,6 +853,7 @@ ${photoContext}
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -356,6 +356,23 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
         }
 
         /* ============================================
+           SEO PAGES LAYOUT
+           ============================================ */
+        .real-comment-container,
+        .citations-container {
+          padding: 24px 24px 24px 280px;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 1023px) {
+          .real-comment-container,
+          .citations-container {
+            padding-left: 24px;
+          }
+        }
+
+        /* ============================================
            LEGACY PAGE LOADER STYLES
            ============================================ */
       `}</style>
