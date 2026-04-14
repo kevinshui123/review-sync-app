@@ -586,6 +586,13 @@ export function Reviews({ setActiveTab }: ReviewsProps) {
           flex-direction: column;
           overflow: hidden;
           background: var(--color-surface);
+          padding-left: 256px;
+        }
+
+        @media (max-width: 1023px) {
+          .reviews-list {
+            padding-left: 0;
+          }
         }
 
         .reviews-list-header {

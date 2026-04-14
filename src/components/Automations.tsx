@@ -619,8 +619,14 @@ export function Automations({ setActiveTab }: AutomationsProps) {
 
       <style>{`
         .automations-page {
-          padding: 28px 32px 48px;
+          padding: 28px 32px 48px 280px;
           max-width: 1100px;
+        }
+
+        @media (max-width: 1023px) {
+          .automations-page {
+            padding-left: 32px;
+          }
         }
 
         /* Header */

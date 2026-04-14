@@ -486,7 +486,13 @@ export function SEO({ setActiveTab, activeSection: externalActiveSection, setAct
         .seo-content {
           flex: 1;
           overflow-y: auto;
-          padding: 24px;
+          padding: 24px 24px 24px 280px;
+        }
+
+        @media (max-width: 1023px) {
+          .seo-content {
+            padding-left: 24px;
+          }
         }
 
         .section-header-row {

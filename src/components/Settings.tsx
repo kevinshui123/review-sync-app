@@ -370,8 +370,14 @@ export function Settings() {
         }
 
         .settings-container {
-          padding: 24px;
+          padding: 24px 24px 24px 280px;
           max-width: 900px;
+        }
+
+        @media (max-width: 1023px) {
+          .settings-container {
+            padding-left: 24px;
+          }
         }
 
         .settings-header {

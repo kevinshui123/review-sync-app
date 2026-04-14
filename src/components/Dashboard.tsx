@@ -482,9 +482,15 @@ export function Dashboard({ setActiveTab }: DashboardProps) {
 
       <style>{`
         .dashboard-container {
-          padding: 24px;
+          padding: 24px 24px 24px 280px;
           max-width: 1600px;
           margin: 0 auto;
+        }
+
+        @media (max-width: 1023px) {
+          .dashboard-container {
+            padding-left: 24px;
+          }
         }
 
         .dashboard-header {
