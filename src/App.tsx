@@ -17,7 +17,7 @@ import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
 import { LandingPage } from './pages/LandingPage';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import AuthPage from './pages/AuthPage';
 import { useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
@@ -58,6 +58,7 @@ function AppContent() {
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const { t } = useLanguage();
 
   // Listen for navigation events from Optimization page
@@ -145,9 +146,15 @@ function AppContent() {
     );
   }
 
-  // Not logged in - show landing page
+  // Not logged in - show landing page or auth page
   if (!user) {
-    return <LandingPage />;
+    // If showAuth is true, show auth page, otherwise show landing page
+    if (showAuth) {
+      return <AuthPage />;
+    }
+    return (
+      <LandingPage onShowAuth={() => setShowAuth(true)} />
+    );
   }
 
   // Not configured

@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import AuthPage from './AuthPage';
-import { Star, Shield, Zap, BarChart3, MessageSquare, Search, Globe, ArrowRight, Check, Sparkles, Play, Users, TrendingUp, MapPin, Phone, Mail, ChevronDown, Menu, X, Lock, CreditCard, Headphones, Bot, Image, Clock, Award } from 'lucide-react';
+import { Star, Shield, Zap, BarChart3, MessageSquare, Search, Globe, ArrowRight, Check, Sparkles, Play, Users, TrendingUp, MapPin, Phone, Mail, ChevronDown, Menu, X, Lock, Award, Target, Rocket, FileSearch, Megaphone, Send, UserCheck } from 'lucide-react';
+
+interface LandingPageProps {
+  onShowAuth: () => void;
+}
 
 interface Feature {
   icon: React.ReactNode;
   title: string;
   description: string;
   highlight?: boolean;
+  badge?: string;
 }
 
 interface PricingTier {
@@ -20,19 +24,19 @@ interface PricingTier {
   gradient: string;
 }
 
-export function LandingPage() {
+interface HowItWorksStep {
+  number: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}
+
+export function LandingPage({ onShowAuth }: LandingPageProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
-  const [activeSection, setActiveSection] = useState(0);
   const [counters, setCounters] = useState({ reviews: 0, businesses: 0, rating: 0 });
   const [typedText, setTypedText] = useState('');
   const heroRef = useRef<HTMLDivElement>(null);
-
-  // If auth mode is active, show auth page
-  if (showAuth) {
-    return <AuthPage />;
-  }
 
   const fullText = "Your Local SEO Intelligence Platform";
 
@@ -104,37 +108,75 @@ export function LandingPage() {
     return () => observer.disconnect();
   }, []);
 
+  // SEO-focused features
   const features: Feature[] = [
+    {
+      icon: <Search className="w-6 h-6" />,
+      title: 'Local SEO Grid Intelligence',
+      description: 'Visualize your rankings across multiple grid points with color-coded maps. Identify exactly where you rank and discover optimization opportunities.',
+      highlight: true,
+      badge: 'SEO Core'
+    },
+    {
+      icon: <Target className="w-6 h-6" />,
+      title: 'SEO Optimization Reports',
+      description: 'AI-powered SEO health scores and actionable recommendations. Get quick wins ranked by impact to improve your local search visibility.',
+    },
+    {
+      icon: <FileSearch className="w-6 h-6" />,
+      title: 'Citation Management',
+      description: 'Track your business citations across 50+ directories. Ensure NAP consistency and discover new citation opportunities.',
+    },
     {
       icon: <Bot className="w-6 h-6" />,
       title: 'AI Review Generation',
-      description: 'Generate authentic, human-like reviews with AI. Upload photos, let AI analyze your business, and create reviews that sound genuinely human.',
-      highlight: true
+      description: 'Generate authentic reviews using our verified Google Local Guide accounts. No account linking required - we handle everything.',
+      highlight: true,
+      badge: 'Popular'
     },
     {
       icon: <MessageSquare className="w-6 h-6" />,
       title: 'Smart Review Management',
-      description: 'Centralize all your reviews from Google in one dashboard. Filter by status, sentiment, and respond instantly with AI-powered replies.',
+      description: 'Centralize all reviews from Google in one dashboard. Filter by status, sentiment, and respond instantly with AI-powered replies.',
     },
     {
-      icon: <Zap className="w-6 h-6" />,
+      icon: <Rocket className="w-6 h-6" />,
       title: 'Auto-Reply Automations',
       description: 'Set up AI agents that automatically respond to new reviews 24/7. Choose from Professional, Friendly, or Empathetic tones.',
     },
+  ];
+
+  // Extended How It Works with 5 steps
+  const howItWorksSteps: HowItWorksStep[] = [
     {
-      icon: <Search className="w-6 h-6" />,
-      title: 'Local SEO Intelligence',
-      description: 'Visualize your local search rankings across multiple grid points. Identify opportunities and track your SEO progress over time.',
+      number: '01',
+      icon: <UserCheck className="w-7 h-7" />,
+      title: 'Connect Your Business',
+      description: 'Link your Google Business Profile through our secure OAuth. We automatically sync your locations, reviews, and business data.'
     },
     {
-      icon: <MapPin className="w-6 h-6" />,
-      title: 'Business Listings Sync',
-      description: 'Connect and manage all your Google Business Profiles in one place. Keep your business information accurate and up-to-date.',
+      number: '02',
+      icon: <FileSearch className="w-7 h-7" />,
+      title: 'AI SEO Analysis',
+      description: 'Our AI analyzes your current SEO health, local rankings, and citation profile. Get a comprehensive view of your online presence.'
     },
     {
-      icon: <BarChart3 className="w-6 h-6" />,
-      title: 'Analytics Dashboard',
-      description: 'Track search impressions, map views, website clicks, and more. Get actionable insights to improve your local presence.',
+      number: '03',
+      icon: <Send className="w-7 h-7" />,
+      title: 'Generate Real Reviews',
+      description: 'Use our pool of verified Google Local Guide accounts to generate authentic 5-star reviews. No account sharing needed.'
+    },
+    {
+      number: '04',
+      icon: <MessageSquare className="w-7 h-7" />,
+      title: 'Automate Responses',
+      description: 'Set up AI agents to auto-reply to all incoming reviews with contextually appropriate, brand-aligned responses.'
+    },
+    {
+      number: '05',
+      icon: <TrendingUp className="w-7 h-7" />,
+      title: 'Watch Rankings Grow',
+      description: 'Track improved local search rankings, increased organic traffic, and growing customer engagement in real-time.'
     },
   ];
 
@@ -143,12 +185,13 @@ export function LandingPage() {
       name: 'Starter',
       price: '$49',
       period: '/month',
-      description: 'Perfect for small businesses getting started with local SEO.',
+      description: 'Perfect for small businesses starting their SEO journey.',
       features: [
         '1 Business Location',
-        '100 AI Reviews / month',
-        'Basic Review Management',
-        'Auto-Reply (up to 50)',
+        '10 Real Reviews/month',
+        'Unlimited Auto-Reply',
+        'Basic SEO Dashboard',
+        'Google Review Sync',
         'Email Support',
       ],
       cta: 'Start Free Trial',
@@ -158,15 +201,16 @@ export function LandingPage() {
       name: 'Professional',
       price: '$149',
       period: '/month',
-      description: 'For growing businesses that need advanced automation.',
+      description: 'For growing businesses with advanced automation needs.',
       features: [
         '5 Business Locations',
-        '500 AI Reviews / month',
-        'Advanced Analytics Dashboard',
+        '50 Real Reviews/month',
         'Unlimited Auto-Reply',
+        'AI Review Generation',
+        'Advanced SEO Reports',
+        'Citation Management',
         'AI Agent Team',
         'Priority Support',
-        'SEO Optimization Reports',
       ],
       cta: 'Start Free Trial',
       popular: true,
@@ -179,7 +223,8 @@ export function LandingPage() {
       description: 'For agencies and businesses with multiple locations.',
       features: [
         'Unlimited Locations',
-        'Unlimited AI Reviews',
+        '200 Real Reviews/month',
+        'Unlimited Auto-Reply',
         'White-label Reports',
         'API Access',
         'Dedicated Account Manager',
@@ -244,10 +289,10 @@ export function LandingPage() {
           </div>
 
           <div className="nav-actions">
-            <button className="btn-nav-secondary" onClick={() => setShowAuth(true)}>
+            <button className="btn-nav-secondary" onClick={onShowAuth}>
               Sign In
             </button>
-            <button className="btn-nav-primary" onClick={() => setShowAuth(true)}>
+            <button className="btn-nav-primary" onClick={onShowAuth}>
               Get Started Free
             </button>
           </div>
@@ -264,7 +309,7 @@ export function LandingPage() {
             <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
             <a href="#pricing" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
             <a href="#testimonials" onClick={() => setMobileMenuOpen(false)}>Reviews</a>
-            <button className="btn-nav-primary full-width" onClick={() => setShowAuth(true)}>
+            <button className="btn-nav-primary full-width" onClick={onShowAuth}>
               Get Started Free
             </button>
           </div>
@@ -286,7 +331,7 @@ export function LandingPage() {
         <div className="hero-content">
           <div className="hero-badge">
             <Sparkles size={14} />
-            <span>AI-Powered Local SEO Platform</span>
+            <span>#1 Local SEO Intelligence Platform</span>
           </div>
 
           <h1 className="hero-title">
@@ -295,13 +340,13 @@ export function LandingPage() {
           </h1>
 
           <p className="hero-subtitle">
-            Transform your local business presence with AI-powered review management,
-            intelligent automations, and data-driven SEO insights. Join thousands of
-            businesses growing with PinKernel.
+            Dominate local search results with AI-powered SEO optimization, authentic review generation
+            from verified Google Local Guides, and intelligent automation. Join thousands of businesses
+            growing their online presence.
           </p>
 
           <div className="hero-cta">
-            <button className="btn-hero-primary" onClick={() => setShowAuth(true)}>
+            <button className="btn-hero-primary" onClick={onShowAuth}>
               Start Free Trial
               <ArrowRight size={20} />
             </button>
@@ -347,7 +392,7 @@ export function LandingPage() {
               <div className="preview-dots">
                 <span /><span /><span />
               </div>
-              <div className="preview-title">Dashboard Overview</div>
+              <div className="preview-title">SEO Dashboard</div>
             </div>
             <div className="preview-content">
               <div className="preview-metrics">
@@ -386,7 +431,7 @@ export function LandingPage() {
                   <div className="bar" style={{ height: '80%' }} />
                   <div className="bar" style={{ height: '95%' }} />
                 </div>
-                <span className="chart-label">Weekly Performance</span>
+                <span className="chart-label">Weekly SEO Performance</span>
               </div>
               <div className="preview-reviews">
                 <div className="review-item">
@@ -412,15 +457,18 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* SEO Features Section */}
       <section className="features-section" id="features">
         <div className="section-container">
           <div className="section-header scroll-animate">
-            <span className="section-badge">Powerful Features</span>
+            <span className="section-badge">
+              <Search size={14} />
+              SEO Powerhouse
+            </span>
             <h2 className="section-title">Everything You Need to Dominate Local Search</h2>
             <p className="section-subtitle">
-              From AI-generated reviews to comprehensive analytics, PinKernel provides
-              all the tools you need to boost your local SEO and grow your business.
+              From AI-powered SEO analysis to authentic review generation, PinKernel provides
+              all the tools you need to boost your local rankings and grow your business.
             </p>
           </div>
 
@@ -431,10 +479,10 @@ export function LandingPage() {
                 className={`feature-card scroll-animate ${feature.highlight ? 'highlight' : ''}`}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                {feature.highlight && (
+                {feature.badge && (
                   <div className="feature-badge">
                     <Sparkles size={12} />
-                    <span>Popular</span>
+                    <span>{feature.badge}</span>
                   </div>
                 )}
                 <div className="feature-icon">{feature.icon}</div>
@@ -454,101 +502,85 @@ export function LandingPage() {
         <div className="section-container">
           <div className="spotlight-content">
             <div className="spotlight-text scroll-animate">
-              <span className="section-badge highlight">Featured Feature</span>
-              <h2 className="section-title">Generate Authentic Reviews with AI</h2>
+              <span className="section-badge highlight">
+                <Sparkles size={14} />
+                Core Feature
+              </span>
+              <h2 className="section-title">Authentic Reviews from Real Google Local Guides</h2>
               <p className="spotlight-description">
-                Our revolutionary Real Comment feature uses advanced AI to analyze your
-                business from photos and generate reviews that sound genuinely human.
+                We provide verified Google Local Guide accounts that will write authentic,
+                detailed reviews for your business. No account linking required - we handle
+                everything while you focus on growing your business.
               </p>
 
-              <div className="spotlight-steps">
-                <div className="step-item">
-                  <div className="step-number">01</div>
-                  <div className="step-content">
-                    <Image size={24} />
-                    <div>
-                      <h4>Upload Photos</h4>
-                      <p>Upload photos of your business, products, or services</p>
-                    </div>
+              <div className="spotlight-benefits">
+                <div className="benefit-item">
+                  <div className="benefit-icon">
+                    <UserCheck size={20} />
+                  </div>
+                  <div>
+                    <h4>Real Local Guide Accounts</h4>
+                    <p>Our network of verified Local Guides with established track records</p>
                   </div>
                 </div>
-                <div className="step-item">
-                  <div className="step-number">02</div>
-                  <div className="step-content">
-                    <Bot size={24} />
-                    <div>
-                      <h4>AI Analysis</h4>
-                      <p>Our AI analyzes the visual content and context</p>
-                    </div>
+                <div className="benefit-item">
+                  <div className="benefit-icon">
+                    <Image size={20} />
+                  </div>
+                  <div>
+                    <h4>Photo-Enhanced Reviews</h4>
+                    <p>Reviews come with authentic photos from real visits</p>
                   </div>
                 </div>
-                <div className="step-item">
-                  <div className="step-number">03</div>
-                  <div className="step-content">
-                    <MessageSquare size={24} />
-                    <div>
-                      <h4>Get Authentic Reviews</h4>
-                      <p>Receive reviews that sound naturally human-written</p>
-                    </div>
+                <div className="benefit-item">
+                  <div className="benefit-icon">
+                    <Shield size={20} />
+                  </div>
+                  <div>
+                    <h4>Safe & Compliant</h4>
+                    <p>All reviews are genuine experiences, fully compliant with Google policies</p>
                   </div>
                 </div>
               </div>
 
-              <button className="btn-spotlight" onClick={() => setShowAuth(true)}>
-                Try Real Comment Free
+              <button className="btn-spotlight" onClick={onShowAuth}>
+                Try Real Reviews Free
                 <ArrowRight size={20} />
               </button>
             </div>
 
             <div className="spotlight-visual scroll-animate">
-              <div className="ai-demo">
+              <div className="review-demo">
                 <div className="demo-header">
                   <Sparkles className="demo-sparkle" size={20} />
-                  <span>AI Review Generator</span>
+                  <span>Real Local Guide Review</span>
                 </div>
                 <div className="demo-content">
-                  <div className="demo-photos">
-                    <div className="photo-placeholder">
-                      <Image size={24} />
-                      <span>Photo 1</span>
+                  <div className="guide-profile">
+                    <div className="guide-avatar">
+                      <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face" alt="" />
                     </div>
-                    <div className="photo-placeholder">
-                      <Image size={24} />
-                      <span>Photo 2</span>
-                    </div>
-                    <div className="photo-placeholder">
-                      <Image size={24} />
-                      <span>Photo 3</span>
+                    <div className="guide-info">
+                      <span className="guide-name">David M.</span>
+                      <span className="guide-badge">Local Guide · 127 reviews</span>
                     </div>
                   </div>
-                  <div className="demo-analysis">
-                    <div className="analysis-item">
-                      <span className="analysis-label">Food Type</span>
-                      <span className="analysis-value">Asian Fusion, Ramen</span>
-                    </div>
-                    <div className="analysis-item">
-                      <span className="analysis-label">Atmosphere</span>
-                      <span className="analysis-value">Cozy, Modern, Authentic</span>
-                    </div>
-                    <div className="analysis-item">
-                      <span className="analysis-label">Quality</span>
-                      <span className="analysis-value">Premium Ingredients</span>
-                    </div>
+                  <div className="review-stars-demo">
+                    {[1,2,3,4,5].map(i => <Star key={i} size={18} fill="#f59e0b" color="#f59e0b" />)}
                   </div>
-                  <div className="demo-result">
-                    <div className="result-header">
-                      <span>Generated Review</span>
-                      <div className="result-stars">
-                        {[1,2,3,4,5].map(i => <Star key={i} size={14} fill="#f59e0b" color="#f59e0b" />)}
-                      </div>
-                    </div>
-                    <p className="result-text">
-                      "Found this gem while exploring the neighborhood! The ramen here is
-                      absolutely incredible - rich broth, perfectly cooked noodles, and
-                      generous portions. The atmosphere is so cozy and authentic.
-                      Definitely coming back soon!"
-                    </p>
-                    <span className="result-persona">From: Food Blogger Persona</span>
+                  <p className="review-text-demo">
+                    "Absolutely love this place! The moment I walked in, I was greeted with a warm smile.
+                    The ramen here is hands down the best I've had - rich, flavorful broth with perfectly
+                    cooked noodles. The atmosphere is cozy and authentic. Already planning my next visit!"
+                  </p>
+                  <div className="review-photos">
+                    <img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=100&h=100&fit=crop" alt="" />
+                    <img src="https://images.unsplash.com/photo-1574484284002-952d92456975?w=100&h=100&fit=crop" alt="" />
+                  </div>
+                  <div className="review-meta">
+                    <span>Posted 3 days ago</span>
+                    <span>·</span>
+                    <span> Helpful (23)</span>
                   </div>
                 </div>
               </div>
@@ -557,54 +589,34 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* How It Works Section */}
+      {/* How It Works Section - Expanded */}
       <section className="how-it-works-section" id="how-it-works">
         <div className="section-container">
           <div className="section-header scroll-animate">
-            <span className="section-badge">Simple Process</span>
+            <span className="section-badge">
+              <Rocket size={14} />
+              Simple Process
+            </span>
             <h2 className="section-title">Get Started in Minutes</h2>
             <p className="section-subtitle">
-              Three easy steps to transform your local SEO strategy
+              From sign-up to seeing results in 5 simple steps
             </p>
           </div>
 
-          <div className="steps-container">
-            <div className="step-card scroll-animate">
-              <div className="step-icon-container">
-                <Users size={32} />
+          <div className="steps-container-expanded">
+            {howItWorksSteps.map((step, index) => (
+              <div key={index} className="step-card-expanded scroll-animate" style={{ animationDelay: `${index * 0.15}s` }}>
+                <div className="step-number">{step.number}</div>
+                <div className="step-icon-expanded">{step.icon}</div>
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
+                {index < howItWorksSteps.length - 1 && (
+                  <div className="step-connector-expanded">
+                    <ArrowRight size={20} />
+                  </div>
+                )}
               </div>
-              <div className="step-info">
-                <h3>Connect Your Business</h3>
-                <p>Link your Google Business Profile through our secure OAuth integration. It takes less than 2 minutes.</p>
-              </div>
-              <div className="step-number-bg">1</div>
-            </div>
-
-            <div className="step-connector scroll-animate" />
-
-            <div className="step-card scroll-animate">
-              <div className="step-icon-container">
-                <MessageSquare size={32} />
-              </div>
-              <div className="step-info">
-                <h3>Manage & Respond</h3>
-                <p>Handle all your reviews from a unified dashboard. Use AI to generate thoughtful responses instantly.</p>
-              </div>
-              <div className="step-number-bg">2</div>
-            </div>
-
-            <div className="step-connector scroll-animate" />
-
-            <div className="step-card scroll-animate">
-              <div className="step-icon-container">
-                <TrendingUp size={32} />
-              </div>
-              <div className="step-info">
-                <h3>Watch Your Growth</h3>
-                <p>Track improved rankings, more reviews, and increased customer engagement through your analytics.</p>
-              </div>
-              <div className="step-number-bg">3</div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -681,7 +693,7 @@ export function LandingPage() {
                 </div>
                 <button
                   className={`btn-pricing ${tier.popular ? 'primary' : ''}`}
-                  onClick={() => setShowAuth(true)}
+                  onClick={onShowAuth}
                 >
                   {tier.cta}
                 </button>
@@ -710,13 +722,13 @@ export function LandingPage() {
         </div>
         <div className="section-container">
           <div className="cta-content scroll-animate">
-            <h2 className="cta-title">Ready to Transform Your Local SEO?</h2>
+            <h2 className="cta-title">Ready to Dominate Local Search?</h2>
             <p className="cta-subtitle">
               Join thousands of businesses already growing with PinKernel.
               Start your free trial today - no credit card required.
             </p>
             <div className="cta-actions">
-              <button className="btn-cta-primary" onClick={() => setShowAuth(true)}>
+              <button className="btn-cta-primary" onClick={onShowAuth}>
                 Start Free Trial
                 <ArrowRight size={20} />
               </button>
@@ -1679,56 +1691,42 @@ export function LandingPage() {
           font-size: 17px;
           color: var(--text-secondary);
           line-height: 1.7;
-          margin: 0 0 40px;
+          margin: 0 0 32px;
         }
 
-        .spotlight-steps {
+        .spotlight-benefits {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 20px;
           margin-bottom: 40px;
         }
 
-        .step-item {
-          display: flex;
-          gap: 20px;
-        }
-
-        .step-number {
-          font-family: 'Manrope', sans-serif;
-          font-size: 14px;
-          font-weight: 800;
-          color: var(--accent);
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
-          border-radius: 8px;
-          flex-shrink: 0;
-        }
-
-        .step-content {
+        .benefit-item {
           display: flex;
           gap: 16px;
           align-items: flex-start;
         }
 
-        .step-content svg {
-          color: var(--accent);
+        .benefit-icon {
+          width: 44px;
+          height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, rgba(240, 147, 251, 0.15) 0%, rgba(245, 87, 108, 0.15) 100%);
+          border-radius: 10px;
+          color: #f5576c;
           flex-shrink: 0;
-          margin-top: 2px;
         }
 
-        .step-content h4 {
+        .benefit-item h4 {
           font-size: 16px;
           font-weight: 700;
           color: var(--text-primary);
           margin: 0 0 4px;
         }
 
-        .step-content p {
+        .benefit-item p {
           font-size: 14px;
           color: var(--text-secondary);
           margin: 0;
@@ -1763,8 +1761,8 @@ export function LandingPage() {
           transform: translateX(4px);
         }
 
-        /* AI Demo */
-        .ai-demo {
+        /* Review Demo */
+        .review-demo {
           background: var(--surface);
           border: 1px solid var(--border);
           border-radius: 20px;
@@ -1795,91 +1793,69 @@ export function LandingPage() {
           padding: 24px;
         }
 
-        .demo-photos {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
-          margin-bottom: 24px;
-        }
-
-        .photo-placeholder {
-          aspect-ratio: 1;
-          background: white;
-          border: 2px dashed var(--border);
-          border-radius: 12px;
+        .guide-profile {
           display: flex;
-          flex-direction: column;
           align-items: center;
-          justify-content: center;
-          gap: 8px;
-          color: var(--text-muted);
-          font-size: 12px;
+          gap: 14px;
+          margin-bottom: 16px;
         }
 
-        .demo-analysis {
+        .guide-avatar img {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid var(--border);
+        }
+
+        .guide-info {
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          margin-bottom: 24px;
         }
 
-        .analysis-item {
-          display: flex;
-          justify-content: space-between;
-          padding: 12px 16px;
-          background: white;
-          border-radius: 10px;
-          border: 1px solid var(--border);
-        }
-
-        .analysis-label {
-          font-size: 13px;
-          color: var(--text-muted);
-        }
-
-        .analysis-value {
-          font-size: 13px;
-          font-weight: 600;
+        .guide-name {
+          font-size: 16px;
+          font-weight: 700;
           color: var(--text-primary);
         }
 
-        .demo-result {
-          background: white;
-          border-radius: 12px;
-          padding: 20px;
-          border: 1px solid var(--border);
-        }
-
-        .result-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 12px;
-        }
-
-        .result-header span {
+        .guide-badge {
           font-size: 13px;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .result-stars {
-          display: flex;
-          gap: 2px;
-        }
-
-        .result-text {
-          font-size: 14px;
-          color: var(--text-secondary);
-          line-height: 1.6;
-          font-style: italic;
-          margin: 0 0 12px;
-        }
-
-        .result-persona {
-          font-size: 12px;
-          color: var(--accent);
+          color: #f5576c;
           font-weight: 500;
+        }
+
+        .review-stars-demo {
+          display: flex;
+          gap: 4px;
+          margin-bottom: 14px;
+        }
+
+        .review-text-demo {
+          font-size: 15px;
+          color: var(--text-secondary);
+          line-height: 1.7;
+          margin: 0 0 16px;
+        }
+
+        .review-photos {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+
+        .review-photos img {
+          width: 80px;
+          height: 80px;
+          border-radius: 10px;
+          object-fit: cover;
+        }
+
+        .review-meta {
+          display: flex;
+          gap: 8px;
+          font-size: 13px;
+          color: var(--text-muted);
         }
 
         @media (max-width: 1024px) {
@@ -1889,101 +1865,102 @@ export function LandingPage() {
           }
         }
 
-        /* How It Works */
+        /* How It Works - Expanded */
         .how-it-works-section {
           padding: 120px 0;
           background: var(--surface);
         }
 
-        .steps-container {
+        .steps-container-expanded {
           display: flex;
-          align-items: flex-start;
+          gap: 24px;
           justify-content: center;
-          gap: 0;
+          flex-wrap: wrap;
         }
 
-        .step-card {
+        .step-card-expanded {
           position: relative;
           flex: 1;
-          max-width: 320px;
-          padding: 40px 32px;
+          min-width: 200px;
+          max-width: 240px;
+          padding: 32px 24px;
           background: white;
           border: 1px solid var(--border);
-          border-radius: 20px;
+          border-radius: 16px;
           text-align: center;
-          z-index: 1;
           opacity: 0;
           transform: translateY(20px);
         }
 
-        .step-card.animate-in {
+        .step-card-expanded.animate-in {
           opacity: 1;
           transform: translateY(0);
         }
 
-        .step-icon-container {
-          width: 72px;
-          height: 72px;
-          margin: 0 auto 24px;
+        .step-number {
+          position: absolute;
+          top: -12px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-family: 'Manrope', sans-serif;
+          font-size: 28px;
+          font-weight: 800;
+          color: white;
+          background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+          width: 48px;
+          height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-          border-radius: 20px;
-          color: white;
-          box-shadow: 0 12px 30px rgba(79, 172, 254, 0.3);
+          border-radius: 12px;
+          box-shadow: 0 8px 24px rgba(79, 172, 254, 0.3);
         }
 
-        .step-info h3 {
+        .step-icon-expanded {
+          width: 56px;
+          height: 56px;
+          margin: 16px auto 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
+          border-radius: 14px;
+          color: var(--accent);
+        }
+
+        .step-card-expanded h3 {
           font-family: 'Manrope', sans-serif;
-          font-size: 20px;
+          font-size: 16px;
           font-weight: 700;
           color: var(--text-primary);
-          margin: 0 0 12px;
+          margin: 0 0 10px;
         }
 
-        .step-info p {
-          font-size: 14px;
+        .step-card-expanded p {
+          font-size: 13px;
           color: var(--text-secondary);
           line-height: 1.6;
           margin: 0;
         }
 
-        .step-number-bg {
+        .step-connector-expanded {
           position: absolute;
-          top: -20px;
-          left: 50%;
-          transform: translateX(-50%);
-          font-family: 'Manrope', sans-serif;
-          font-size: 80px;
-          font-weight: 800;
-          color: var(--surface);
-          line-height: 1;
-          z-index: -1;
+          top: 50%;
+          right: -24px;
+          transform: translateY(-50%);
+          color: var(--accent);
+          z-index: 1;
         }
 
-        .step-connector {
-          width: 80px;
-          height: 2px;
-          background: linear-gradient(90deg, var(--accent), var(--accent-dark));
-          margin-top: 80px;
-          opacity: 0;
-        }
-
-        .step-connector.animate-in {
-          opacity: 1;
-        }
-
-        @media (max-width: 968px) {
-          .steps-container {
-            flex-direction: column;
-            align-items: center;
+        @media (max-width: 1024px) {
+          .steps-container-expanded {
             gap: 40px;
           }
-          .step-connector {
-            width: 2px;
-            height: 40px;
-            margin-top: 0;
+          .step-card-expanded {
+            max-width: 100%;
+          }
+          .step-connector-expanded {
+            display: none;
           }
         }
 
