@@ -309,12 +309,13 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
         }
 
         .page-container {
-          padding: 24px 24px 24px 280px;
+          padding: 84px 24px 24px 280px;
         }
 
         @media (max-width: 1023px) {
           .page-container {
             padding-left: 24px;
+            padding-top: 84px;
           }
         }
 
@@ -671,7 +672,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
 
         @media (max-width: 768px) {
           .page-container {
-            padding: 16px;
+            padding: 84px 16px 16px;
           }
         }
       `}</style>

@@ -115,10 +115,10 @@ const CONTENT_TEMPLATES = [
 
 // Step definitions for workflow
 const WORKFLOW_STEPS = [
-  { id: 'account', label: '账号', icon: AccountCircle },
-  { id: 'publish', label: '发布', icon: Publish },
-  { id: 'comments', label: '评论', icon: Comment },
-  { id: 'monitor', label: '监控', icon: LocalFireDepartment },
+  { id: 'account', labelKey: 'rednote.step.account', icon: AccountCircle },
+  { id: 'publish', labelKey: 'rednote.step.publish', icon: Publish },
+  { id: 'comments', labelKey: 'rednote.step.comments', icon: Comment },
+  { id: 'monitor', labelKey: 'rednote.step.monitor', icon: LocalFireDepartment },
 ];
 
 export function RedNoteSEO() {
@@ -653,7 +653,7 @@ ${contextPrompt}
                     </div>
                     <span className={`text-sm font-medium ${
                       isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
-                    }`}>{step.label}</span>
+                    }`}>{t(step.labelKey)}</span>
                   </button>
                   
                   {index < WORKFLOW_STEPS.length - 1 && (

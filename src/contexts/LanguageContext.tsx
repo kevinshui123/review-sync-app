@@ -481,6 +481,12 @@ const translations: Record<Language, Record<string, string>> = {
     'rednote.topicHeat': 'Topic Heat',
     'rednote.noResults': 'No results found',
 
+    // Workflow steps
+    'rednote.step.account': 'Account',
+    'rednote.step.publish': 'Publish',
+    'rednote.step.comments': 'Comments',
+    'rednote.step.monitor': 'Monitor',
+
     // Real Comment AI Generation
     'realComment.aiGenerate': 'AI Generate Review',
     'realComment.aiGenerating': 'Generating unique review...',
@@ -1220,6 +1226,12 @@ const translations: Record<Language, Record<string, string>> = {
     'rednote.relatedNotes': '相关笔记',
     'rednote.topicHeat': '话题热度',
     'rednote.noResults': '暂无结果',
+
+    // Workflow steps
+    'rednote.step.account': '账号',
+    'rednote.step.publish': '发布',
+    'rednote.step.comments': '评论',
+    'rednote.step.monitor': '监控',
 
     // Real Comment AI Generation
     'realComment.aiGenerate': 'AI 生成评价',
