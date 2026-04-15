@@ -4,7 +4,7 @@ import { authMiddleware } from './auth.js';
 
 const router = Router();
 
-const PYTHON_BIN = '/root/.local/bin/python3';
+const PYTHON_BIN = '/app/venv/bin/python3';
 const SPIDER_XHS_PATH = '/app/spider_xhs';
 
 function getCookies(): string {

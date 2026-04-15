@@ -35,8 +35,9 @@ RUN npm install --force
 # Clone Spider_XHS from GitHub
 RUN git clone https://github.com/cv-cat/Spider_XHS.git /app/spider_xhs
 
-# Install Spider_XHS dependencies (loguru, requests, cv2, numpy)
-RUN uv pip install --system -r /app/spider_xhs/requirements.txt
+# Create venv and install Spider_XHS dependencies
+RUN uv venv /app/venv && \
+    uv pip install --python /app/venv loguru requests opencv-python-headless numpy Pillow
 
 # Copy source code
 COPY . .
