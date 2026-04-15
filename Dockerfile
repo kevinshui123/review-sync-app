@@ -25,6 +25,9 @@ ENV CACHE_BUST=20240414_1
 # Copy package files
 COPY package.json ./
 
+# Copy prisma schema first (needed for postinstall)
+COPY prisma ./prisma/
+
 # Install dependencies (including devDependencies for build)
 # Force fresh install to avoid any stale cache
 RUN npm install --force
