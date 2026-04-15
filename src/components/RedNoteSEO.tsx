@@ -586,15 +586,15 @@ ${contextPrompt}
     <div className="rednote-seo-page animate-fade-in">
       <style>{`
         .rednote-seo-page {
-          padding: 16px 20px 24px;
-          max-width: 1600px;
+          padding: 12px 16px 24px;
+          max-width: 1400px;
           margin: 0 auto;
         }
         .rednote-seo-page .page-header {
-          margin-bottom: 16px;
+          margin-bottom: 12px;
         }
         .rednote-seo-page .page-title {
-          font-size: 1.25rem;
+          font-size: 1.1rem;
           margin-bottom: 2px;
         }
         .rednote-seo-page .page-subtitle {
@@ -604,22 +604,22 @@ ${contextPrompt}
           border-radius: 10px;
         }
         .rednote-seo-page .card-body {
-          padding: 16px;
+          padding: 12px;
         }
         .rednote-seo-page .card-header {
-          padding: 12px 16px;
+          padding: 10px 12px;
         }
         .rednote-seo-page .card-header .heading {
-          font-size: 14px;
+          font-size: 13px;
         }
         .rednote-seo-page .mb-6 {
-          margin-bottom: 16px;
-        }
-        .rednote-seo-page .mb-4 {
           margin-bottom: 12px;
         }
+        .rednote-seo-page .mb-4 {
+          margin-bottom: 8px;
+        }
         .rednote-seo-page .gap-6 {
-          gap: 16px;
+          gap: 12px;
         }
         .rednote-seo-page .lg\\:col-span-2 {
           grid-column: span 2;
@@ -628,41 +628,41 @@ ${contextPrompt}
           grid-column: span 3;
         }
         .rednote-seo-page .step-icon {
-          width: 40px !important;
-          height: 40px !important;
+          width: 32px !important;
+          height: 32px !important;
         }
         .rednote-seo-page .step-icon svg {
-          width: 20px !important;
-          height: 20px !important;
+          width: 16px !important;
+          height: 16px !important;
         }
         .rednote-seo-page .step-label {
-          font-size: 12px !important;
+          font-size: 10px !important;
         }
         .rednote-seo-page .stat-card {
-          padding: 12px !important;
+          padding: 8px !important;
         }
         .rednote-seo-page .stat-value {
-          font-size: 1.1rem !important;
+          font-size: 1rem !important;
         }
         .rednote-seo-page .empty-state {
-          padding: 24px 0 !important;
+          padding: 16px 0 !important;
         }
         .rednote-seo-page .empty-state-title {
-          font-size: 15px !important;
+          font-size: 13px !important;
         }
         .rednote-seo-page .empty-state-description {
-          font-size: 12px !important;
+          font-size: 11px !important;
         }
         .rednote-seo-page .heading.text-lg {
-          font-size: 14px;
+          font-size: 13px;
         }
         .rednote-seo-page .btn-lg {
-          padding: 8px 16px;
-          font-size: 13px;
+          padding: 6px 12px;
+          font-size: 12px;
         }
         @media (max-width: 1023px) {
           .rednote-seo-page {
-            padding: 12px 16px;
+            padding: 8px 12px;
           }
           .rednote-seo-page .lg\\:col-span-2,
           .rednote-seo-page .lg\\:col-span-3 {
@@ -671,18 +671,18 @@ ${contextPrompt}
         }
         @media (max-width: 640px) {
           .rednote-seo-page {
-            padding: 8px 12px;
+            padding: 6px 8px;
           }
           .rednote-seo-page .step-icon {
-            width: 32px !important;
-            height: 32px !important;
+            width: 28px !important;
+            height: 28px !important;
           }
           .rednote-seo-page .step-icon svg {
-            width: 16px !important;
-            height: 16px !important;
+            width: 14px !important;
+            height: 14px !important;
           }
           .rednote-seo-page .step-label {
-            font-size: 10px !important;
+            font-size: 9px !important;
           }
         }
       `}</style>
@@ -743,14 +743,14 @@ ${contextPrompt}
                     onClick={() => setActiveSection(step.id as any)}
                     className={`flex flex-col items-center gap-2 group`}
                   >
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all step-icon ${
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all step-icon ${
                       isActive
                         ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/30'
                         : isPast
                         ? 'bg-[var(--color-success)] text-white'
                         : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] group-hover:bg-[var(--color-border)]'
                     }`}>
-                      {isPast ? <CheckCircle style={{ width: 20, height: 20 }} /> : <Icon style={{ width: 20, height: 20 }} />}
+                      {isPast ? <CheckCircle style={{ width: 16, height: 16 }} /> : <Icon style={{ width: 16, height: 16 }} />}
                     </div>
                     <span className={`text-xs font-medium step-label ${
                       isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
