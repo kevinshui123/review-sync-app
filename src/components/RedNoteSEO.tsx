@@ -584,7 +584,7 @@ ${contextPrompt}
   const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.id === activeSection);
 
   return (
-    <div className="page-container page-container-header animate-fade-in">
+    <div className="page-container animate-fade-in">
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up ${
