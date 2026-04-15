@@ -249,14 +249,14 @@ export function RedNoteSEO() {
       setLoginLoading(true);
       const res = await apiPost('/api/xhs/login', {});
       if (res.ok) {
-        showToast('success', '登录成功！');
+        showToast('success', t('rednote.loginSuccess'));
         await checkStatus();
       } else {
         const err = await res.json();
-        showToast('error', err.error || '登录失败');
+        showToast('error', err.error || t('rednote.loginFailed'));
       }
     } catch (error) {
-      showToast('error', '登录失败');
+      showToast('error', t('rednote.loginFailed'));
     } finally {
       setLoginLoading(false);
     }
@@ -312,18 +312,18 @@ ${contextPrompt}
               body: parsed.body || prev.body,
               topics: parsed.topics || prev.topics,
             }));
-            showToast('success', 'AI内容已生成');
+            showToast('success', t('rednote.aiGenerated'));
           } catch {
             setPublishForm(prev => ({
               ...prev,
               body: data.replies.professional,
             }));
-            showToast('success', 'AI内容已生成');
+            showToast('success', t('rednote.aiGenerated'));
           }
         }
       }
     } catch (error) {
-      showToast('error', 'AI生成失败');
+      showToast('error', t('rednote.aiGenerateFailed'));
     } finally {
       setAiGenerating(false);
     }
@@ -385,8 +385,8 @@ ${contextPrompt}
 
   // Publish note
   const handlePublish = async () => {
-    if (!publishForm.title.trim() || !publishForm.body.trim()) {
-      showToast('error', '标题和正文不能为空');
+      if (!publishForm.title.trim() || !publishForm.body.trim()) {
+      showToast('error', t('rednote.titleBodyRequired'));
       return;
     }
 
@@ -400,15 +400,15 @@ ${contextPrompt}
       });
 
       if (res.ok) {
-        showToast('success', '发布成功！');
+        showToast('success', t('rednote.publishSuccess'));
         setPublishForm({ title: '', body: '', topics: [], images: [] });
         syncUserData();
       } else {
         const err = await res.json();
-        showToast('error', err.error || '发布失败');
+        showToast('error', err.error || t('rednote.publishFailed'));
       }
     } catch (error) {
-      showToast('error', '发布失败');
+      showToast('error', t('rednote.publishFailed'));
     } finally {
       setPublishing(false);
     }
@@ -426,7 +426,7 @@ ${contextPrompt}
         setSearchResults(data.data?.items || data.data?.notes || []);
       }
     } catch (error) {
-      showToast('error', '搜索失败');
+      showToast('error', t('rednote.searchFailed'));
     } finally {
       setLoading(false);
     }
@@ -444,7 +444,7 @@ ${contextPrompt}
         setComments(data.data?.comments || data.data?.items || []);
       }
     } catch (error) {
-      showToast('error', '获取评论失败');
+      showToast('error', t('rednote.getCommentsFailed'));
     } finally {
       setCommentsLoading(false);
     }
@@ -462,14 +462,14 @@ ${contextPrompt}
       
       const res = await apiPost('/api/xhs/reply', { noteId, commentId, content });
       if (res.ok) {
-        showToast('success', '回复成功！');
+        showToast('success', t('rednote.replySuccess'));
         setReplyText(prev => ({ ...prev, [commentId || '']: '' }));
         if (noteId) handleGetComments({ noteId, id: noteId } as XHSNote);
       } else {
-        showToast('error', '回复失败');
+        showToast('error', t('rednote.replyFailed'));
       }
     } catch (error) {
-      showToast('error', '回复失败');
+      showToast('error', t('rednote.replyFailed'));
     } finally {
       setSubmittingReply(null);
     }
@@ -486,13 +486,12 @@ ${contextPrompt}
         const data = await res.json();
         setMonitorResults(data.data?.items || data.data?.notes || []);
         
-        // Add to history
         if (!monitorHistory.includes(monitorKeyword)) {
           setMonitorHistory(prev => [monitorKeyword, ...prev].slice(0, 10));
         }
       }
     } catch (error) {
-      showToast('error', '搜索失败');
+      showToast('error', t('rednote.searchFailed'));
     } finally {
       setLoading(false);
     }
@@ -510,7 +509,7 @@ ${contextPrompt}
         setTopicResults(data.data?.topics || data.data?.items || []);
       }
     } catch (error) {
-      showToast('error', '话题搜索失败');
+      showToast('error', t('rednote.topicSearchFailed'));
     } finally {
       setLoading(false);
     }
@@ -535,18 +534,18 @@ ${contextPrompt}
   // Delete note
   const handleDeleteNote = async (note: XHSNote) => {
     const noteId = note.noteId || note.id;
-    if (!confirm('确定要删除这篇笔记吗？')) return;
+    if (!confirm(t('rednote.confirmDelete'))) return;
 
     try {
       const res = await apiPost(`/api/xhs/delete/${noteId}`, { confirm: true });
       if (res.ok) {
-        showToast('success', '删除成功');
+        showToast('success', t('rednote.deleteSuccess'));
         fetchMyNotes();
       } else {
-        showToast('error', '删除失败');
+        showToast('error', t('rednote.deleteFailed'));
       }
     } catch (error) {
-      showToast('error', '删除失败');
+      showToast('error', t('rednote.deleteFailed'));
     }
   };
 
@@ -556,17 +555,17 @@ ${contextPrompt}
     try {
       const res = await apiPost('/api/xhs/like', { noteId, undo });
       if (res.ok) {
-        showToast('success', undo ? '已取消点赞' : '已点赞');
+        showToast('success', undo ? t('rednote.undoLike') : t('rednote.liked'));
       }
     } catch (error) {
-      showToast('error', '操作失败');
+      showToast('error', t('rednote.operationFailed'));
     }
   };
 
   // Copy content
   const handleCopyContent = (text: string) => {
     navigator.clipboard.writeText(text);
-    showToast('info', '已复制到剪贴板');
+    showToast('info', t('rednote.copySuccess'));
   };
 
   // Format number
@@ -584,7 +583,109 @@ ${contextPrompt}
   const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.id === activeSection);
 
   return (
-    <div className="page-container animate-fade-in">
+    <div className="rednote-seo-page animate-fade-in">
+      <style>{`
+        .rednote-seo-page {
+          padding: 16px 20px 24px;
+          max-width: 1600px;
+          margin: 0 auto;
+        }
+        .rednote-seo-page .page-header {
+          margin-bottom: 16px;
+        }
+        .rednote-seo-page .page-title {
+          font-size: 1.25rem;
+          margin-bottom: 2px;
+        }
+        .rednote-seo-page .page-subtitle {
+          font-size: 12px;
+        }
+        .rednote-seo-page .card {
+          border-radius: 10px;
+        }
+        .rednote-seo-page .card-body {
+          padding: 16px;
+        }
+        .rednote-seo-page .card-header {
+          padding: 12px 16px;
+        }
+        .rednote-seo-page .card-header .heading {
+          font-size: 14px;
+        }
+        .rednote-seo-page .mb-6 {
+          margin-bottom: 16px;
+        }
+        .rednote-seo-page .mb-4 {
+          margin-bottom: 12px;
+        }
+        .rednote-seo-page .gap-6 {
+          gap: 16px;
+        }
+        .rednote-seo-page .lg\\:col-span-2 {
+          grid-column: span 2;
+        }
+        .rednote-seo-page .lg\\:col-span-3 {
+          grid-column: span 3;
+        }
+        .rednote-seo-page .step-icon {
+          width: 40px !important;
+          height: 40px !important;
+        }
+        .rednote-seo-page .step-icon svg {
+          width: 20px !important;
+          height: 20px !important;
+        }
+        .rednote-seo-page .step-label {
+          font-size: 12px !important;
+        }
+        .rednote-seo-page .stat-card {
+          padding: 12px !important;
+        }
+        .rednote-seo-page .stat-value {
+          font-size: 1.1rem !important;
+        }
+        .rednote-seo-page .empty-state {
+          padding: 24px 0 !important;
+        }
+        .rednote-seo-page .empty-state-title {
+          font-size: 15px !important;
+        }
+        .rednote-seo-page .empty-state-description {
+          font-size: 12px !important;
+        }
+        .rednote-seo-page .heading.text-lg {
+          font-size: 14px;
+        }
+        .rednote-seo-page .btn-lg {
+          padding: 8px 16px;
+          font-size: 13px;
+        }
+        @media (max-width: 1023px) {
+          .rednote-seo-page {
+            padding: 12px 16px;
+          }
+          .rednote-seo-page .lg\\:col-span-2,
+          .rednote-seo-page .lg\\:col-span-3 {
+            grid-column: span 1;
+          }
+        }
+        @media (max-width: 640px) {
+          .rednote-seo-page {
+            padding: 8px 12px;
+          }
+          .rednote-seo-page .step-icon {
+            width: 32px !important;
+            height: 32px !important;
+          }
+          .rednote-seo-page .step-icon svg {
+            width: 16px !important;
+            height: 16px !important;
+          }
+          .rednote-seo-page .step-label {
+            font-size: 10px !important;
+          }
+        }
+      `}</style>
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up ${
@@ -628,9 +729,9 @@ ${contextPrompt}
       </div>
 
       {/* Step Indicator */}
-      <div className="card mb-6">
+      <div className="card mb-4">
         <div className="card-body">
-          <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <div className="flex items-center justify-between max-w-lg mx-auto">
             {WORKFLOW_STEPS.map((step, index) => {
               const Icon = step.icon;
               const isActive = activeSection === step.id;
@@ -642,16 +743,16 @@ ${contextPrompt}
                     onClick={() => setActiveSection(step.id as any)}
                     className={`flex flex-col items-center gap-2 group`}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-                      isActive 
-                        ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/30' 
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all step-icon ${
+                      isActive
+                        ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/30'
                         : isPast
                         ? 'bg-[var(--color-success)] text-white'
                         : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] group-hover:bg-[var(--color-border)]'
                     }`}>
-                      {isPast ? <CheckCircle style={{ width: 24, height: 24 }} /> : <Icon style={{ width: 24, height: 24 }} />}
+                      {isPast ? <CheckCircle style={{ width: 20, height: 20 }} /> : <Icon style={{ width: 20, height: 20 }} />}
                     </div>
-                    <span className={`text-sm font-medium ${
+                    <span className={`text-xs font-medium step-label ${
                       isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
                     }`}>{t(step.labelKey)}</span>
                   </button>
@@ -670,7 +771,7 @@ ${contextPrompt}
 
       {/* Account Section */}
       {activeSection === 'account' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-in">
           {/* Status Card */}
           <div className="lg:col-span-2 card">
             <div className="card-header">
@@ -678,82 +779,82 @@ ${contextPrompt}
             </div>
             <div className="card-body">
               {!xhsInstalled ? (
-                <div className="flex items-start gap-4 p-4 bg-[var(--color-warning-bg)] rounded-xl">
-                  <Warning style={{ width: 24, height: 24, color: 'var(--color-warning)' }} />
+                <div className="flex items-start gap-4 p-3 bg-[var(--color-warning-bg)] rounded-xl">
+                  <Warning style={{ width: 20, height: 20, color: 'var(--color-warning)' }} />
                   <div className="flex-1">
-                    <h4 className="font-semibold text-[var(--color-warning-text)] mb-1">XHS CLI 未安装</h4>
-                    <p className="text-sm text-[var(--color-text-secondary)] mb-3">
-                      请在服务器上运行以下命令安装小红书 CLI：
+                    <h4 className="font-semibold text-[var(--color-warning-text)] mb-1 text-sm">{t('rednote.notInstalled')}</h4>
+                    <p className="text-xs text-[var(--color-text-secondary)] mb-2">
+                      {t('rednote.notInstalledDesc')}
                     </p>
-                    <code className="block bg-[var(--color-surface)] px-4 py-2 rounded-lg text-sm font-mono">
-                      uv tool install xiaohongshu-cli
+                    <code className="block bg-[var(--color-surface)] px-3 py-1.5 rounded-lg text-xs font-mono">
+                      {t('rednote.installCommand')}
                     </code>
                   </div>
                 </div>
               ) : !loggedIn ? (
-                <div className="text-center py-8">
-                  <div className="w-20 h-20 rounded-2xl bg-[var(--color-surface)] flex items-center justify-center mx-auto mb-4">
-                    <AccountCircle style={{ width: 48, height: 48, color: 'var(--color-text-disabled)' }} />
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 rounded-2xl bg-[var(--color-surface)] flex items-center justify-center mx-auto mb-3">
+                    <AccountCircle style={{ width: 36, height: 36, color: 'var(--color-text-disabled)' }} />
                   </div>
-                  <h3 className="heading text-lg mb-2">{t('rednote.connectAccount')}</h3>
-                  <p className="text-[var(--color-text-muted)] mb-6 max-w-sm mx-auto">
+                  <h3 className="heading text-base mb-1">{t('rednote.connectAccount')}</h3>
+                  <p className="text-[var(--color-text-muted)] mb-4 max-w-sm mx-auto text-xs">
                     {t('rednote.notLoggedInDesc')}
                   </p>
                   <button
                     onClick={handleLogin}
                     disabled={loginLoading}
-                    className="btn btn-primary btn-lg"
+                    className="btn btn-primary btn-sm"
                   >
                     {loginLoading ? (
                       <>
-                        <Loader2 style={{ width: 20, height: 20 }} className="animate-spin" />
+                        <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
                         {t('rednote.login')}...
                       </>
                     ) : (
                       <>
-                        <Login style={{ width: 20, height: 20 }} />
+                        <Login style={{ width: 14, height: 14 }} />
                         {t('rednote.loginFromChrome')}
                       </>
                     )}
                   </button>
                 </div>
               ) : (
-                <div className="flex items-start gap-6">
-                  <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[var(--color-primary-muted)] flex-shrink-0">
+                <div className="flex items-start gap-4">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-[var(--color-primary-muted)] flex-shrink-0">
                     {user?.avatar ? (
                       <img src={user.avatar} alt={user.nickname} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[var(--color-primary)]">
+                      <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-[var(--color-primary)]">
                         {user?.nickname?.[0]?.toUpperCase() || 'U'}
                       </div>
                     )}
                   </div>
                   <div className="flex-1">
-                    <h3 className="heading text-xl mb-1">{user?.nickname || '小红书用户'}</h3>
+                    <h3 className="heading text-base mb-0.5">{user?.nickname || t('rednote.defaultNickname')}</h3>
                     {user?.redId && (
-                      <p className="text-sm text-[var(--color-text-muted)] mb-4">小红书号：{user.redId}</p>
+                      <p className="text-xs text-[var(--color-text-muted)] mb-2">{t('rednote.redId')} {user.redId}</p>
                     )}
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="stat-card !p-4">
-                        <div className="stat-value text-xl">{formatNumber(user?.followers)}</div>
-                        <div className="stat-label">粉丝</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="stat-card !p-2">
+                        <div className="stat-value text-base">{formatNumber(user?.followers)}</div>
+                        <div className="stat-label text-xs">{t('rednote.followers')}</div>
                       </div>
-                      <div className="stat-card !p-4">
-                        <div className="stat-value text-xl">{formatNumber(user?.following)}</div>
-                        <div className="stat-label">关注</div>
+                      <div className="stat-card !p-2">
+                        <div className="stat-value text-base">{formatNumber(user?.following)}</div>
+                        <div className="stat-label text-xs">{t('rednote.following')}</div>
                       </div>
-                      <div className="stat-card !p-4">
-                        <div className="stat-value text-xl">{formatNumber(user?.likes)}</div>
-                        <div className="stat-label">获赞</div>
+                      <div className="stat-card !p-2">
+                        <div className="stat-value text-base">{formatNumber(user?.likes)}</div>
+                        <div className="stat-label text-xs">{t('rednote.likes')}</div>
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={() => { checkStatus(); syncUserData(); }}
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm self-start"
                   >
-                    <Refresh style={{ width: 16, height: 16 }} />
-                    刷新
+                    <Refresh style={{ width: 12, height: 12 }} />
+                    {t('rednote.refresh')}
                   </button>
                 </div>
               )}
@@ -763,48 +864,48 @@ ${contextPrompt}
           {/* Quick Stats */}
           <div className="card">
             <div className="card-header">
-              <h3 className="heading text-lg">{t('rednote.dataOverview')}</h3>
+              <h3 className="heading text-sm">{t('rednote.dataOverview')}</h3>
             </div>
-            <div className="card-body space-y-4">
-              <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--color-primary-muted)] flex items-center justify-center">
-                    <Publish style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
+            <div className="card-body space-y-2">
+              <div className="flex items-center justify-between p-2 bg-[var(--color-surface)] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-md bg-[var(--color-primary-muted)] flex items-center justify-center">
+                    <Publish style={{ width: 14, height: 14, color: 'var(--color-primary)' }} />
                   </div>
-                  <span className="font-medium">{t('rednote.notesPublished')}</span>
+                  <span className="text-xs font-medium">{t('rednote.notesPublished')}</span>
                 </div>
-                <span className="text-xl font-bold">{myNotes.length}</span>
+                <span className="text-base font-bold">{myNotes.length}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--color-success-bg)] flex items-center justify-center">
-                    <ThumbUp style={{ width: 20, height: 20, color: 'var(--color-success)' }} />
+              <div className="flex items-center justify-between p-2 bg-[var(--color-surface)] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-md bg-[var(--color-success-bg)] flex items-center justify-center">
+                    <ThumbUp style={{ width: 14, height: 14, color: 'var(--color-success)' }} />
                   </div>
-                  <span className="font-medium">{t('rednote.totalLikes')}</span>
+                  <span className="text-xs font-medium">{t('rednote.totalLikes')}</span>
                 </div>
-                <span className="text-xl font-bold">
+                <span className="text-base font-bold">
                   {formatNumber(myNotes.reduce((sum, n) => sum + (n.likedCount || 0), 0))}
                 </span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--color-accent-muted)] flex items-center justify-center">
-                    <Favorite style={{ width: 20, height: 20, color: 'var(--color-accent)' }} />
+              <div className="flex items-center justify-between p-2 bg-[var(--color-surface)] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-md bg-[var(--color-accent-muted)] flex items-center justify-center">
+                    <Favorite style={{ width: 14, height: 14, color: 'var(--color-accent)' }} />
                   </div>
-                  <span className="font-medium">{t('rednote.totalCollections')}</span>
+                  <span className="text-xs font-medium">{t('rednote.totalCollections')}</span>
                 </div>
-                <span className="text-xl font-bold">
+                <span className="text-base font-bold">
                   {formatNumber(myNotes.reduce((sum, n) => sum + (n.collectedCount || 0), 0))}
                 </span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--color-warning-bg)] flex items-center justify-center">
-                    <Chat style={{ width: 20, height: 20, color: 'var(--color-warning)' }} />
+              <div className="flex items-center justify-between p-2 bg-[var(--color-surface)] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-md bg-[var(--color-warning-bg)] flex items-center justify-center">
+                    <Chat style={{ width: 14, height: 14, color: 'var(--color-warning)' }} />
                   </div>
-                  <span className="font-medium">{t('rednote.totalComments')}</span>
+                  <span className="text-xs font-medium">{t('rednote.totalComments')}</span>
                 </div>
-                <span className="text-xl font-bold">
+                <span className="text-base font-bold">
                   {formatNumber(myNotes.reduce((sum, n) => sum + (n.commentCount || 0), 0))}
                 </span>
               </div>
@@ -814,7 +915,7 @@ ${contextPrompt}
           {/* My Notes */}
           <div className="lg:col-span-3 card">
             <div className="card-header flex items-center justify-between">
-              <h3 className="heading text-lg">{t('rednote.myNotes')}</h3>
+              <h3 className="heading text-sm">{t('rednote.myNotes')}</h3>
               <button
                 onClick={fetchMyNotes}
                 disabled={myNotesLoading}
@@ -842,7 +943,7 @@ ${contextPrompt}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-[var(--color-text-primary)] truncate mb-2">
-                            {note.title || '无标题'}
+                            {note.title || t('rednote.noTitle')}
                           </h4>
                           <div className="flex items-center gap-4 text-sm text-[var(--color-text-muted)]">
                             <span className="flex items-center gap-1">
@@ -882,7 +983,7 @@ ${contextPrompt}
             <div className="card-header">
               <h3 className="heading text-lg flex items-center gap-2">
                 <AutoAwesome style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
-                AI 智能生成
+                AI {t('rednote.aiSmartGenerate')}
               </h3>
             </div>
             <div className="card-body space-y-6">
@@ -911,7 +1012,7 @@ ${contextPrompt}
                   type="text"
                   value={publishForm.title}
                   onChange={e => setPublishForm(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="输入商家/品牌名称作为参考..."
+                  placeholder={t('rednote.businessNamePlaceholder')}
                   className="input flex-1"
                 />
                 <button
@@ -924,7 +1025,7 @@ ${contextPrompt}
                   ) : (
                     <AutoAwesome style={{ width: 18, height: 18 }} />
                   )}
-                  {aiGenerating ? '生成中...' : 'AI 生成'}
+                  {aiGenerating ? t('rednote.aiGenerating') : t('rednote.aiGenerate')}
                 </button>
               </div>
             </div>
@@ -933,33 +1034,33 @@ ${contextPrompt}
           {/* Publish Form */}
           <div className="card">
             <div className="card-header">
-              <h3 className="heading text-lg">编辑内容</h3>
+              <h3 className="heading text-base">{t('rednote.editContent')}</h3>
             </div>
             <div className="card-body space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">标题</label>
+                <label className="block text-xs font-medium mb-1">{t('rednote.contentTitle')}</label>
                 <input
                   type="text"
                   value={publishForm.title}
                   onChange={e => setPublishForm(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="输入笔记标题..."
+                  placeholder={t('rednote.titlePlaceholder')}
                   className="input"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">正文</label>
+                <label className="block text-xs font-medium mb-1">{t('rednote.contentBody')}</label>
                 <textarea
                   value={publishForm.body}
                   onChange={e => setPublishForm(prev => ({ ...prev, body: e.target.value }))}
-                  rows={6}
-                  placeholder="输入笔记正文内容..."
+                  rows={5}
+                  placeholder={t('rednote.bodyPlaceholder')}
                   className="input resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">话题标签</label>
+                <label className="block text-xs font-medium mb-1">{t('rednote.topics')}</label>
                 <div className="flex flex-wrap gap-2">
                   {PRESET_TOPICS.slice(0, 8).map(topic => (
                     <button
@@ -978,13 +1079,13 @@ ${contextPrompt}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">图片 ({publishForm.images.length}/9)</label>
+                <label className="block text-xs font-medium mb-1">{t('rednote.imageUpload')} ({publishForm.images.length}/9)</label>
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all ${
                     dragOver
                       ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)]'
                       : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'
@@ -998,8 +1099,8 @@ ${contextPrompt}
                     onChange={e => handleFileSelect(e.target.files)}
                     className="hidden"
                   />
-                  <CameraAlt style={{ width: 32, height: 32, color: 'var(--color-text-disabled)' }} className="mx-auto mb-2" />
-                  <p className="text-sm text-[var(--color-text-muted)]">拖拽图片或点击上传</p>
+                  <CameraAlt style={{ width: 24, height: 24, color: 'var(--color-text-disabled)' }} className="mx-auto mb-1" />
+                  <p className="text-xs text-[var(--color-text-muted)]">{t('rednote.imageHint')}</p>
                 </div>
 
                 {publishForm.images.length > 0 && (
@@ -1019,24 +1120,24 @@ ${contextPrompt}
                 )}
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setPublishForm({ title: '', body: '', topics: [], images: [] })}
-                  className="btn btn-secondary flex-1"
+                  className="btn btn-secondary btn-sm flex-1"
                 >
-                  清空
+                  {t('rednote.clear')}
                 </button>
                 <button
                   onClick={handlePublish}
                   disabled={publishing || !publishForm.title.trim() || !publishForm.body.trim()}
-                  className="btn btn-primary flex-1"
+                  className="btn btn-primary btn-sm flex-1"
                 >
                   {publishing ? (
-                    <Loader2 style={{ width: 18, height: 18 }} className="animate-spin" />
+                    <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
                   ) : (
-                    <Send style={{ width: 18, height: 18 }} />
+                    <Send style={{ width: 14, height: 14 }} />
                   )}
-                  {publishing ? '发布中...' : '发布'}
+                  {publishing ? t('rednote.publishing') : t('rednote.publishBtn')}
                 </button>
               </div>
             </div>
@@ -1050,7 +1151,7 @@ ${contextPrompt}
           {/* Search */}
           <div className="card">
             <div className="card-header">
-              <h3 className="heading text-lg">搜索笔记</h3>
+              <h3 className="heading text-base">{t('rednote.searchNotes')}</h3>
             </div>
             <div className="card-body space-y-4">
               <div className="flex gap-2">
@@ -1059,7 +1160,7 @@ ${contextPrompt}
                   value={searchKeyword}
                   onChange={e => setSearchKeyword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  placeholder="输入关键词搜索..."
+                                    placeholder={t('rednote.searchPlaceholder')}
                   className="input flex-1"
                 />
                 <button onClick={handleSearch} disabled={loading} className="btn btn-primary">
@@ -1079,12 +1180,13 @@ ${contextPrompt}
                           : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'
                       }`}
                     >
-                      <h4 className="font-semibold truncate">{note.title || '无标题'}</h4>
-                      <div className="flex items-center gap-3 mt-2 text-sm text-[var(--color-text-muted)]">
-                        {note.user?.nickname && <span>@{note.user.nickname}</span>}
-                        <span>{formatNumber(note.likedCount)} 赞</span>
-                        <span>{formatNumber(note.commentCount)} 评论</span>
-                      </div>
+                          <h4 className="font-semibold truncate">{note.title || t('rednote.noTitle')}</h4>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-[var(--color-text-muted)]">
+                            {note.user?.nickname && <span>@{note.user.nickname}</span>
+                            }
+                            <span>{formatNumber(note.likedCount)} {t('rednote.likes')}</span>
+                            <span>{formatNumber(note.commentCount)} {t('rednote.comments')}</span>
+                          </div>
                     </button>
                   ))}
                 </div>
@@ -1095,26 +1197,26 @@ ${contextPrompt}
           {/* Comments */}
           <div className="card">
             <div className="card-header">
-              <h3 className="heading text-lg">评论详情</h3>
+              <h3 className="heading text-base">{t('rednote.commentDetail')}</h3>
               {selectedNote && (
-                <span className="text-sm text-[var(--color-text-muted)]">- {selectedNote.title || '无标题'}</span>
+                <span className="text-xs text-[var(--color-text-muted)]">- {selectedNote.title || t('rednote.noTitle')}</span>
               )}
             </div>
             <div className="card-body">
               {!selectedNote ? (
                 <div className="empty-state">
-                  <Chat style={{ width: 48, height: 48 }} className="empty-state-icon" />
-                  <h4 className="empty-state-title">选择一篇笔记</h4>
-                  <p className="empty-state-description">从左侧搜索并选择笔记查看评论</p>
+                  <Chat style={{ width: 40, height: 40 }} className="empty-state-icon" />
+                  <h4 className="empty-state-title">{t('rednote.selectNote')}</h4>
+                  <p className="empty-state-description">{t('rednote.selectNoteHint')}</p>
                 </div>
               ) : commentsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 style={{ width: 32, height: 32 }} className="animate-spin text-[var(--color-primary)]" />
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 style={{ width: 24, height: 24 }} className="animate-spin text-[var(--color-primary)]" />
                 </div>
               ) : comments.length === 0 ? (
                 <div className="empty-state">
-                  <Chat style={{ width: 48, height: 48 }} className="empty-state-icon" />
-                  <h4 className="empty-state-title">暂无评论</h4>
+                  <Chat style={{ width: 40, height: 40 }} className="empty-state-icon" />
+                  <h4 className="empty-state-title">{t('rednote.noComments')}</h4>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -1126,7 +1228,7 @@ ${contextPrompt}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold">{comment.userInfo?.nickname || '匿名用户'}</span>
+                            <span className="font-semibold">{comment.userInfo?.nickname || t('rednote.anonymousUser')}</span>
                             {comment.likeCount && comment.likeCount > 0 && (
                               <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
                                 <ThumbUp style={{ width: 12, height: 12 }} /> {comment.likeCount}
@@ -1143,7 +1245,7 @@ ${contextPrompt}
                                 ...prev,
                                 [comment.commentId || comment.id || '']: e.target.value
                               }))}
-                              placeholder="输入回复..."
+                              placeholder={t('rednote.replyPlaceholder')}
                               className="input flex-1 !py-2"
                             />
                             <button
@@ -1153,7 +1255,7 @@ ${contextPrompt}
                             >
                               {submittingReply === (comment.commentId || comment.id) ? (
                                 <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
-                              ) : '回复'}
+                              ) : t('rednote.reply')}
                             </button>
                           </div>
                         </div>
@@ -1174,8 +1276,8 @@ ${contextPrompt}
           <div className="card">
             <div className="card-header flex items-center justify-between">
               <h3 className="heading text-lg flex items-center gap-2">
-                <LocalFireDepartment style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
-                品牌监控
+                <LocalFireDepartment style={{ width: 16, height: 16, color: 'var(--color-primary)' }} />
+                {t('rednote.brandMonitor')}
               </h3>
             </div>
             <div className="card-body space-y-4">
@@ -1185,7 +1287,7 @@ ${contextPrompt}
                   value={monitorKeyword}
                   onChange={e => setMonitorKeyword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleMonitorSearch()}
-                  placeholder="输入品牌/竞品关键词..."
+                  placeholder={t('rednote.brandPlaceholder')}
                   className="input flex-1"
                 />
                 <button onClick={handleMonitorSearch} disabled={loading} className="btn btn-primary">
@@ -1195,8 +1297,8 @@ ${contextPrompt}
 
               {/* History */}
               {monitorHistory.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  <span className="text-sm text-[var(--color-text-muted)]">最近：</span>
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-xs text-[var(--color-text-muted)]">{t('rednote.recent')}</span>
                   {monitorHistory.map((keyword, idx) => (
                     <button
                       key={idx}
@@ -1212,13 +1314,13 @@ ${contextPrompt}
               {monitorResults.length > 0 && (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   <div className="text-sm text-[var(--color-text-muted)] mb-2">
-                    找到 {monitorResults.length} 篇相关笔记
+                    {t('rednote.relatedNotes').replace('{count}', String(monitorResults.length))}
                   </div>
                   {monitorResults.slice(0, 20).map((note, idx) => (
                     <div key={idx} className="p-4 bg-[var(--color-surface)] rounded-xl">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold truncate">{note.title || '无标题'}</h4>
+                          <h4 className="font-semibold truncate text-sm">{note.title || t('rednote.noTitle')}</h4>
                           <div className="flex items-center gap-3 mt-2 text-sm text-[var(--color-text-muted)]">
                             {note.user?.nickname && <span>@{note.user.nickname}</span>}
                             <span className="flex items-center gap-1">
@@ -1258,8 +1360,8 @@ ${contextPrompt}
           <div className="card">
             <div className="card-header">
               <h3 className="heading text-lg flex items-center gap-2">
-                <Tag style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
-                话题热度
+                <Tag style={{ width: 16, height: 16, color: 'var(--color-primary)' }} />
+                {t('rednote.topicHeat')}
               </h3>
             </div>
             <div className="card-body space-y-4">
@@ -1269,7 +1371,7 @@ ${contextPrompt}
                   value={topicSearch}
                   onChange={e => setTopicSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleTopicSearch()}
-                  placeholder="输入话题关键词..."
+                  placeholder={t('rednote.topicPlaceholder')}
                   className="input flex-1"
                 />
                 <button onClick={handleTopicSearch} disabled={loading} className="btn btn-primary">
@@ -1282,12 +1384,12 @@ ${contextPrompt}
                   {topicResults.map((topic, idx) => (
                     <div key={idx} className="p-4 bg-[var(--color-surface)] rounded-xl">
                       <div className="font-semibold truncate mb-1">
-                        #{topic.name || topic.tag || '未知话题'}
+                        #{topic.name || topic.tag || t('rednote.unknownTopic')}
                       </div>
                       {topic.noteCount && (
-                        <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                          <TrendingUp style={{ width: 14, height: 14 }} />
-                          {topic.noteCount.toLocaleString()} 笔记
+                        <div className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+                          <TrendingUp style={{ width: 12, height: 12 }} />
+                          {topic.noteCount.toLocaleString()} {t('rednote.notes')}
                         </div>
                       )}
                     </div>
