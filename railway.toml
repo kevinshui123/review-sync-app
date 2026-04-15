@@ -5,4 +5,4 @@
   startCommand = "node dist/server.js"
 
 [settings]
-  port = 8080
+  port = 3000

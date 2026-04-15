@@ -36,12 +36,12 @@ RUN npx prisma generate
 # Build the app
 RUN npm run build
 
-# Expose Railway's assigned port
-EXPOSE 8080
+# Expose port 3000 (Railway assigns 3000)
+EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8080/api/health || exit 1
+  CMD curl -f http://localhost:3000/api/health || exit 1
 
 # Start the server
 CMD ["node", "dist/server.js"]
