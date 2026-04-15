@@ -320,7 +320,7 @@ ${photoContext}
     }
 
     if (credits < 10) {
-      alert('Credits不足，请充值');
+      alert(t('realComment.creditsInsufficient'));
       return;
     }
 
@@ -364,7 +364,7 @@ ${photoContext}
       alert(t('realComment.successSubmitted'));
     } catch (error) {
       console.error('Failed to submit review:', error);
-      alert('提交失败，请重试');
+      alert(t('realComment.submitFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -408,9 +408,9 @@ ${photoContext}
       <div className="mb-8">
         <div className="flex items-center justify-center gap-4">
           {[
-            { step: 1, icon: <Camera className="w-5 h-5" />, label: '上传照片' },
-            { step: 2, icon: <AutoAwesome className="w-5 h-5" />, label: 'AI 分析' },
-            { step: 3, icon: <Edit className="w-5 h-5" />, label: '生成评论' },
+            { step: 1, icon: <Camera className="w-5 h-5" />, label: t('realComment.uploadPhotos') },
+            { step: 2, icon: <AutoAwesome className="w-5 h-5" />, label: t('realComment.aiAnalysisComplete') },
+            { step: 3, icon: <Edit className="w-5 h-5" />, label: t('realComment.reviewGenerated') },
           ].map((item, index) => (
             <React.Fragment key={item.step}>
               <div className="flex items-center gap-3">
@@ -449,8 +449,8 @@ ${photoContext}
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-4">
                   <Camera className="w-8 h-8 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">上传用餐照片</h2>
-                <p className="text-slate-500">上传您的用餐照片，AI将根据照片内容生成更精准的评论</p>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('realComment.uploadPhotos')}</h2>
+                <p className="text-slate-500">{t('realComment.uploadPhotosDesc')}</p>
               </div>
 
               {/* Upload Zone */}
@@ -478,10 +478,10 @@ ${photoContext}
                   <CloudUpload className="w-8 h-8 text-slate-400" />
                 </div>
                 <p className="text-lg font-semibold text-slate-700 mb-1">
-                  拖拽照片到此处，或点击上传
+                  {t('realComment.dragPhotosHere')}
                 </p>
                 <p className="text-sm text-slate-400">
-                  支持 JPG、PNG 格式，最多 5 张
+                  {t('realComment.supportedFormats')}
                 </p>
               </div>
 
@@ -490,13 +490,13 @@ ${photoContext}
                 <div className="mt-6">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-slate-700">
-                      已上传 {reviewPhotos.length}/5 张照片
+                      {t('realComment.uploadedCount').replace('{count}', String(reviewPhotos.length))}
                     </span>
                     <button
                       onClick={handleAddPhoto}
                       className="text-sm text-primary font-medium hover:underline"
                     >
-                      + 添加更多
+                      {t('realComment.addMore')}
                     </button>
                   </div>
                   <div className="grid grid-cols-5 gap-3">
@@ -525,7 +525,7 @@ ${photoContext}
                   onClick={skipPhotoStep}
                   className="px-6 py-3 text-slate-500 font-medium hover:text-slate-700 transition-colors"
                 >
-                  跳过，使用默认数据
+                  {t('realComment.skipDefaultData')}
                 </button>
                 <button
                   onClick={analyzePhotos}
@@ -535,12 +535,12 @@ ${photoContext}
                   {analyzingPhotos ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      AI 分析中...
+                      {t('realComment.aiAnalyzing')}
                     </>
                   ) : (
                     <>
                       <AutoAwesome className="w-5 h-5" />
-                      开始 AI 分析
+                      {t('realComment.startAIAnalysis')}
                       <ArrowForward className="w-5 h-5" />
                     </>
                   )}
@@ -558,8 +558,8 @@ ${photoContext}
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 flex items-center justify-center mx-auto mb-4">
                   <AutoAwesome className="w-8 h-8 text-purple-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">AI 分析完成</h2>
-                <p className="text-slate-500">基于您的照片，AI 已提取以下信息</p>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('realComment.aiAnalysisComplete')}</h2>
+                <p className="text-slate-500">{t('realComment.photoAnalysisComplete')}</p>
               </div>
 
               {/* Analysis Results */}
@@ -572,8 +572,8 @@ ${photoContext}
                         <span className="text-lg">🍜</span>
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-900">识别到的菜品</h3>
-                        <p className="text-xs text-slate-500">基于照片内容</p>
+                        <h3 className="font-bold text-slate-900">{t('realComment.detectedDishes')}</h3>
+                        <p className="text-xs text-slate-500">{t('realComment.fromPhotos')}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -592,8 +592,8 @@ ${photoContext}
                         <span className="text-lg">✨</span>
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-900">餐厅氛围</h3>
-                        <p className="text-xs text-slate-500">环境特征</p>
+                        <h3 className="font-bold text-slate-900">{t('realComment.restaurantAtmosphere')}</h3>
+                        <p className="text-xs text-slate-500">{t('realComment.environmentFeatures')}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -612,8 +612,8 @@ ${photoContext}
                         <TrendingUp className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-900">整体印象</h3>
-                        <p className="text-xs text-slate-500">AI 综合评价</p>
+                        <h3 className="font-bold text-slate-900">{t('realComment.overallImpression')}</h3>
+                        <p className="text-xs text-slate-500">{t('realComment.aiComprehensiveRating')}</p>
                       </div>
                     </div>
                     <p className="text-slate-700 font-medium">{photoAnalysis.overallVibe}</p>
@@ -654,7 +654,7 @@ ${photoContext}
                   className="flex items-center gap-2 px-6 py-3 text-slate-500 font-medium hover:text-slate-700 transition-colors"
                 >
                   <ArrowBack className="w-5 h-5" />
-                  重新上传
+                  {t('realComment.reupload')}
                 </button>
                 <button
                   onClick={handleGenerateAIReview}
@@ -664,12 +664,12 @@ ${photoContext}
                   {aiGeneratingReview ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      AI 生成中...
+                      {t('realComment.aiGenerating')}
                     </>
                   ) : (
                     <>
                       <AutoAwesome className="w-5 h-5" />
-                      生成评论
+                      {t('realComment.reviewGenerated')}
                       <ArrowForward className="w-5 h-5" />
                     </>
                   )}
@@ -687,8 +687,8 @@ ${photoContext}
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 flex items-center justify-center mx-auto mb-4">
                   <Edit className="w-8 h-8 text-green-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">评论已生成</h2>
-                <p className="text-slate-500">您可以编辑或直接提交</p>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('realComment.reviewGenerated')}</h2>
+                <p className="text-slate-500">{t('realComment.editOrSubmit')}</p>
               </div>
 
               {/* Persona Badge */}
@@ -696,7 +696,7 @@ ${photoContext}
                 <div className="flex items-center justify-center gap-2 mb-6">
                   <span className="text-2xl">{currentPersona.avatar}</span>
                   <span className="px-4 py-2 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">
-                    模拟角色: {currentPersona.name}
+                    {t('realComment.simulatedPersona')} {currentPersona.name}
                   </span>
                 </div>
               )}
@@ -721,14 +721,14 @@ ${photoContext}
                   onChange={(e) => setReviewContent(e.target.value)}
                   rows={6}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-5 text-slate-700 resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  placeholder="编辑您的评论..."
+                  placeholder={t('realComment.editReview')}
                 />
               </div>
 
               {/* Photos */}
               {reviewPhotos.length > 0 && (
                 <div className="mb-6">
-                  <p className="text-sm font-medium text-slate-700 mb-3">附加照片</p>
+                  <p className="text-sm font-medium text-slate-700 mb-3">{t('realComment.additionalPhotos')}</p>
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {reviewPhotos.map((photo, index) => (
                       <div key={index} className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0">
@@ -743,7 +743,7 @@ ${photoContext}
               <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-4 mb-8">
                 <div className="flex items-center gap-2 text-slate-600">
                   <Security className="w-5 h-5" />
-                  <span className="text-sm font-medium">提交消耗</span>
+                  <span className="text-sm font-medium">{t('realComment.submitCost')}</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-2xl font-bold text-amber-500">-10</span>
@@ -758,7 +758,7 @@ ${photoContext}
                   className="flex items-center gap-2 px-6 py-3 text-slate-500 font-medium hover:text-slate-700 transition-colors"
                 >
                   <ArrowBack className="w-5 h-5" />
-                  重新生成
+                  {t('realComment.reGenerate')}
                 </button>
                 <button
                   onClick={handleSubmitReview}
@@ -768,12 +768,12 @@ ${photoContext}
                   {submitting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      提交中...
+                      {t('realComment.submittingReview')}
                     </>
                   ) : (
                     <>
                       <Send className="w-5 h-5" />
-                      提交评论
+                      {t('realComment.submitReview')}
                     </>
                   )}
                 </button>
@@ -790,23 +790,23 @@ ${photoContext}
             <Zap className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-lg mb-1">使用提示</h3>
+            <h3 className="font-bold text-lg mb-1">{t('realComment.tipsTitle')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-300">
               <div className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
-                <span>上传清晰的用餐照片可获得更精准的AI分析</span>
+                <span>{t('realComment.tipClearPhotos')}</span>
               </div>
               <div className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
-                <span>生成的评论可以自由编辑，确保符合您的风格</span>
+                <span>{t('realComment.tipEditableReview')}</span>
               </div>
               <div className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
-                <span>提交后将消耗10 Credits</span>
+                <span>{t('realComment.tipSubmitCost')}</span>
               </div>
               <div className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
-                <span>支持多门店选择，适应不同场景</span>
+                <span>{t('realComment.tipMultiStore')}</span>
               </div>
             </div>
           </div>
@@ -818,7 +818,7 @@ ${photoContext}
         <div className="mt-8">
           <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
             <History className="w-5 h-5 text-slate-400" />
-            历史记录
+            {t('realComment.historyRecords')}
           </h2>
           <div className="space-y-3">
             {reviewHistory.slice(0, 5).map((task) => (
@@ -842,7 +842,7 @@ ${photoContext}
                     task.status === 'published' ? 'bg-green-50 text-green-600' :
                     task.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
                   }`}>
-                    {task.status === 'published' ? '已发布' : task.status === 'pending' ? '待处理' : '失败'}
+                    {task.status === 'published' ? t('realComment.statusPublished') : task.status === 'pending' ? t('realComment.statusPending') : t('realComment.statusFailed')}
                   </span>
                   <span className="text-xs text-slate-400">
                     {new Date(task.date).toLocaleDateString()}
