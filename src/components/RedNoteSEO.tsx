@@ -24,9 +24,12 @@ import {
   Warning,
   Edit,
   CameraAlt,
-  Brush,
+  ArrowForward,
+  ArrowBack,
+  MoreVert,
+  TrendingUp,
 } from '@mui/icons-material';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { apiGet, apiPost } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import { PageLoader } from './PageLoader';
@@ -57,6 +60,8 @@ interface XHSNote {
   commentCount?: number;
   shareCount?: number;
   time?: string;
+  lastUpdateTime?: string;
+  cover?: string;
   [key: string]: any;
 }
 
@@ -102,16 +107,25 @@ const PRESET_TOPICS = [
 ];
 
 const CONTENT_TEMPLATES = [
-  { label: '探店分享', icon: '📍', prompt: '分享你的探店体验，包括环境、菜品、服务等' },
-  { label: '好物推荐', icon: '✨', prompt: '推荐你喜欢的产品或服务' },
-  { label: '生活记录', icon: '📝', prompt: '记录日常生活中的小确幸' },
-  { label: '教程分享', icon: '📚', prompt: '分享你的技能或知识教程' },
+  { label: '探店分享', icon: '📍', desc: '分享探店体验，环境菜品服务' },
+  { label: '好物推荐', icon: '✨', desc: '推荐喜欢的产品或服务' },
+  { label: '生活记录', icon: '📝', desc: '记录日常生活中的小确幸' },
+  { label: '教程分享', icon: '📚', desc: '分享技能或知识教程' },
+];
+
+// Step definitions for workflow
+const WORKFLOW_STEPS = [
+  { id: 'account', label: '账号', icon: AccountCircle },
+  { id: 'publish', label: '发布', icon: Publish },
+  { id: 'comments', label: '评论', icon: Comment },
+  { id: 'monitor', label: '监控', icon: LocalFireDepartment },
 ];
 
 export function RedNoteSEO() {
   const { t } = useLanguage();
-  const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<'account' | 'publish' | 'comments' | 'monitor'>('account');
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   
   // Account state
   const [xhsInstalled, setXhsInstalled] = useState(false);
@@ -128,7 +142,6 @@ export function RedNoteSEO() {
   });
   const [publishing, setPublishing] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiContent, setAiContent] = useState<AIGeneratedContent | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -147,13 +160,24 @@ export function RedNoteSEO() {
   const [monitorResults, setMonitorResults] = useState<XHSNote[]>([]);
   const [topicSearch, setTopicSearch] = useState('');
   const [topicResults, setTopicResults] = useState<XHSTopic[]>([]);
+  const [monitorHistory, setMonitorHistory] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('xhs_monitor_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   
   // My notes
   const [myNotes, setMyNotes] = useState<XHSNote[]>([]);
   const [myNotesLoading, setMyNotesLoading] = useState(false);
   
-  // Toast/notification
+  // Toast notification
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  // Save monitor history
+  useEffect(() => {
+    localStorage.setItem('xhs_monitor_history', JSON.stringify(monitorHistory));
+  }, [monitorHistory]);
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', message: string) => {
     setToast({ type, message });
@@ -180,9 +204,44 @@ export function RedNoteSEO() {
     }
   }, []);
 
+  // Sync user data when logged in
+  const syncUserData = useCallback(async () => {
+    if (!loggedIn) return;
+    
+    setSyncing(true);
+    try {
+      // Get whoami data
+      const whoamiRes = await apiGet('/api/xhs/whoami');
+      if (whoamiRes.ok) {
+        const whoamiData = await whoamiRes.json();
+        if (whoamiData.user) {
+          setUser(whoamiData.user);
+        }
+      }
+      
+      // Fetch my notes
+      const notesRes = await apiGet('/api/xhs/my-notes');
+      if (notesRes.ok) {
+        const notesData = await notesRes.json();
+        setMyNotes(notesData.data?.items || notesData.data?.notes || []);
+      }
+    } catch (error) {
+      console.error('[RedNoteSEO] Sync error:', error);
+    } finally {
+      setSyncing(false);
+    }
+  }, [loggedIn]);
+
   useEffect(() => {
     checkStatus();
   }, [checkStatus]);
+
+  // Auto-sync when logged in
+  useEffect(() => {
+    if (loggedIn) {
+      syncUserData();
+    }
+  }, [loggedIn, syncUserData]);
 
   // Login handler
   const handleLogin = async () => {
@@ -213,7 +272,7 @@ export function RedNoteSEO() {
       if (templateContext) {
         const tmpl = CONTENT_TEMPLATES.find(t => t.label === templateContext);
         if (tmpl) {
-          contextPrompt = `主题类型：${tmpl.prompt}`;
+          contextPrompt = `主题类型：${tmpl.desc}`;
         }
       }
 
@@ -247,7 +306,6 @@ ${contextPrompt}
         if (data.replies?.professional) {
           try {
             const parsed = JSON.parse(data.replies.professional);
-            setAiContent(parsed);
             setPublishForm(prev => ({
               ...prev,
               title: parsed.title || prev.title,
@@ -256,7 +314,6 @@ ${contextPrompt}
             }));
             showToast('success', 'AI内容已生成');
           } catch {
-            // If not JSON, use as raw content
             setPublishForm(prev => ({
               ...prev,
               body: data.replies.professional,
@@ -345,8 +402,7 @@ ${contextPrompt}
       if (res.ok) {
         showToast('success', '发布成功！');
         setPublishForm({ title: '', body: '', topics: [], images: [] });
-        setAiContent(null);
-        fetchMyNotes();
+        syncUserData();
       } else {
         const err = await res.json();
         showToast('error', err.error || '发布失败');
@@ -408,7 +464,6 @@ ${contextPrompt}
       if (res.ok) {
         showToast('success', '回复成功！');
         setReplyText(prev => ({ ...prev, [commentId || '']: '' }));
-        // Refresh comments
         if (noteId) handleGetComments({ noteId, id: noteId } as XHSNote);
       } else {
         showToast('error', '回复失败');
@@ -430,6 +485,11 @@ ${contextPrompt}
       if (res.ok) {
         const data = await res.json();
         setMonitorResults(data.data?.items || data.data?.notes || []);
+        
+        // Add to history
+        if (!monitorHistory.includes(monitorKeyword)) {
+          setMonitorHistory(prev => [monitorKeyword, ...prev].slice(0, 10));
+        }
       }
     } catch (error) {
       showToast('error', '搜索失败');
@@ -509,336 +569,425 @@ ${contextPrompt}
     showToast('info', '已复制到剪贴板');
   };
 
+  // Format number
+  const formatNumber = (num?: number) => {
+    if (!num) return '0';
+    if (num >= 10000) return (num / 10000).toFixed(1) + 'w';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    return num.toString();
+  };
+
   if (loading && !xhsInstalled) {
     return <PageLoader message="加载中..." subMessage="正在检查小红书账号状态" />;
   }
 
+  const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.id === activeSection);
+
   return (
-    <div className="real-comment-container" style={{ padding: '24px 24px 24px 280px', maxWidth: '1600px', margin: '0 auto', minHeight: '100vh', background: 'var(--color-surface)' }}>
-      <div className="animate-fade-in">
-        {/* Toast Notification */}
-        {toast && (
-          <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-fade-in ${
-            toast.type === 'success' ? 'bg-green-500 text-white' :
-            toast.type === 'error' ? 'bg-red-500 text-white' :
-            'bg-blue-500 text-white'
-          }`}>
-            {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
-            {toast.type === 'error' && <ErrorIcon className="w-5 h-5" />}
-            {toast.type === 'info' && <ErrorIcon className="w-5 h-5" />}
-            {toast.message}
-          </div>
-        )}
+    <div className="page-container animate-fade-in">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up ${
+          toast.type === 'success' ? 'bg-[var(--color-success-bg)] text-[var(--color-success-text)] border border-[var(--color-success)]/20' :
+          toast.type === 'error' ? 'bg-[var(--color-error-bg)] text-[var(--color-error-text)] border border-[var(--color-error)]/20' :
+          'bg-[var(--color-info-bg)] text-[var(--color-info-text)] border border-[var(--color-info)]/20'
+        }`}>
+          {toast.type === 'success' && <CheckCircle style={{ width: 18, height: 18 }} />}
+          {toast.type === 'error' && <ErrorIcon style={{ width: 18, height: 18 }} />}
+          {toast.type === 'info' && <CheckCircle style={{ width: 18, height: 18 }} />}
+          <span className="font-medium">{toast.message}</span>
+        </div>
+      )}
 
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                RedNote SEO
-              </h1>
-              <p className="text-slate-500 mt-1">小红书内容创作与账号管理</p>
-            </div>
-            {!xhsInstalled && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 flex items-center gap-2">
-                <Warning className="text-amber-500" />
-                <span className="text-amber-700 text-sm">请先安装 xhs CLI</span>
+      {/* Page Header */}
+      <div className="page-header">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="page-title">小红书运营</h1>
+            <p className="page-subtitle">内容创作、账号管理与品牌监控</p>
+          </div>
+          {xhsInstalled && (
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                loggedIn 
+                  ? 'bg-[var(--color-success-bg)] text-[var(--color-success-text)]' 
+                  : 'bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${loggedIn ? 'bg-[var(--color-success)]' : 'bg-[var(--color-warning)]'}`} />
+                {loggedIn ? '已登录' : '未登录'}
               </div>
-            )}
+              {syncing && (
+                <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                  <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
+                  同步中
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Step Indicator */}
+      <div className="card mb-6">
+        <div className="card-body">
+          <div className="flex items-center justify-between max-w-2xl mx-auto">
+            {WORKFLOW_STEPS.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = activeSection === step.id;
+              const isPast = index < currentStepIndex;
+              
+              return (
+                <React.Fragment key={step.id}>
+                  <button
+                    onClick={() => setActiveSection(step.id as any)}
+                    className={`flex flex-col items-center gap-2 group`}
+                  >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                      isActive 
+                        ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/30' 
+                        : isPast
+                        ? 'bg-[var(--color-success)] text-white'
+                        : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] group-hover:bg-[var(--color-border)]'
+                    }`}>
+                      {isPast ? <CheckCircle style={{ width: 24, height: 24 }} /> : <Icon style={{ width: 24, height: 24 }} />}
+                    </div>
+                    <span className={`text-sm font-medium ${
+                      isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
+                    }`}>{step.label}</span>
+                  </button>
+                  
+                  {index < WORKFLOW_STEPS.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-4 ${
+                      isPast ? 'bg-[var(--color-success)]' : 'bg-[var(--color-border)]'
+                    }`} />
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
+      </div>
 
-        {/* Section Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {[
-            { id: 'account', label: '账号管理', icon: AccountCircle },
-            { id: 'publish', label: '发布笔记', icon: Publish },
-            { id: 'comments', label: '评论管理', icon: Comment },
-            { id: 'monitor', label: '品牌监控', icon: Search },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSection(tab.id as any)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all whitespace-nowrap ${
-                activeSection === tab.id
-                  ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-              }`}
-            >
-              <tab.icon className="w-5 h-5" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Account Section */}
-        {activeSection === 'account' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Status Card */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8">
-              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <AccountCircle className="text-primary" />
-                账号状态
-              </h2>
-              
+      {/* Account Section */}
+      {activeSection === 'account' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+          {/* Status Card */}
+          <div className="lg:col-span-2 card">
+            <div className="card-header">
+              <h3 className="heading text-lg">账号状态</h3>
+            </div>
+            <div className="card-body">
               {!xhsInstalled ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Warning className="text-amber-500 w-6 h-6" />
-                    <h3 className="font-bold text-amber-800">XHS CLI 未安装</h3>
-                  </div>
-                  <p className="text-amber-700 mb-4">
-                    请在服务器上运行以下命令安装小红书 CLI：
-                  </p>
-                  <code className="bg-amber-100 px-4 py-2 rounded-lg text-amber-900 font-mono text-sm block">
-                    uv tool install xiaohongshu-cli
-                  </code>
-                </div>
-              ) : loggedIn && user ? (
-                <div className="flex items-start gap-6">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-400 to-red-500 flex items-center justify-center text-white text-3xl font-bold">
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.nickname} className="w-full h-full rounded-2xl object-cover" />
-                    ) : (
-                      user.nickname?.[0]?.toUpperCase() || 'U'
-                    )}
-                  </div>
+                <div className="flex items-start gap-4 p-4 bg-[var(--color-warning-bg)] rounded-xl">
+                  <Warning style={{ width: 24, height: 24, color: 'var(--color-warning)' }} />
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-slate-900">{user.nickname || '小红书用户'}</h3>
-                    {user.redId && <p className="text-slate-500">小红书号：{user.redId}</p>}
-                    <div className="flex gap-6 mt-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-slate-900">{user.followers || 0}</div>
-                        <div className="text-sm text-slate-500">粉丝</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-slate-900">{user.following || 0}</div>
-                        <div className="text-sm text-slate-500">关注</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-slate-900">{user.likes || 0}</div>
-                        <div className="text-sm text-slate-500">获赞</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={checkStatus}
-                      className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors"
-                    >
-                      <Refresh className="w-4 h-4" />
-                      刷新
-                    </button>
+                    <h4 className="font-semibold text-[var(--color-warning-text)] mb-1">XHS CLI 未安装</h4>
+                    <p className="text-sm text-[var(--color-text-secondary)] mb-3">
+                      请在服务器上运行以下命令安装小红书 CLI：
+                    </p>
+                    <code className="block bg-[var(--color-surface)] px-4 py-2 rounded-lg text-sm font-mono">
+                      uv tool install xiaohongshu-cli
+                    </code>
                   </div>
                 </div>
-              ) : (
+              ) : !loggedIn ? (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                    <AccountCircle className="w-10 h-10 text-slate-400" />
+                  <div className="w-20 h-20 rounded-2xl bg-[var(--color-surface)] flex items-center justify-center mx-auto mb-4">
+                    <AccountCircle style={{ width: 48, height: 48, color: 'var(--color-text-disabled)' }} />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">未登录</h3>
-                  <p className="text-slate-500 mb-6">点击下方按钮从 Chrome 浏览器提取 Cookie 登录</p>
+                  <h3 className="heading text-lg mb-2">连接小红书账号</h3>
+                  <p className="text-[var(--color-text-muted)] mb-6 max-w-sm mx-auto">
+                    从 Chrome 浏览器提取 Cookie 进行登录，支持扫码和浏览器自动登录
+                  </p>
                   <button
                     onClick={handleLogin}
                     disabled={loginLoading}
-                    className="flex items-center gap-2 mx-auto px-8 py-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                    className="btn btn-primary btn-lg"
                   >
                     {loginLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <>
+                        <Loader2 style={{ width: 20, height: 20 }} className="animate-spin" />
+                        登录中...
+                      </>
                     ) : (
-                      <Login className="w-5 h-5" />
+                      <>
+                        <Login style={{ width: 20, height: 20 }} />
+                        从 Chrome 登录
+                      </>
                     )}
-                    {loginLoading ? '登录中...' : '从 Chrome 登录'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-start gap-6">
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[var(--color-primary-muted)] flex-shrink-0">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt={user.nickname} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[var(--color-primary)]">
+                        {user?.nickname?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="heading text-xl mb-1">{user?.nickname || '小红书用户'}</h3>
+                    {user?.redId && (
+                      <p className="text-sm text-[var(--color-text-muted)] mb-4">小红书号：{user.redId}</p>
+                    )}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="stat-card !p-4">
+                        <div className="stat-value text-xl">{formatNumber(user?.followers)}</div>
+                        <div className="stat-label">粉丝</div>
+                      </div>
+                      <div className="stat-card !p-4">
+                        <div className="stat-value text-xl">{formatNumber(user?.following)}</div>
+                        <div className="stat-label">关注</div>
+                      </div>
+                      <div className="stat-card !p-4">
+                        <div className="stat-value text-xl">{formatNumber(user?.likes)}</div>
+                        <div className="stat-label">获赞</div>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { checkStatus(); syncUserData(); }}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    <Refresh style={{ width: 16, height: 16 }} />
+                    刷新
                   </button>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* My Notes */}
-            {loggedIn && (
-              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <Publish className="text-primary" />
-                    我的笔记
-                  </h2>
-                  <button
-                    onClick={fetchMyNotes}
-                    disabled={myNotesLoading}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors"
-                  >
-                    <Refresh className={`w-4 h-4 ${myNotesLoading ? 'animate-spin' : ''}`} />
-                    刷新
-                  </button>
+          {/* Quick Stats */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="heading text-lg">数据概览</h3>
+            </div>
+            <div className="card-body space-y-4">
+              <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-primary-muted)] flex items-center justify-center">
+                    <Publish style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
+                  </div>
+                  <span className="font-medium">发布笔记</span>
                 </div>
+                <span className="text-xl font-bold">{myNotes.length}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-success-bg)] flex items-center justify-center">
+                    <ThumbUp style={{ width: 20, height: 20, color: 'var(--color-success)' }} />
+                  </div>
+                  <span className="font-medium">总点赞</span>
+                </div>
+                <span className="text-xl font-bold">
+                  {formatNumber(myNotes.reduce((sum, n) => sum + (n.likedCount || 0), 0))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-accent-muted)] flex items-center justify-center">
+                    <Favorite style={{ width: 20, height: 20, color: 'var(--color-accent)' }} />
+                  </div>
+                  <span className="font-medium">总收藏</span>
+                </div>
+                <span className="text-xl font-bold">
+                  {formatNumber(myNotes.reduce((sum, n) => sum + (n.collectedCount || 0), 0))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-warning-bg)] flex items-center justify-center">
+                    <Chat style={{ width: 20, height: 20, color: 'var(--color-warning)' }} />
+                  </div>
+                  <span className="font-medium">总评论</span>
+                </div>
+                <span className="text-xl font-bold">
+                  {formatNumber(myNotes.reduce((sum, n) => sum + (n.commentCount || 0), 0))}
+                </span>
+              </div>
+            </div>
+          </div>
 
-                {myNotesLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
-                ) : myNotes.length === 0 ? (
-                  <div className="text-center py-8 text-slate-500">
-                    暂无笔记，快去发布第一篇吧！
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {myNotes.map((note, idx) => (
-                      <div key={idx} className="bg-slate-50 rounded-xl p-4 hover:bg-slate-100 transition-colors">
-                        <h4 className="font-bold text-slate-900 truncate">{note.title || '无标题'}</h4>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
-                          <span className="flex items-center gap-1">
-                            <ThumbUp className="w-4 h-4" /> {note.likedCount || 0}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Favorite className="w-4 h-4" /> {note.collectedCount || 0}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Chat className="w-4 h-4" /> {note.commentCount || 0}
-                          </span>
+          {/* My Notes */}
+          <div className="lg:col-span-3 card">
+            <div className="card-header flex items-center justify-between">
+              <h3 className="heading text-lg">我的笔记</h3>
+              <button
+                onClick={fetchMyNotes}
+                disabled={myNotesLoading}
+                className="btn btn-secondary btn-sm"
+              >
+                <Refresh style={{ width: 16, height: 16 }} className={myNotesLoading ? 'animate-spin' : ''} />
+                刷新
+              </button>
+            </div>
+            <div className="card-body">
+              {myNotesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 style={{ width: 32, height: 32 }} className="animate-spin text-[var(--color-primary)]" />
+                </div>
+              ) : myNotes.length === 0 ? (
+                <div className="empty-state">
+                  <Publish style={{ width: 64, height: 64 }} className="empty-state-icon" />
+                  <h4 className="empty-state-title">暂无笔记</h4>
+                  <p className="empty-state-description">去发布第一篇笔记吧！</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {myNotes.map((note, idx) => (
+                    <div key={idx} className="p-4 bg-[var(--color-surface)] rounded-xl hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-[var(--color-text-primary)] truncate mb-2">
+                            {note.title || '无标题'}
+                          </h4>
+                          <div className="flex items-center gap-4 text-sm text-[var(--color-text-muted)]">
+                            <span className="flex items-center gap-1">
+                              <ThumbUp style={{ width: 14, height: 14 }} /> {formatNumber(note.likedCount)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Favorite style={{ width: 14, height: 14 }} /> {formatNumber(note.collectedCount)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Chat style={{ width: 14, height: 14 }} /> {formatNumber(note.commentCount)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex gap-2 mt-3">
+                        <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleDeleteNote(note)}
-                            className="flex items-center gap-1 px-3 py-1 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100"
+                            className="btn-icon !w-8 !h-8"
                           >
-                            <Delete className="w-4 h-4" />
-                            删除
+                            <Delete style={{ width: 16, height: 16 }} />
                           </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Publish Section */}
-        {activeSection === 'publish' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* AI Generate Section */}
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl p-8 text-white">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Sparkles className="w-6 h-6" />
-                AI 智能生成内容
-              </h2>
-              
-              {/* Content Templates */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      {/* Publish Section */}
+      {activeSection === 'publish' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+          {/* AI Generate */}
+          <div className="lg:col-span-2 card">
+            <div className="card-header">
+              <h3 className="heading text-lg flex items-center gap-2">
+                <AutoAwesome style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
+                AI 智能生成
+              </h3>
+            </div>
+            <div className="card-body space-y-6">
+              {/* Templates */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {CONTENT_TEMPLATES.map(template => (
                   <button
                     key={template.label}
                     onClick={() => setSelectedTemplate(selectedTemplate === template.label ? '' : template.label)}
-                    className={`p-4 rounded-xl text-left transition-all ${
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${
                       selectedTemplate === template.label
-                        ? 'bg-white text-purple-600 shadow-lg'
-                        : 'bg-white/20 hover:bg-white/30'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)]'
+                        : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'
                     }`}
                   >
-                    <div className="text-2xl mb-1">{template.icon}</div>
-                    <div className="font-medium text-sm">{template.label}</div>
+                    <div className="text-2xl mb-2">{template.icon}</div>
+                    <div className="font-semibold text-sm mb-1">{template.label}</div>
+                    <div className="text-xs text-[var(--color-text-muted)]">{template.desc}</div>
                   </button>
                 ))}
               </div>
 
-              <div className="flex items-center gap-4">
+              {/* Generate Input */}
+              <div className="flex gap-3">
                 <input
                   type="text"
                   value={publishForm.title}
                   onChange={e => setPublishForm(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="输入商家/品牌名称作为参考..."
-                  className="flex-1 px-4 py-3 rounded-xl bg-white/20 placeholder-white/60 text-white border border-white/30 focus:border-white focus:outline-none"
+                  className="input flex-1"
                 />
                 <button
                   onClick={() => handleAIGenerate()}
                   disabled={aiGenerating}
-                  className="flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-xl font-bold hover:bg-white/90 transition-colors disabled:opacity-50"
+                  className="btn btn-primary"
                 >
                   {aiGenerating ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 style={{ width: 18, height: 18 }} className="animate-spin" />
                   ) : (
-                    <AutoAwesome className="w-5 h-5" />
+                    <AutoAwesome style={{ width: 18, height: 18 }} />
                   )}
                   {aiGenerating ? '生成中...' : 'AI 生成'}
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Publish Form */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8">
-              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <Edit className="text-primary" />
-                编辑笔记内容
-              </h2>
-
-              {/* Title */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">标题</label>
+          {/* Publish Form */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="heading text-lg">编辑内容</h3>
+            </div>
+            <div className="card-body space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">标题</label>
                 <input
                   type="text"
                   value={publishForm.title}
                   onChange={e => setPublishForm(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="输入笔记标题..."
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  className="input"
                 />
               </div>
 
-              {/* Body */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">正文内容</label>
+              <div>
+                <label className="block text-sm font-medium mb-2">正文</label>
                 <textarea
                   value={publishForm.body}
                   onChange={e => setPublishForm(prev => ({ ...prev, body: e.target.value }))}
-                  rows={8}
+                  rows={6}
                   placeholder="输入笔记正文内容..."
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                  className="input resize-none"
                 />
               </div>
 
-              {/* Topics */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                  <Tag className="w-4 h-4" />
-                  话题标签
-                </label>
+              <div>
+                <label className="block text-sm font-medium mb-2">话题标签</label>
                 <div className="flex flex-wrap gap-2">
-                  {PRESET_TOPICS.map(topic => (
+                  {PRESET_TOPICS.slice(0, 8).map(topic => (
                     <button
                       key={topic}
                       onClick={() => toggleTopic(`#${topic}`)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                         publishForm.topics.includes(`#${topic}`)
-                          ? 'bg-pink-500 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
                       }`}
                     >
                       #{topic}
                     </button>
                   ))}
                 </div>
-                {publishForm.topics.length > 0 && (
-                  <div className="mt-3 text-sm text-slate-500">
-                    已选：{publishForm.topics.join(' ')}
-                  </div>
-                )}
               </div>
 
-              {/* Images */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4" />
-                  图片上传 ({publishForm.images.length}/9)
-                </label>
+              <div>
+                <label className="block text-sm font-medium mb-2">图片 ({publishForm.images.length}/9)</label>
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
                     dragOver
-                      ? 'border-primary bg-primary/5'
-                      : 'border-slate-200 hover:border-slate-300'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)]'
+                      : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'
                   }`}
                 >
                   <input
@@ -849,19 +998,18 @@ ${contextPrompt}
                     onChange={e => handleFileSelect(e.target.files)}
                     className="hidden"
                   />
-                  <CameraAlt className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                  <p className="text-slate-600">拖拽图片到此处，或点击上传</p>
-                  <p className="text-sm text-slate-400 mt-1">支持 JPG、PNG 格式，最多 9 张</p>
+                  <CameraAlt style={{ width: 32, height: 32, color: 'var(--color-text-disabled)' }} className="mx-auto mb-2" />
+                  <p className="text-sm text-[var(--color-text-muted)]">拖拽图片或点击上传</p>
                 </div>
 
                 {publishForm.images.length > 0 && (
-                  <div className="grid grid-cols-5 gap-3 mt-4">
+                  <div className="grid grid-cols-4 gap-2 mt-3">
                     {publishForm.images.map((img, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group">
+                      <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group">
                         <img src={img} alt="" className="w-full h-full object-cover" />
                         <button
                           onClick={() => handleRemoveImage(idx)}
-                          className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1 right-1 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <span className="text-white text-xs">×</span>
                         </button>
@@ -871,232 +1019,231 @@ ${contextPrompt}
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-4">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setPublishForm({ title: '', body: '', topics: [], images: [] })}
-                  className="px-6 py-3 text-slate-600 font-medium hover:text-slate-900"
+                  className="btn btn-secondary flex-1"
                 >
                   清空
                 </button>
                 <button
                   onClick={handlePublish}
                   disabled={publishing || !publishForm.title.trim() || !publishForm.body.trim()}
-                  className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                  className="btn btn-primary flex-1"
                 >
                   {publishing ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 style={{ width: 18, height: 18 }} className="animate-spin" />
                   ) : (
-                    <Send className="w-5 h-5" />
+                    <Send style={{ width: 18, height: 18 }} />
                   )}
-                  {publishing ? '发布中...' : '发布笔记'}
+                  {publishing ? '发布中...' : '发布'}
                 </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Comments Section */}
-        {activeSection === 'comments' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Search */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8">
-              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <Search className="text-primary" />
-                搜索笔记
-              </h2>
-              <div className="flex gap-3">
+      {/* Comments Section */}
+      {activeSection === 'comments' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
+          {/* Search */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="heading text-lg">搜索笔记</h3>
+            </div>
+            <div className="card-body space-y-4">
+              <div className="flex gap-2">
                 <input
                   type="text"
                   value={searchKeyword}
                   onChange={e => setSearchKeyword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  placeholder="输入关键词搜索笔记..."
-                  className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="输入关键词搜索..."
+                  className="input flex-1"
                 />
-                <button
-                  onClick={handleSearch}
-                  disabled={loading}
-                  className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  搜索
+                <button onClick={handleSearch} disabled={loading} className="btn btn-primary">
+                  <Search style={{ width: 18, height: 18 }} />
                 </button>
               </div>
 
-              {/* Search Results */}
               {searchResults.length > 0 && (
-                <div className="mt-6 space-y-3">
-                  <h3 className="font-medium text-slate-700">搜索结果 ({searchResults.length})</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
                   {searchResults.map((note, idx) => (
-                    <div
+                    <button
                       key={idx}
                       onClick={() => handleGetComments(note)}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                      className={`w-full p-4 rounded-xl border text-left transition-all ${
                         selectedNote?.noteId === note.noteId || selectedNote?.id === note.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-slate-200 hover:border-slate-300'
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)]'
+                          : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'
                       }`}
                     >
-                      <h4 className="font-bold text-slate-900">{note.title || '无标题'}</h4>
-                      <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
+                      <h4 className="font-semibold truncate">{note.title || '无标题'}</h4>
+                      <div className="flex items-center gap-3 mt-2 text-sm text-[var(--color-text-muted)]">
                         {note.user?.nickname && <span>@{note.user.nickname}</span>}
-                        <span className="flex items-center gap-1">
-                          <ThumbUp className="w-4 h-4" /> {note.likedCount || 0}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Chat className="w-4 h-4" /> {note.commentCount || 0}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Visibility className="w-4 h-4" /> {note.shareCount || 0}
-                        </span>
+                        <span>{formatNumber(note.likedCount)} 赞</span>
+                        <span>{formatNumber(note.commentCount)} 评论</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Comments */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="heading text-lg">评论详情</h3>
+              {selectedNote && (
+                <span className="text-sm text-[var(--color-text-muted)]">- {selectedNote.title || '无标题'}</span>
+              )}
+            </div>
+            <div className="card-body">
+              {!selectedNote ? (
+                <div className="empty-state">
+                  <Chat style={{ width: 48, height: 48 }} className="empty-state-icon" />
+                  <h4 className="empty-state-title">选择一篇笔记</h4>
+                  <p className="empty-state-description">从左侧搜索并选择笔记查看评论</p>
+                </div>
+              ) : commentsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 style={{ width: 32, height: 32 }} className="animate-spin text-[var(--color-primary)]" />
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="empty-state">
+                  <Chat style={{ width: 48, height: 48 }} className="empty-state-icon" />
+                  <h4 className="empty-state-title">暂无评论</h4>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {comments.map((comment, idx) => (
+                    <div key={idx} className="p-4 bg-[var(--color-surface)] rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[var(--color-primary-muted)] flex items-center justify-center text-[var(--color-primary)] font-bold">
+                          {comment.userInfo?.nickname?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold">{comment.userInfo?.nickname || '匿名用户'}</span>
+                            {comment.likeCount && comment.likeCount > 0 && (
+                              <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
+                                <ThumbUp style={{ width: 12, height: 12 }} /> {comment.likeCount}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[var(--color-text-secondary)]">{comment.content}</p>
+                          
+                          <div className="mt-3 flex gap-2">
+                            <input
+                              type="text"
+                              value={replyText[comment.commentId || comment.id || ''] || ''}
+                              onChange={e => setReplyText(prev => ({
+                                ...prev,
+                                [comment.commentId || comment.id || '']: e.target.value
+                              }))}
+                              placeholder="输入回复..."
+                              className="input flex-1 !py-2"
+                            />
+                            <button
+                              onClick={() => handleReply(comment)}
+                              disabled={submittingReply === (comment.commentId || comment.id)}
+                              className="btn btn-primary btn-sm"
+                            >
+                              {submittingReply === (comment.commentId || comment.id) ? (
+                                <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
+                              ) : '回复'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-
-            {/* Comments List */}
-            {selectedNote && (
-              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8">
-                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                  <Chat className="text-primary" />
-                  评论详情
-                  <span className="text-slate-500 text-base font-normal">
-                    - {selectedNote.title || '无标题'}
-                  </span>
-                </h2>
-
-                {commentsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
-                ) : comments.length === 0 ? (
-                  <div className="text-center py-8 text-slate-500">
-                    暂无评论
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {comments.map((comment, idx) => (
-                      <div key={idx} className="bg-slate-50 rounded-xl p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-red-500 flex items-center justify-center text-white font-bold">
-                            {comment.userInfo?.nickname?.[0]?.toUpperCase() || 'U'}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-900">
-                                {comment.userInfo?.nickname || '匿名用户'}
-                              </span>
-                              {comment.likeCount && comment.likeCount > 0 && (
-                                <span className="text-xs text-slate-500 flex items-center gap-1">
-                                  <ThumbUp className="w-3 h-3" /> {comment.likeCount}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-slate-700 mt-1">{comment.content}</p>
-                            
-                            {/* Reply Input */}
-                            <div className="mt-3 flex gap-2">
-                              <input
-                                type="text"
-                                value={replyText[comment.commentId || comment.id || ''] || ''}
-                                onChange={e => setReplyText(prev => ({
-                                  ...prev,
-                                  [comment.commentId || comment.id || '']: e.target.value
-                                }))}
-                                placeholder="输入回复..."
-                                className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"
-                              />
-                              <button
-                                onClick={() => handleReply(comment)}
-                                disabled={submittingReply === (comment.commentId || comment.id)}
-                                className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50"
-                              >
-                                {submittingReply === (comment.commentId || comment.id) ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  '回复'
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Monitor Section */}
-        {activeSection === 'monitor' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Brand Search */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8">
-              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <LocalFireDepartment className="text-primary" />
+      {/* Monitor Section */}
+      {activeSection === 'monitor' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
+          {/* Brand Search */}
+          <div className="card">
+            <div className="card-header flex items-center justify-between">
+              <h3 className="heading text-lg flex items-center gap-2">
+                <LocalFireDepartment style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
                 品牌监控
-              </h2>
-              <div className="flex gap-3 mb-6">
+              </h3>
+            </div>
+            <div className="card-body space-y-4">
+              <div className="flex gap-2">
                 <input
                   type="text"
                   value={monitorKeyword}
                   onChange={e => setMonitorKeyword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleMonitorSearch()}
                   placeholder="输入品牌/竞品关键词..."
-                  className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="input flex-1"
                 />
-                <button
-                  onClick={handleMonitorSearch}
-                  disabled={loading}
-                  className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  搜索
+                <button onClick={handleMonitorSearch} disabled={loading} className="btn btn-primary">
+                  <Search style={{ width: 18, height: 18 }} />
                 </button>
               </div>
 
+              {/* History */}
+              {monitorHistory.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm text-[var(--color-text-muted)]">最近：</span>
+                  {monitorHistory.map((keyword, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => { setMonitorKeyword(keyword); handleMonitorSearch(); }}
+                      className="px-3 py-1 bg-[var(--color-surface)] rounded-full text-sm hover:bg-[var(--color-border)] transition-colors"
+                    >
+                      {keyword}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {monitorResults.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-medium text-slate-700">相关笔记 ({monitorResults.length})</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <div className="text-sm text-[var(--color-text-muted)] mb-2">
+                    找到 {monitorResults.length} 篇相关笔记
+                  </div>
                   {monitorResults.slice(0, 20).map((note, idx) => (
-                    <div key={idx} className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-slate-900">{note.title || '无标题'}</h4>
-                          <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
-                            {note.user?.nickname && (
-                              <span className="flex items-center gap-1">
-                                <Person className="w-4 h-4" /> @{note.user.nickname}
-                              </span>
-                            )}
+                    <div key={idx} className="p-4 bg-[var(--color-surface)] rounded-xl">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold truncate">{note.title || '无标题'}</h4>
+                          <div className="flex items-center gap-3 mt-2 text-sm text-[var(--color-text-muted)]">
+                            {note.user?.nickname && <span>@{note.user.nickname}</span>}
                             <span className="flex items-center gap-1">
-                              <ThumbUp className="w-4 h-4" /> {note.likedCount || 0}
+                              <ThumbUp style={{ width: 12, height: 12 }} /> {formatNumber(note.likedCount)}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Favorite className="w-4 h-4" /> {note.collectedCount || 0}
+                              <Favorite style={{ width: 12, height: 12 }} /> {formatNumber(note.collectedCount)}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Chat className="w-4 h-4" /> {note.commentCount || 0}
+                              <Chat style={{ width: 12, height: 12 }} /> {formatNumber(note.commentCount)}
                             </span>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleLikeNote(note)}
-                            className="p-2 text-slate-400 hover:text-pink-500 transition-colors"
-                            title="点赞"
+                            className="btn-icon !w-8 !h-8"
                           >
-                            <ThumbUp className="w-5 h-5" />
+                            <ThumbUp style={{ width: 16, height: 16 }} />
                           </button>
                           <button
                             onClick={() => handleGetComments(note)}
-                            className="p-2 text-slate-400 hover:text-primary transition-colors"
-                            title="查看评论"
+                            className="btn-icon !w-8 !h-8"
                           >
-                            <Chat className="w-5 h-5" />
+                            <Chat style={{ width: 16, height: 16 }} />
                           </button>
                         </div>
                       </div>
@@ -1105,40 +1252,41 @@ ${contextPrompt}
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Topic Search */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8">
-              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <Tag className="text-primary" />
+          {/* Topic Search */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="heading text-lg flex items-center gap-2">
+                <Tag style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
                 话题热度
-              </h2>
-              <div className="flex gap-3 mb-6">
+              </h3>
+            </div>
+            <div className="card-body space-y-4">
+              <div className="flex gap-2">
                 <input
                   type="text"
                   value={topicSearch}
                   onChange={e => setTopicSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleTopicSearch()}
                   placeholder="输入话题关键词..."
-                  className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="input flex-1"
                 />
-                <button
-                  onClick={handleTopicSearch}
-                  disabled={loading}
-                  className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  搜索
+                <button onClick={handleTopicSearch} disabled={loading} className="btn btn-primary">
+                  <Search style={{ width: 18, height: 18 }} />
                 </button>
               </div>
 
               {topicResults.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {topicResults.map((topic, idx) => (
-                    <div key={idx} className="p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                      <div className="font-bold text-slate-900 truncate">
+                    <div key={idx} className="p-4 bg-[var(--color-surface)] rounded-xl">
+                      <div className="font-semibold truncate mb-1">
                         #{topic.name || topic.tag || '未知话题'}
                       </div>
                       {topic.noteCount && (
-                        <div className="text-sm text-slate-500 mt-1">
+                        <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                          <TrendingUp style={{ width: 14, height: 14 }} />
                           {topic.noteCount.toLocaleString()} 笔记
                         </div>
                       )}
@@ -1148,8 +1296,8 @@ ${contextPrompt}
               )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

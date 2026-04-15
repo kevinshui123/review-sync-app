@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Node.js 主应用
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # XHS API 地址（指向 Python 服务）
+      - VITE_XHS_API_MODE=remote
+      - VITE_XHS_API_URL=http://xhs-api:5000
+    depends_on:
+      - xhs-api
+    restart: unless-stopped
+
+  # Python XHS API 服务（整合版）
+  xhs-api:
+    build:
+      context: ./python-xhs-api
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - FLASK_DEBUG=false
+      # Cookie 配置
+      - XHS_COOKIES=${XHS_COOKIES:-}
+      - XHS_CREATOR_COOKIES=${XHS_CREATOR_COOKIES:-}
+      - XHS_PGY_COOKIES=${XHS_PGY_COOKIES:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  default:
+    name: xhs-network

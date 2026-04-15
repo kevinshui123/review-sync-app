@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { apiGet, apiPost } from '../utils/api';
+import { xhsConfig, getXhsApiUrl } from '../utils/xhsConfig';
 
 // XHS User type
 export interface XHSUser {

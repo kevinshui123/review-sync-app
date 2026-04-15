@@ -1,8 +1,19 @@
 # Use Node.js 20 as base
 FROM node:20-slim
 
-# Install dependencies
-RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
+# Install system dependencies including Python and uv
+RUN apt-get update && apt-get install -y \
+    openssl \
+    curl \
+    wget \
+    git \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for Python package management
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
 
 # Set working directory
 WORKDIR /app
@@ -12,6 +23,9 @@ COPY package.json ./
 
 # Install dependencies (without native optional deps)
 RUN npm install --ignore-scripts
+
+# Install xhs CLI using uv
+RUN uv tool install xiaohongshu-cli --python 3.11
 
 # Copy source code
 COPY . .
