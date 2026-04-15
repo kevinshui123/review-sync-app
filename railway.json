@@ -1,7 +1,10 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "DOCKERFILE"
+    "builder": "DOCKERFILE",
+    "dockerfileArgs": {
+      "BUILD_DATE": "2024-04-14"
+    }
   },
   "deploy": {
     "numReplicas": 1,
