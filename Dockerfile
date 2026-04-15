@@ -37,14 +37,11 @@ RUN npx prisma generate
 RUN npm run build
 
 # Expose Railway's assigned port
-EXPOSE ${PORT:-8080}
-
-# Use serve to serve static files on Railway's port
-RUN npm install -g serve
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:${PORT:-8080}/api/health || exit 1
+  CMD curl -f http://localhost:8080/api/health || exit 1
 
-# Start server with proper port binding
-CMD ["sh", "-c", "node -e \"process.env.PORT = process.env.PORT || '8080'; require('./dist/server.js')\""]
+# Start the server
+CMD ["node", "dist/server.js"]
