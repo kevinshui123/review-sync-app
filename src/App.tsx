@@ -13,6 +13,7 @@ import { LocalSearchGrid } from './components/LocalSearchGrid';
 import { LocalCitations } from './components/LocalCitations';
 import { Optimization } from './components/Optimization';
 import { RealComment } from './components/RealComment';
+import { RedNoteSEO } from './components/RedNoteSEO';
 import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
@@ -340,17 +341,8 @@ function AppContent() {
               )}
               {/* SEO Real Comment */}
               {activeTab === 'seo-real-comment' && <RealComment />}
-              {activeTab === 'seo-rednote-seo' && (
-                <SEO
-                  setActiveTab={setActiveTab}
-                  activeSection="rednoteSeo"
-                  setActiveSection={(section) => {
-                    if (section === 'localSeo') setActiveTab('seo-grid');
-                    else if (section === 'realComment') setActiveTab('seo-real-comment');
-                    else if (section === 'rednoteSeo') setActiveTab('seo-rednote-seo');
-                  }}
-                />
-              )}
+              {/* RedNote SEO */}
+              {activeTab === 'seo-rednote-seo' && <RedNoteSEO />}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
             </div>

@@ -3,6 +3,7 @@ import express, { Response, Request, NextFunction } from 'express';
 import PDFDocument from 'pdfkit';
 import authRoutes from './src/server/authRoutes.js';
 import oauthRoutes from './src/server/oauthRoutes.js';
+import xhsRoutes from './src/server/xhsRoutes.js';
 import { PrismaClient } from '@prisma/client';
 import { authMiddleware, generateToken, AuthRequest } from './src/server/auth.js';
 import { createServer as createViteServer } from 'vite';
@@ -4571,6 +4572,9 @@ Return ONLY this JSON structure, nothing else:
   // Auth routes
   app.use('/api/auth', authRoutes);
   app.use('/api/auth', oauthRoutes);
+
+  // XHS (Xiaohongshu) routes
+  app.use('/api/xhs', xhsRoutes);
 
   // ==========================================
   // EmbedSocial Listings Management (Multi-tenant)
