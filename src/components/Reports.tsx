@@ -56,8 +56,7 @@ export function Reports({ setActiveTab }: ReportsProps) {
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [locations, setLocations] = useState<Location[]>([]);
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -66,28 +65,26 @@ export function Reports({ setActiveTab }: ReportsProps) {
     }).catch(() => {});
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await apiGet(`/api/embedsocial/chart-data?period=30days`);
-      if (res.ok) {
-        const json = await res.json();
-        const data: DailyData[] = json.impressions || [];
-        setDailyData(data);
-        setHasLoaded(true);
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const res = await apiGet(`/api/embedsocial/chart-data?period=30days`);
+        if (res.ok) {
+          const json = await res.json();
+          const data: DailyData[] = json.impressions || [];
+          setDailyData(data);
+        }
+      } catch (e) {
+        console.error('[Reports] Failed to load chart data', e);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error('[Reports] Failed to load chart data', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchData();
+  }, []);
 
   const handleDownload = async () => {
-    // Load data first if not loaded
-    if (!hasLoaded) {
-      await fetchData();
-    }
     setDownloading(true);
     try {
       const token = localStorage.getItem('token');
@@ -118,10 +115,6 @@ export function Reports({ setActiveTab }: ReportsProps) {
     } finally {
       setDownloading(false);
     }
-  };
-
-  const handleLoadData = async () => {
-    await fetchData();
   };
 
   const filteredData = dailyData.filter(d => d.date >= startDate && d.date <= endDate);
@@ -220,7 +213,7 @@ export function Reports({ setActiveTab }: ReportsProps) {
           </div>
           <button
             onClick={handleDownload}
-            disabled={downloading}
+            disabled={downloading || loading}
             className="flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow transition-all"
           >
             {downloading
@@ -229,15 +222,6 @@ export function Reports({ setActiveTab }: ReportsProps) {
             }
             {downloading ? t('reports.generating') : t('reports.downloadPdf')}
           </button>
-          {!hasLoaded && !loading && (
-            <button
-              onClick={handleLoadData}
-              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
-            >
-              <BarChart className="w-4 h-4" />
-              加载图表
-            </button>
-          )}
         </div>
       </div>
 
@@ -249,20 +233,7 @@ export function Reports({ setActiveTab }: ReportsProps) {
         <h3 className="text-base font-bold text-slate-700">GBP Performance Data</h3>
       </div>
 
-      {!hasLoaded && !loading ? (
-        <div className="bg-white rounded-xl p-12 shadow-sm border border-slate-100 text-center">
-          <BarChart className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-          <h4 className="text-lg font-bold text-slate-600 mb-2">{t('reports.noDataYet')}</h4>
-          <p className="text-sm text-slate-400 mb-6">{t('reports.noDataHint')}</p>
-          <button
-            onClick={handleLoadData}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-bold text-sm shadow transition-all mx-auto"
-          >
-            <BarChart className="w-4 h-4" />
-            加载报告数据
-          </button>
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div className="flex flex-col items-center justify-center h-48 gap-3">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-slate-500">{t('reports.loading')}</p>
