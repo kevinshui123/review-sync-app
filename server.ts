@@ -778,10 +778,30 @@ async function startServer() {
   }
 
   // ==========================================
-  // Health Check (no DB required)
+  // Root path - redirect to frontend or return status
   // ==========================================
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Server is running' });
+  app.get('/', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      message: 'Review Sync API Server',
+      version: '1.0.0',
+      endpoints: {
+        health: '/api/health',
+        docs: '/api/docs'
+      }
+    });
+  });
+
+  // ==========================================
+  // Health Check
+  // ==========================================
+  app.get('/api/health', async (req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.json({ status: 'ok', database: 'connected' });
+    } catch (error) {
+      res.status(503).json({ status: 'error', database: 'disconnected' });
+    }
   });
 
   // Detailed health check (with DB)
