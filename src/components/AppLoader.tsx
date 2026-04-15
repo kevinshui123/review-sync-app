@@ -287,7 +287,7 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
 
         @media (min-width: 1024px) {
           .main-content-area {
-            margin-left: 0;
+            margin-left: 240px;
           }
         }
 
@@ -315,14 +315,6 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           flex-direction: column;
           min-height: 0;
           width: 100%;
-        }
-
-        @media (min-width: 1024px) {
-          .page-content {
-            margin-left: 240px;
-            padding-left: 24px;
-            padding-right: 24px;
-          }
         }
 
 
@@ -371,16 +363,9 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
            ============================================ */
         .real-comment-container,
         .citations-container {
-          padding: 24px 24px 24px 280px;
+          padding: 24px;
           max-width: 100%;
           box-sizing: border-box;
-        }
-
-        @media (max-width: 1023px) {
-          .real-comment-container,
-          .citations-container {
-            padding-left: 24px;
-          }
         }
 
         /* ============================================

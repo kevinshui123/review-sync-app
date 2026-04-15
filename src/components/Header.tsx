@@ -170,7 +170,7 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick, theme = 'l
           flex-shrink: 0;
         }
 
-        .hdr-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex-shrink: 1; }
+        .hdr-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex-shrink: 0; }
         .hdr-title {
           font-family: var(--font-headline); font-size: 16px; font-weight: 700;
           color: var(--color-text-primary); margin: 0; white-space: nowrap;

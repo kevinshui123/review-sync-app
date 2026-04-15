@@ -343,6 +343,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
           transition: all 0.15s ease;
           text-align: left;
           color: inherit;
+          overflow: hidden;
         }
 
         .nav-item-active {
@@ -372,6 +373,9 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
 
         .nav-label {
           flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .nav-badge {
@@ -484,6 +488,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
           background: var(--color-surface-raised);
           border-right: 1px solid var(--color-border);
           z-index: 50;
+          overflow: hidden;
         }
 
         @media (min-width: 1024px) {
