@@ -2,4 +2,4 @@
   dockerfilePath = "Dockerfile"
 
 [deploy]
-  startCommand = "npx prisma db push --accept-data-loss && node dist/server.js"
+  startCommand = "node dist/server.js"

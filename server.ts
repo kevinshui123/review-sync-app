@@ -766,7 +766,8 @@ function normalizeEmbedSocialReview(review: any, locationId: string): {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // Railway injects PORT as environment variable
+  const PORT = parseInt(process.env.PORT || '3000', 10);
 
   app.use(express.json());
 
