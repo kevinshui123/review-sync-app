@@ -32,8 +32,8 @@ COPY prisma ./prisma/
 # Force fresh install to avoid any stale cache
 RUN npm install --force
 
-# Install xhs CLI using uv
-RUN uv tool install xiaohongshu-cli --python 3.11
+# Install Spider_XHS using uv
+RUN uv pip install --system spider-xhs
 
 # Copy source code
 COPY . .
