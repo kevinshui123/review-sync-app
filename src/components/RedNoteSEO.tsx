@@ -603,8 +603,8 @@ ${contextPrompt}
       <div className="page-header">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="page-title">小红书运营</h1>
-            <p className="page-subtitle">内容创作、账号管理与品牌监控</p>
+            <h1 className="page-title">{t('rednote.pageTitle')}</h1>
+            <p className="page-subtitle">{t('rednote.pageSubtitle')}</p>
           </div>
           {xhsInstalled && (
             <div className="flex items-center gap-3">
@@ -614,7 +614,7 @@ ${contextPrompt}
                   : 'bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]'
               }`}>
                 <div className={`w-2 h-2 rounded-full ${loggedIn ? 'bg-[var(--color-success)]' : 'bg-[var(--color-warning)]'}`} />
-                {loggedIn ? '已登录' : '未登录'}
+                {loggedIn ? t('rednote.loggedIn') : t('rednote.notLoggedInStatus')}
               </div>
               {syncing && (
                 <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">

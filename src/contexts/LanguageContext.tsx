@@ -487,6 +487,12 @@ const translations: Record<Language, Record<string, string>> = {
     'rednote.step.comments': 'Comments',
     'rednote.step.monitor': 'Monitor',
 
+    // Page titles
+    'rednote.pageTitle': 'Rednote Operations',
+    'rednote.pageSubtitle': 'Content creation, account management, and brand monitoring',
+    'rednote.loggedIn': 'Logged In',
+    'rednote.notLoggedInStatus': 'Not Logged In',
+
     // Real Comment AI Generation
     'realComment.aiGenerate': 'AI Generate Review',
     'realComment.aiGenerating': 'Generating unique review...',
@@ -1232,6 +1238,12 @@ const translations: Record<Language, Record<string, string>> = {
     'rednote.step.publish': '发布',
     'rednote.step.comments': '评论',
     'rednote.step.monitor': '监控',
+
+    // Page titles
+    'rednote.pageTitle': '小红书运营',
+    'rednote.pageSubtitle': '内容创作、账号管理与品牌监控',
+    'rednote.loggedIn': '已登录',
+    'rednote.notLoggedInStatus': '未登录',
 
     // Real Comment AI Generation
     'realComment.aiGenerate': 'AI 生成评价',

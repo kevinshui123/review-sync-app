@@ -85,7 +85,7 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
   }
 
   return (
-    <div className="page-container animate-fade-in">
+    <div className="page-container listings-page animate-fade-in" data-component="listings">
       {/* Header */}
       <div className="page-header-row">
         <div>
@@ -308,13 +308,14 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
           to { transform: rotate(360deg); }
         }
 
-        .page-container {
-          padding: 24px 24px 24px 280px;
+        .listings-page {
+          padding: 80px 24px 24px 280px;
         }
 
         @media (max-width: 1023px) {
-          .page-container {
+          .listings-page {
             padding-left: 24px;
+            padding-top: 80px;
           }
         }
 
@@ -670,8 +671,8 @@ export function Listings({ setActiveTab, setListingsSubTab, setSelectedLocation,
         }
 
         @media (max-width: 768px) {
-          .page-container {
-            padding: 16px;
+          .listings-page {
+            padding: 80px 16px 16px;
           }
         }
       `}</style>
