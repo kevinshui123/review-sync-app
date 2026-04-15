@@ -32,8 +32,11 @@ COPY prisma ./prisma/
 # Force fresh install to avoid any stale cache
 RUN npm install --force
 
-# Install Spider_XHS using uv
-RUN uv pip install --system spider-xhs
+# Clone Spider_XHS from GitHub
+RUN git clone https://github.com/cv-cat/Spider_XHS.git /app/spider_xhs
+
+# Install Spider_XHS dependencies (loguru, requests, cv2, numpy)
+RUN uv pip install --system -r /app/spider_xhs/requirements.txt
 
 # Copy source code
 COPY . .
