@@ -3,3 +3,6 @@
 
 [deploy]
   startCommand = "node dist/server.js"
+
+[settings]
+  port = 8080
