@@ -24,8 +24,8 @@ ENV NODE_ENV=production
 # Copy package files
 COPY package.json ./
 
-# Install dependencies
-RUN npm install --ignore-scripts
+# Install dependencies (including devDependencies for build)
+RUN npm install
 
 # Install xhs CLI using uv
 RUN uv tool install xiaohongshu-cli --python 3.11
