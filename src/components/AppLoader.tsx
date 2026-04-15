@@ -282,6 +282,7 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           flex-direction: column;
           min-width: 0;
           width: 100%;
+          overflow: hidden;
         }
 
         @media (min-width: 1024px) {
@@ -297,13 +298,13 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           flex-direction: column;
           min-height: 0;
           overflow-y: auto;
+          overflow-x: hidden;
           background-color: var(--color-surface);
-          padding-top: 60px;
         }
 
-        @media (max-width: 1023px) {
+        @media (min-width: 1024px) {
           .main-scroll-area {
-            padding-top: 60px;
+            padding-top: 0;
           }
         }
 
@@ -313,12 +314,14 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           display: flex;
           flex-direction: column;
           min-height: 0;
-          padding-left: 256px;
+          width: 100%;
         }
 
-        @media (max-width: 1023px) {
+        @media (min-width: 1024px) {
           .page-content {
-            padding-left: 0;
+            margin-left: 240px;
+            padding-left: 24px;
+            padding-right: 24px;
           }
         }
 

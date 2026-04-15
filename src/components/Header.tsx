@@ -167,12 +167,14 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick, theme = 'l
           border-bottom: 1px solid var(--color-border); height: 60px;
           display: flex; align-items: center; justify-content: space-between;
           padding: 0 20px; gap: 12px;
+          flex-shrink: 0;
         }
 
-        .hdr-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .hdr-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex-shrink: 1; }
         .hdr-title {
           font-family: var(--font-headline); font-size: 16px; font-weight: 700;
           color: var(--color-text-primary); margin: 0; white-space: nowrap;
+          flex-shrink: 0;
         }
         .hdr-breadcrumb {
           display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-muted);
@@ -184,17 +186,19 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick, theme = 'l
           padding: 6px 12px; background: var(--color-primary-muted); color: var(--color-primary);
           border: none; border-radius: 6px; font-size: 12px; font-weight: 700;
           cursor: pointer; white-space: nowrap; transition: all 0.15s ease;
+          flex-shrink: 0;
         }
         .hdr-lang-btn:hover { background: var(--color-border); }
 
         .hdr-menu-btn {
-          display: none; padding: 8px; border: none; background: transparent;
+          display: flex; padding: 8px; border: none; background: transparent;
           color: var(--color-text-muted); cursor: pointer; border-radius: 8px;
+          flex-shrink: 0;
         }
         .hdr-menu-btn:hover { background: var(--color-surface); }
-        @media (max-width: 1024px) { .hdr-menu-btn { display: flex; } }
+        @media (min-width: 1024px) { .hdr-menu-btn { display: none; } }
 
-        .hdr-right { display: flex; align-items: center; gap: 8px; }
+        .hdr-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
         .hdr-search {
           display: flex; align-items: center; gap: 8px;
