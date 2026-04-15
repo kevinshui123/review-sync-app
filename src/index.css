@@ -186,7 +186,6 @@ h6, .text-base { font-size: 1rem; }
 /* Page Container */
 .page-container {
   padding: 24px;
-  padding-top: 84px;
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -638,7 +637,7 @@ h6, .text-base { font-size: 1rem; }
 /* Responsive Utilities */
 @media (max-width: 768px) {
   .page-container {
-    padding: 84px 16px 16px;
+    padding: 16px;
   }
 
   .page-title {

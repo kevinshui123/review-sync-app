@@ -298,6 +298,13 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           min-height: 0;
           overflow-y: auto;
           background-color: var(--color-surface);
+          padding-top: 60px;
+        }
+
+        @media (max-width: 1023px) {
+          .main-scroll-area {
+            padding-top: 60px;
+          }
         }
 
         /* Page Content */
