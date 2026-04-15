@@ -19,13 +19,15 @@ ENV PATH="/root/.local/bin:$PATH"
 WORKDIR /app
 
 # Set production mode
-ENV NODE_ENV=production
+# Cache buster - change this to force fresh build
+ENV CACHE_BUST=20240414_1
 
 # Copy package files
 COPY package.json ./
 
 # Install dependencies (including devDependencies for build)
-RUN npm install
+# Force fresh install to avoid any stale cache
+RUN npm install --force
 
 # Install xhs CLI using uv
 RUN uv tool install xiaohongshu-cli --python 3.11
@@ -37,7 +39,8 @@ COPY . .
 RUN npx prisma generate
 
 # Build the app
-RUN npm run build
+ARG BUILD_DATE
+RUN echo "Build triggered: $BUILD_DATE" && npm run build
 
 # Expose Railway's forwarded port
 EXPOSE 3000
