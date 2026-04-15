@@ -778,9 +778,14 @@ async function startServer() {
   }
 
   // ==========================================
-  // Health Check
+  // Health Check (no DB required)
   // ==========================================
-  app.get('/api/health', async (req, res) => {
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', message: 'Server is running' });
+  });
+
+  // Detailed health check (with DB)
+  app.get('/api/health/detailed', async (req, res) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
       res.json({ status: 'ok', message: 'Server is running', database: 'connected' });

@@ -36,10 +36,13 @@ RUN npx prisma generate
 # Build the app
 RUN npm run build
 
-# Expose port
-EXPOSE 3000
+# Expose port (Railway uses PORT env var)
+ENV PORT=8080
+EXPOSE ${PORT}
 
-# Start: push schema then run server
-# Railway injects DATABASE_URL and APP_URL as environment variables
-# --accept-data-loss is safe: only drops a new compound unique index
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/server.js"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:${PORT}/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
+# Start: just run server (assume DB schema is up to date)
+CMD ["node", "dist/server.js"]
