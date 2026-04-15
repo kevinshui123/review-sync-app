@@ -766,8 +766,8 @@ function normalizeEmbedSocialReview(review: any, locationId: string): {
 
 async function startServer() {
   const app = express();
-  // Railway injects PORT as environment variable
-  const PORT = parseInt(process.env.PORT || '3000', 10);
+  // Railway injects PORT as environment variable, but always forwards to 3000
+  const LISTEN_PORT = 3000;
 
   app.use(express.json());
 
@@ -5492,8 +5492,8 @@ IMPORTANT RULES:
   }
 
   // Start the server
-  app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(LISTEN_PORT, '0.0.0.0', async () => {
+    console.log(`Server running on http://localhost:${LISTEN_PORT}`);
 
     // Create default admin account if not exists
     try {
