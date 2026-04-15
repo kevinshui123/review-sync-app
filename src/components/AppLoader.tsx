@@ -322,6 +322,16 @@ export function AppLoader({ message, subMessage, size = 'md', showProgress = tru
           }
         }
 
+        /* RedNote SEO page - extra top padding to clear sticky header */
+        .page-container-header {
+          padding-top: 80px;
+        }
+        @media (max-width: 1023px) {
+          .page-container-header {
+            padding-top: 16px;
+          }
+        }
+
         /* Config Warning Banner */
         .config-warning-banner {
           display: flex;

@@ -578,13 +578,13 @@ ${contextPrompt}
   };
 
   if (loading && !xhsInstalled) {
-    return <PageLoader message="加载中..." subMessage="正在检查小红书账号状态" />;
+    return <PageLoader message={t('app.loading')} subMessage={t('rednote.checkingAccountStatus')} />;
   }
 
   const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.id === activeSection);
 
   return (
-    <div className="page-container animate-fade-in">
+    <div className="page-container page-container-header animate-fade-in">
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up ${
@@ -619,7 +619,7 @@ ${contextPrompt}
               {syncing && (
                 <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
                   <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-                  同步中
+                  {t('rednote.syncing')}
                 </div>
               )}
             </div>
@@ -674,7 +674,7 @@ ${contextPrompt}
           {/* Status Card */}
           <div className="lg:col-span-2 card">
             <div className="card-header">
-              <h3 className="heading text-lg">账号状态</h3>
+              <h3 className="heading text-lg">{t('rednote.accountStatusTitle')}</h3>
             </div>
             <div className="card-body">
               {!xhsInstalled ? (
@@ -695,9 +695,9 @@ ${contextPrompt}
                   <div className="w-20 h-20 rounded-2xl bg-[var(--color-surface)] flex items-center justify-center mx-auto mb-4">
                     <AccountCircle style={{ width: 48, height: 48, color: 'var(--color-text-disabled)' }} />
                   </div>
-                  <h3 className="heading text-lg mb-2">连接小红书账号</h3>
+                  <h3 className="heading text-lg mb-2">{t('rednote.connectAccount')}</h3>
                   <p className="text-[var(--color-text-muted)] mb-6 max-w-sm mx-auto">
-                    从 Chrome 浏览器提取 Cookie 进行登录，支持扫码和浏览器自动登录
+                    {t('rednote.notLoggedInDesc')}
                   </p>
                   <button
                     onClick={handleLogin}
@@ -707,12 +707,12 @@ ${contextPrompt}
                     {loginLoading ? (
                       <>
                         <Loader2 style={{ width: 20, height: 20 }} className="animate-spin" />
-                        登录中...
+                        {t('rednote.login')}...
                       </>
                     ) : (
                       <>
                         <Login style={{ width: 20, height: 20 }} />
-                        从 Chrome 登录
+                        {t('rednote.loginFromChrome')}
                       </>
                     )}
                   </button>
@@ -763,7 +763,7 @@ ${contextPrompt}
           {/* Quick Stats */}
           <div className="card">
             <div className="card-header">
-              <h3 className="heading text-lg">数据概览</h3>
+              <h3 className="heading text-lg">{t('rednote.dataOverview')}</h3>
             </div>
             <div className="card-body space-y-4">
               <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded-lg">
@@ -771,7 +771,7 @@ ${contextPrompt}
                   <div className="w-10 h-10 rounded-lg bg-[var(--color-primary-muted)] flex items-center justify-center">
                     <Publish style={{ width: 20, height: 20, color: 'var(--color-primary)' }} />
                   </div>
-                  <span className="font-medium">发布笔记</span>
+                  <span className="font-medium">{t('rednote.notesPublished')}</span>
                 </div>
                 <span className="text-xl font-bold">{myNotes.length}</span>
               </div>
@@ -780,7 +780,7 @@ ${contextPrompt}
                   <div className="w-10 h-10 rounded-lg bg-[var(--color-success-bg)] flex items-center justify-center">
                     <ThumbUp style={{ width: 20, height: 20, color: 'var(--color-success)' }} />
                   </div>
-                  <span className="font-medium">总点赞</span>
+                  <span className="font-medium">{t('rednote.totalLikes')}</span>
                 </div>
                 <span className="text-xl font-bold">
                   {formatNumber(myNotes.reduce((sum, n) => sum + (n.likedCount || 0), 0))}
@@ -791,7 +791,7 @@ ${contextPrompt}
                   <div className="w-10 h-10 rounded-lg bg-[var(--color-accent-muted)] flex items-center justify-center">
                     <Favorite style={{ width: 20, height: 20, color: 'var(--color-accent)' }} />
                   </div>
-                  <span className="font-medium">总收藏</span>
+                  <span className="font-medium">{t('rednote.totalCollections')}</span>
                 </div>
                 <span className="text-xl font-bold">
                   {formatNumber(myNotes.reduce((sum, n) => sum + (n.collectedCount || 0), 0))}
@@ -802,7 +802,7 @@ ${contextPrompt}
                   <div className="w-10 h-10 rounded-lg bg-[var(--color-warning-bg)] flex items-center justify-center">
                     <Chat style={{ width: 20, height: 20, color: 'var(--color-warning)' }} />
                   </div>
-                  <span className="font-medium">总评论</span>
+                  <span className="font-medium">{t('rednote.totalComments')}</span>
                 </div>
                 <span className="text-xl font-bold">
                   {formatNumber(myNotes.reduce((sum, n) => sum + (n.commentCount || 0), 0))}
@@ -814,14 +814,14 @@ ${contextPrompt}
           {/* My Notes */}
           <div className="lg:col-span-3 card">
             <div className="card-header flex items-center justify-between">
-              <h3 className="heading text-lg">我的笔记</h3>
+              <h3 className="heading text-lg">{t('rednote.myNotes')}</h3>
               <button
                 onClick={fetchMyNotes}
                 disabled={myNotesLoading}
                 className="btn btn-secondary btn-sm"
               >
                 <Refresh style={{ width: 16, height: 16 }} className={myNotesLoading ? 'animate-spin' : ''} />
-                刷新
+                {t('rednote.refresh')}
               </button>
             </div>
             <div className="card-body">
@@ -832,8 +832,8 @@ ${contextPrompt}
               ) : myNotes.length === 0 ? (
                 <div className="empty-state">
                   <Publish style={{ width: 64, height: 64 }} className="empty-state-icon" />
-                  <h4 className="empty-state-title">暂无笔记</h4>
-                  <p className="empty-state-description">去发布第一篇笔记吧！</p>
+                  <h4 className="empty-state-title">{t('rednote.noNotesYet')}</h4>
+                  <p className="empty-state-description">{t('rednote.goPublishFirst')}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

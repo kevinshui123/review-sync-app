@@ -416,6 +416,8 @@ const translations: Record<Language, Record<string, string>> = {
     'rednote.account': 'Account',
     'rednote.accountManagement': 'Account Management',
     'rednote.accountStatus': 'Account Status',
+    'rednote.accountStatusTitle': 'Account Status',
+    'rednote.connectAccount': 'Connect Xiaohongshu Account',
     'rednote.login': 'Login',
     'rednote.logout': 'Logout',
     'rednote.loginFromChrome': 'Login from Chrome',
@@ -432,6 +434,14 @@ const translations: Record<Language, Record<string, string>> = {
     'rednote.refresh': 'Refresh',
     'rednote.myNotes': 'My Notes',
     'rednote.noNotes': 'No notes yet, go publish your first one!',
+    'rednote.dataOverview': 'Data Overview',
+    'rednote.notesPublished': 'Published Notes',
+    'rednote.totalLikes': 'Total Likes',
+    'rednote.totalCollections': 'Total Collections',
+    'rednote.totalComments': 'Total Comments',
+    'rednote.syncing': 'Syncing...',
+    'rednote.noNotesYet': 'No notes yet',
+    'rednote.goPublishFirst': 'Go publish your first note!',
 
     'rednote.publish': 'Publish',
     'rednote.publishNote': 'Publish Note',
@@ -760,6 +770,7 @@ const translations: Record<Language, Record<string, string>> = {
     'automations.loadingDesc': 'Preparing your workflows',
     'realComment.loading': 'Loading...',
     'realComment.loadingDesc': 'Setting up intelligent responses',
+    'rednote.checkingAccountStatus': 'Checking Xiaohongshu account status',
   },
 
   zh: {
@@ -1168,6 +1179,8 @@ const translations: Record<Language, Record<string, string>> = {
     'rednote.account': '账号',
     'rednote.accountManagement': '账号管理',
     'rednote.accountStatus': '账号状态',
+    'rednote.accountStatusTitle': '账号状态',
+    'rednote.connectAccount': '连接小红书账号',
     'rednote.login': '登录',
     'rednote.logout': '退出登录',
     'rednote.loginFromChrome': '从 Chrome 登录',
@@ -1184,6 +1197,14 @@ const translations: Record<Language, Record<string, string>> = {
     'rednote.refresh': '刷新',
     'rednote.myNotes': '我的笔记',
     'rednote.noNotes': '暂无笔记，快去发布第一篇吧！',
+    'rednote.dataOverview': '数据概览',
+    'rednote.notesPublished': '发布笔记',
+    'rednote.totalLikes': '总点赞',
+    'rednote.totalCollections': '总收藏',
+    'rednote.totalComments': '总评论',
+    'rednote.syncing': '同步中',
+    'rednote.noNotesYet': '暂无笔记',
+    'rednote.goPublishFirst': '去发布第一篇笔记吧！',
 
     'rednote.publish': '发布',
     'rednote.publishNote': '发布笔记',
@@ -1514,6 +1535,7 @@ const translations: Record<Language, Record<string, string>> = {
     'automations.loadingDesc': '正在准备您的工作流',
     'realComment.loading': '加载中...',
     'realComment.loadingDesc': '正在设置智能回复',
+    'rednote.checkingAccountStatus': '正在检查小红书账号状态',
   },
 }
 
