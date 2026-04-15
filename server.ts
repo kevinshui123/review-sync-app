@@ -5510,8 +5510,21 @@ IMPORTANT RULES:
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });
 
-startServer().catch(console.error);
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+startServer().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});
