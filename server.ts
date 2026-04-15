@@ -2426,14 +2426,23 @@ async function startServer() {
         }
       }
 
-      // If no real data: return empty chart
+      // If no real data: return demo chart data for preview
       if (!hasRealData) {
-        if (tenantSourceIds.length === 0) {
-          console.log('[chart-data] Tenant has no connected listings, returning empty chart');
-          return res.json({ impressions: [], actions: [] });
+        console.log('[chart-data] No real data, generating demo data for preview');
+        const demoData: any[] = [];
+        for (let i = days - 1; i >= 0; i--) {
+          const date = new Date(now);
+          date.setDate(date.getDate() - i);
+          demoData.push({
+            date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            searchViews: Math.floor(Math.random() * 500) + 100,
+            mapViews: Math.floor(Math.random() * 300) + 50,
+            websiteClicks: Math.floor(Math.random() * 50) + 10,
+            directionRequests: Math.floor(Math.random() * 30) + 5,
+            phoneCalls: Math.floor(Math.random() * 20) + 2,
+          });
         }
-        console.log('[chart-data] No real data yet, returning empty chart');
-        return res.json({ impressions: [], actions: [] });
+        return res.json({ impressions: demoData, actions: demoData, demo: true });
       }
 
       console.log(`[chart-data] Returning impressions: ${impressions.length}, actions: ${actions.length}`);

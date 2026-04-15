@@ -58,6 +58,7 @@ export function Reports({ setActiveTab }: ReportsProps) {
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [isDemoData, setIsDemoData] = useState(false);
 
   useEffect(() => {
     apiGet('/api/embedsocial/locations').then(r => r.ok ? r.json() : []).then((data: any[]) => {
@@ -74,6 +75,7 @@ export function Reports({ setActiveTab }: ReportsProps) {
           const json = await res.json();
           const data: DailyData[] = json.impressions || [];
           setDailyData(data);
+          setIsDemoData(json.demo === true);
         }
       } catch (e) {
         console.error('[Reports] Failed to load chart data', e);
@@ -231,7 +233,18 @@ export function Reports({ setActiveTab }: ReportsProps) {
       <div className="mb-4 flex items-center gap-2">
         <BarChart className="w-5 h-5 text-slate-400" />
         <h3 className="text-base font-bold text-slate-700">GBP Performance Data</h3>
+        {isDemoData && (
+          <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full font-medium">
+            Demo Data
+          </span>
+        )}
       </div>
+
+      {isDemoData && !loading && (
+        <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+          <strong>Note:</strong> This is demo data for preview. Connect your Google Business Profile and ensure it has activity to see real data.
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center h-48 gap-3">
