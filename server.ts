@@ -778,21 +778,6 @@ async function startServer() {
   }
 
   // ==========================================
-  // Root path - redirect to frontend or return status
-  // ==========================================
-  app.get('/', (req, res) => {
-    res.json({ 
-      status: 'ok', 
-      message: 'Review Sync API Server',
-      version: '1.0.0',
-      endpoints: {
-        health: '/api/health',
-        docs: '/api/docs'
-      }
-    });
-  });
-
-  // ==========================================
   // Health Check
   // ==========================================
   app.get('/api/health', async (req, res) => {

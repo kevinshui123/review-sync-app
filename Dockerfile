@@ -18,6 +18,9 @@ ENV PATH="/root/.local/bin:$PATH"
 # Set working directory
 WORKDIR /app
 
+# Set production mode
+ENV NODE_ENV=production
+
 # Copy package files
 COPY package.json ./
 
