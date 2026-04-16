@@ -168,10 +168,10 @@ export function Header({ title, activeTab, setActiveTab, onMenuClick, theme = 'l
           display: flex; align-items: center; justify-content: space-between;
           padding: 0 20px; gap: 12px;
           flex-shrink: 0;
-          min-width: 0;
+          min-width: 600px;
         }
 
-        .hdr-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex-shrink: 0; }
+        .hdr-left { display: flex; align-items: center; gap: 12px; min-width: max-content; flex-shrink: 0; }
         .hdr-title {
           font-family: var(--font-headline); font-size: 16px; font-weight: 700;
           color: var(--color-text-primary); margin: 0; white-space: nowrap;
