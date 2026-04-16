@@ -63,6 +63,7 @@ model Tenant {
   automations Automation[]
   aiAgents   AIAgent[]
   realCommentSubmissions RealCommentSubmission[]
+  realRednoteSubmissions RealRednoteSubmission[]
 }
 
 model Location {
@@ -244,9 +245,9 @@ model Admin {
 
 model RealCommentSubmission {
   id          String   @id @default(uuid())
-  tenantId   String
-  userId     String?
-  userEmail  String?
+  tenantId    String
+  userId      String?
+  userEmail   String?
 
   // Review details
   location    String   // Store name
@@ -254,11 +255,50 @@ model RealCommentSubmission {
   content     String   // Review text content
   rating      Int      // 1-5 stars
   photos      String   @default("[]") // JSON array of base64 strings or URLs
-  submitDate String?  // Date selected by user
+  submitDate  String?  // Date selected by user
 
   // Admin review status
   status      String   @default("pending") // 'pending', 'approved', 'completed', 'rejected'
-  adminNote   String?  // Note from admin
+  adminNote   String?
+  reviewedAt  DateTime?
+  reviewedBy  String?
+
+  // Relations
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ==========================================
+// Real Rednote Post Submission Model
+// ==========================================
+
+model RealRednoteSubmission {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String?
+  userEmail   String?
+
+  // Post details
+  location    String   // Store name
+  locationId  String?
+  title       String   @default("")
+  content     String   // Post text content
+  rating      Int      @default(5) // 1-5 stars
+  photos      String   @default("[]") // JSON array of base64 strings or URLs
+  topics      String   @default("[]") // JSON array of topic strings
+  submitDate  String?  // Date selected by user
+
+  // Admin review status
+  status      String   @default("pending") // 'pending', 'published', 'failed', 'rejected'
+  adminNote   String?
+  publishedAccount String?  // The Rednote account used to publish
   reviewedAt  DateTime?
   reviewedBy  String?  // Admin ID who reviewed
 

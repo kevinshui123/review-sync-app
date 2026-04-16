@@ -13,7 +13,7 @@ import { LocalSearchGrid } from './components/LocalSearchGrid';
 import { LocalCitations } from './components/LocalCitations';
 import { Optimization } from './components/Optimization';
 import { RealComment } from './components/RealComment';
-import { RedNoteSEO } from './components/RedNoteSEO';
+import { RealRednotePost } from './components/RealRednotePost';
 import { Settings } from './components/Settings';
 import { Help } from './components/Help';
 import { EditBusinessPage } from './components/EditBusinessPage';
@@ -160,7 +160,6 @@ function AppContent() {
       case 'seo-citations': return t('seo.localCitations');
       case 'seo-optimization': return t('seo.optimization');
       case 'seo-real-comment': return t('nav.realComment');
-      case 'seo-rednote-seo': return t('nav.rednoteSeo');
       case 'settings': return t('nav.settings');
       case 'help': return t('nav.help');
       case 'sales-doc': return '产品功能文档';
@@ -335,14 +334,14 @@ function AppContent() {
                   setActiveSection={(section) => {
                     if (section === 'localSeo') setActiveTab('seo-grid');
                     else if (section === 'realComment') setActiveTab('seo-real-comment');
-                    else if (section === 'rednoteSeo') setActiveTab('seo-rednote-seo');
+                    else if (section === 'rednotePost') setActiveTab('seo-rednote-post');
                   }}
                 />
               )}
               {/* SEO Real Comment */}
               {activeTab === 'seo-real-comment' && <RealComment />}
-              {/* RedNote SEO */}
-              {activeTab === 'seo-rednote-seo' && <RedNoteSEO />}
+              {/* Real Rednote Post */}
+              {activeTab === 'seo-rednote-post' && <RealRednotePost />}
               {activeTab === 'settings' && <Settings />}
               {activeTab === 'help' && <Help />}
             </div>

@@ -5,6 +5,7 @@ import AdminLogin from './pages/Login';
 import AdminDashboard from './pages/Dashboard';
 import UsersPage from './pages/Users';
 import RealCommentsPage from './pages/RealComments';
+import RealRednotePostsPage from './pages/RealRednotePosts';
 import './styles/global.css';
 
 function AdminApp() {
@@ -27,6 +28,9 @@ function AdminApp() {
         } />
         <Route path="/admin/real-comments" element={
           isAuthenticated ? <RealCommentsPage /> : <Navigate to="/admin/login" replace />
+        } />
+        <Route path="/admin/real-rednote" element={
+          isAuthenticated ? <RealRednotePostsPage /> : <Navigate to="/admin/login" replace />
         } />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>

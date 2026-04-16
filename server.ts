@@ -1155,14 +1155,97 @@ async function startServer() {
     }
   });
 
+  // Get admin rednote submissions
+  app.get('/api/admin/real-rednote', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { status } = req.query;
+      const where: any = {};
+      if (status && status !== 'all') {
+        where.status = status;
+      }
+
+      const submissions = await prisma.realRednoteSubmission.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Parse photos/topics JSON
+      const parsed = submissions.map(s => ({
+        ...s,
+        photos: JSON.parse(s.photos),
+        topics: JSON.parse(s.topics),
+      }));
+
+      res.json({ submissions: parsed, total: submissions.length });
+    } catch (error: any) {
+      console.error('[admin] Get real rednote error:', error);
+      res.status(500).json({ error: 'Failed to fetch submissions' });
+    }
+  });
+
+  // Mark rednote post as published with account info (admin only)
+  app.put('/api/admin/real-rednote/:id/publish', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { publishedAccount, adminNote } = req.body;
+
+      if (!publishedAccount || !publishedAccount.trim()) {
+        return res.status(400).json({ error: 'Published account is required' });
+      }
+
+      const submission = await prisma.realRednoteSubmission.update({
+        where: { id },
+        data: {
+          status: 'published',
+          adminNote: adminNote || null,
+          publishedAccount: publishedAccount.trim(),
+          reviewedAt: new Date(),
+          reviewedBy: (req as any).adminId,
+        },
+      });
+
+      console.log(`[ADMIN] Rednote post ${id} marked as published by admin ${(req as any).adminId} using account: ${publishedAccount}`);
+
+      res.json({ success: true, submission });
+    } catch (error: any) {
+      console.error('[admin] Publish rednote error:', error);
+      res.status(500).json({ error: 'Failed to update submission' });
+    }
+  });
+
+  // Reject rednote post (admin only)
+  app.put('/api/admin/real-rednote/:id/reject', adminMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { adminNote } = req.body;
+
+      const submission = await prisma.realRednoteSubmission.update({
+        where: { id },
+        data: {
+          status: 'rejected',
+          adminNote: adminNote || null,
+          reviewedAt: new Date(),
+          reviewedBy: (req as any).adminId,
+        },
+      });
+
+      res.json({ success: true, submission });
+    } catch (error: any) {
+      console.error('[admin] Reject rednote error:', error);
+      res.status(500).json({ error: 'Failed to reject submission' });
+    }
+  });
+
   // Get admin dashboard stats
   app.get('/api/admin/stats', adminMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const [totalUsers, totalTenants, totalSubmissions, pendingSubmissions] = await Promise.all([
+      const [totalUsers, totalTenants, totalSubmissions, pendingSubmissions, totalRednote, pendingRednote] = await Promise.all([
         prisma.user.count(),
         prisma.tenant.count(),
         prisma.realCommentSubmission.count(),
         prisma.realCommentSubmission.count({ where: { status: 'pending' } }),
+        prisma.realRednoteSubmission.count(),
+        prisma.realRednoteSubmission.count({ where: { status: 'pending' } }),
       ]);
 
       res.json({
@@ -1170,6 +1253,8 @@ async function startServer() {
         totalTenants,
         totalSubmissions,
         pendingSubmissions,
+        totalRednote,
+        pendingRednote,
       });
     } catch (error: any) {
       console.error('[admin] Stats error:', error);
@@ -4524,6 +4609,88 @@ Return ONLY this JSON structure, nothing else:
     } catch (error: any) {
       console.error('[real-comment] Reject error:', error);
       res.status(500).json({ error: 'Failed to reject submission' });
+    }
+  });
+
+  // ==========================================
+  // Real Rednote Post Submission API
+  // ==========================================
+
+  // Submit a new rednote post
+  app.post('/api/real-rednote/submit', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { location, locationId, title, content, rating, photos, topics, date } = req.body;
+      const userId = req.userId;
+      const tenantId = req.tenantId;
+
+      // Validate required fields
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: 'Post content is required' });
+      }
+
+      const submission = await prisma.realRednoteSubmission.create({
+        data: {
+          tenantId: tenantId || 'default',
+          userId: userId || null,
+          location: location || 'Unknown',
+          locationId: locationId || null,
+          title: title?.trim() || '',
+          content: content.trim(),
+          rating: parseInt(rating) || 5,
+          photos: JSON.stringify(photos || []),
+          topics: JSON.stringify(topics || []),
+          submitDate: date || null,
+          status: 'pending',
+        },
+      });
+
+      // Log to console for visibility
+      console.log('='.repeat(60));
+      console.log('[REAL REDNOTE SUBMISSION]');
+      console.log('='.repeat(60));
+      console.log('ID:', submission.id);
+      console.log('Tenant:', tenantId);
+      console.log('User:', userId);
+      console.log('Location:', location);
+      console.log('Title:', title?.substring(0, 50) || 'Untitled');
+      console.log('Rating:', rating, 'stars');
+      console.log('Content:', content.substring(0, 100) + '...');
+      console.log('Photos:', photos?.length || 0, 'photo(s)');
+      console.log('Topics:', topics?.join(', ') || 'none');
+      console.log('='.repeat(60));
+
+      res.json({
+        success: true,
+        id: submission.id,
+        message: 'Rednote post submission received successfully',
+      });
+    } catch (error: any) {
+      console.error('[real-rednote] Submit error:', error);
+      res.status(500).json({ error: 'Failed to submit post', details: error.message });
+    }
+  });
+
+  // Get user's rednote submissions
+  app.get('/api/real-rednote/submissions', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const tenantId = req.tenantId;
+
+      const submissions = await prisma.realRednoteSubmission.findMany({
+        where: { tenantId: tenantId || 'default' },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Parse photos/topics JSON for each submission
+      const parsedSubmissions = submissions.map(s => ({
+        ...s,
+        photos: JSON.parse(s.photos),
+        topics: JSON.parse(s.topics),
+      }));
+
+      res.json({ submissions: parsedSubmissions, count: submissions.length });
+    } catch (error: any) {
+      console.error('[real-rednote] Fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch submissions' });
     }
   });
 

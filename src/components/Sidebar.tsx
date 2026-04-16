@@ -65,7 +65,7 @@ const SEO_LOCAL_ITEMS: SubNavItem[] = [
 const SEO_TOP_ITEMS: NavItem[] = [
   { id: 'seo', labelKey: 'nav.localSeo', icon: Public },
   { id: 'seo-real-comment', labelKey: 'nav.realComment', icon: Star, badge: 'NEW' },
-  { id: 'seo-rednote-seo', labelKey: 'nav.rednoteSeo', icon: Article },
+  { id: 'seo-rednote-post', labelKey: 'nav.rednotePost', icon: Article },
 ];
 
 export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarProps) {
@@ -74,7 +74,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
 
   const isSeoLocal = ['seo-grid', 'seo-citations', 'seo-optimization'].includes(activeTab);
   const isSeoRealComment = activeTab === 'seo-real-comment';
-  const isSeoRednote = activeTab === 'seo-rednote-seo';
+  const isSeoRednote = activeTab === 'seo-rednote-post';
   const isSeoTopActive = activeTab === 'seo' || isSeoLocal || isSeoRealComment || isSeoRednote;
 
   const handleNavClick = (id: string) => {
