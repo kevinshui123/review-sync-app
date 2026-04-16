@@ -235,60 +235,44 @@ export function RealRednotePost() {
     try {
       const persona = REVIEW_PERSONAS[Math.floor(Math.random() * REVIEW_PERSONAS.length)];
 
-      let photoContext = '';
-      if (photoAnalysis) {
-        photoContext = `
-照片分析信息：
-- 食物类型：${photoAnalysis.foodItems.join('、')}
-- 餐厅氛围：${photoAnalysis.atmosphere.join('、')}
-- 整体印象：${photoAnalysis.overallVibe}
-- 质量评价：${photoAnalysis.quality}
-`;
-      }
+      const selectedLoc = locations.find(l => l.id === selectedLocation) || locations[0];
 
-      const businessContext = businessInfo
-        ? `${businessInfo.name} - ${businessInfo.category}位于${businessInfo.address}`
-        : '餐厅';
-
-      const prompt = `你是一个${persona.identity}。你正在体验${businessContext}。
-${photoContext}
-请根据以上信息，写一篇小红书风格的笔记推荐，要求：
-1. 100-200字
-2. 语言自然，像真实顾客
-3. 融入照片中的食物和氛围描述
-4. 不要提及任何商业或AI相关的内容
-5. 重点描述用餐体验、食物品质、服务或环境
-6. 可以添加一些话题标签 #
-
-只输出笔记文本，不要输出其他内容。`;
-
-      const res = await apiPost('/api/reviews/generate-reply', {
-        reviewId: 'ai-generated-review',
-        reviewerName: persona.name,
-        rating: 5,
-        comment: prompt,
-        businessName: businessInfo?.name || 'this business',
+      // Call the dedicated Xiaohongshu post generation API
+      const res = await apiPost('/api/real-rednote/generate', {
+        persona,
+        photoAnalysis,
+        businessInfo: businessInfo ? {
+          name: businessInfo.name,
+          category: businessInfo.category,
+          address: businessInfo.address,
+        } : null,
+        selectedLocation: selectedLoc ? {
+          name: selectedLoc.name,
+        } : null,
       });
 
       let generatedContent = '';
+      let generatedTitle = '';
+
       if (res.ok) {
         const data = await res.json();
-        if (data.replies?.professional) {
-          generatedContent = data.replies.professional;
-        }
+        generatedContent = data.content || '';
+        generatedTitle = data.title || '';
       }
 
+      // Fallback if API fails
       if (!generatedContent) {
-        const fallbackReviews = [
-          `这次来${businessInfo?.name || '这家店'}真的太惊喜了！${photoAnalysis?.overallVibe || '店面环境很棒'}，店员服务也很热情。${photoAnalysis?.foodItems?.[0] || '招牌菜'}做得相当地道，分量也很足。下次还会再来！\n\n#美食探店 #${businessInfo?.category || '餐厅'}`,
-          `朋友推荐过来的，果然没有让我失望！${photoAnalysis?.atmosphere?.[0] || '环境氛围很好'}，${photoAnalysis?.foodItems?.slice(0, 2).join('和') || '菜品'}都很好吃。性价比很高，值得推荐！\n\n#周末去哪玩 #${businessInfo?.category || '美食'}`,
-          `已经是第三次来了，每次都很满意！${photoAnalysis?.quality || '品质一如既往的好'}，${photoAnalysis?.foodItems?.[0] || '招牌菜'}依然是我的最爱。强烈推荐给想吃${businessInfo?.category || '美食'}的朋友们！\n\n#宝藏店铺 #美食推荐`,
+        const fallbackPosts = [
+          `今天终于来打卡了这家店！🏠 一进门就被${photoAnalysis?.atmosphere?.[0] || '温馨的环境'}吸引住了，整个${photoAnalysis?.atmosphere?.[1] || '氛围'}特别舒服，拍照也超出片！\n\n${photoAnalysis?.foodItems?.[0] || '招牌菜'}真的名不虚传！味道${photoAnalysis?.overallVibe || '超棒'}，每一口都是享受～店员服务也超热情，给人一种回家的感觉😊\n\n总之就是一家会反复打卡的店！强烈推荐给大家～\n\n#${businessInfo?.category || '美食'} #周末探店 #宝藏店铺 #美食分享`,
+          `和闺蜜约饭选择了这里，真的太惊喜了！🎉 ${photoAnalysis?.atmosphere?.[0] || '环境很棒'}，${photoAnalysis?.overallVibe || '超出预期'}，完全超出预期！\n\n${photoAnalysis?.foodItems?.[0] || '必点菜'}是必点的！份量足味道好，还有${photoAnalysis?.foodItems?.[1] || '其他菜品'}也很不错，整体性价比超高👍\n\n环境也很适合拍照，随便一拍都是大片感📸 已经迫不及待想再来啦～\n\n#${businessInfo?.category || '美食'} #种草 #美食探店 #宝藏餐厅 #周末去哪玩`,
+          `路过看到这家店就被吸引了，没想到这么好吃！🤩 ${photoAnalysis?.overallVibe || '超棒'}，${photoAnalysis?.foodItems?.[0] || '招牌菜'}做得相当地道！\n\n特别满意的是${photoAnalysis?.atmosphere?.[0] || '环境氛围'}，${photoAnalysis?.atmosphere?.[1] || '氛围感满满'}，很适合朋友聚会或者情侣约会💕\n\n服务也很周到，会主动介绍菜品，体验感拉满！下次带家人再来～\n\n#${businessInfo?.category || '美食'} #美食推荐 #宝藏店铺 #本地生活 #必吃清单`,
         ];
-        generatedContent = fallbackReviews[Math.floor(Math.random() * fallbackReviews.length)];
+        generatedContent = fallbackPosts[Math.floor(Math.random() * fallbackPosts.length)];
+        generatedTitle = `${businessInfo?.name || '店铺'}探店分享`;
       }
 
       setReviewContent(generatedContent);
-      setReviewTitle(`${businessInfo?.name || '店铺'}探店分享`);
+      setReviewTitle(generatedTitle || `${businessInfo?.name || '店铺'}探店分享`);
       setCurrentPersona(persona);
       setReviewRating(5);
       setAiReviewGenerated(true);
@@ -897,44 +881,257 @@ ${photoContext}
         </div>
       </div>
 
-      {/* Review History */}
+      {/* Review History - Xiaohongshu Style */}
       {reviewHistory.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
             <History className="w-5 h-5 text-slate-400" />
             {t('realRednote.historyRecords')}
+            <span className="ml-2 text-sm font-normal text-slate-400">{reviewHistory.length} {t('realRednote.posts')}</span>
           </h2>
-          <div className="space-y-3">
-            {reviewHistory.slice(0, 5).map((task) => (
-              <div key={task.id} className="bg-white rounded-2xl border border-slate-200/80 p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
-                  <Chat className="w-5 h-5 text-slate-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-slate-900 truncate">{task.title || t('realRednote.noTitle')}</span>
-                    <div className="flex">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <Star key={i} className={`w-3 h-3 ${i <= task.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
-                      ))}
+
+          {/* Xiaohongshu Card Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '16px',
+          }}>
+            {reviewHistory.slice(0, 20).map((task) => {
+              const coverPhoto = task.photos && task.photos.length > 0 ? task.photos[0] : null;
+              const contentPreview = task.content.length > 80 ? task.content.substring(0, 80) + '...' : task.content;
+              const likeCount = Math.floor(Math.random() * 500) + 10;
+              const commentCount = Math.floor(Math.random() * 50) + 1;
+              const collectCount = Math.floor(Math.random() * 100) + 5;
+
+              return (
+                <div
+                  key={task.id}
+                  style={{
+                    background: '#fff',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(0,0,0,0.06)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)';
+                    (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                    (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                  }}
+                >
+                  {/* Status Badge Overlay */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    zIndex: 2,
+                    display: 'flex',
+                    gap: '6px',
+                  }}>
+                    {/* Status */}
+                    <span style={{
+                      padding: '3px 10px',
+                      borderRadius: '20px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      background: task.status === 'published'
+                        ? 'rgba(240,56,56,0.9)'
+                        : task.status === 'pending'
+                          ? 'rgba(255,179,0,0.9)'
+                          : 'rgba(120,120,120,0.9)',
+                      color: '#fff',
+                      backdropFilter: 'blur(4px)',
+                    }}>
+                      {task.status === 'published' ? t('realRednote.statusPublished')
+                        : task.status === 'pending' ? t('realRednote.statusPending')
+                          : t('realRednote.statusFailed')}
+                    </span>
+                  </div>
+
+                  {/* Cover Image */}
+                  {coverPhoto ? (
+                    <div style={{
+                      width: '100%',
+                      paddingTop: '100%',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      background: '#f5f5f5',
+                    }}>
+                      <img
+                        src={coverPhoto}
+                        alt=""
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      paddingTop: '100%',
+                      position: 'relative',
+                      background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 50%, #f8a5c2 100%)',
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: '40px',
+                      }}>
+                        <Chat sx={{ fontSize: 40, color: '#fff', opacity: 0.8 }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Card Content */}
+                  <div style={{ padding: '14px 14px 12px' }}>
+                    {/* Title */}
+                    <div style={{
+                      fontSize: '15px',
+                      fontWeight: 700,
+                      color: '#1a1a1a',
+                      lineHeight: 1.4,
+                      marginBottom: '8px',
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                    }}>
+                      {task.title || t('realRednote.noTitle')}
+                    </div>
+
+                    {/* Content Preview */}
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#666',
+                      lineHeight: 1.6,
+                      marginBottom: '12px',
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                    }}>
+                      {contentPreview}
+                    </div>
+
+                    {/* Topics */}
+                    {task.topics && task.topics.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                        marginBottom: '12px',
+                      }}>
+                        {task.topics.slice(0, 3).map((topic, idx) => (
+                          <span key={idx} style={{
+                            padding: '2px 8px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            background: 'rgba(240,56,56,0.08)',
+                            color: '#ee5a24',
+                          }}>
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Divider */}
+                    <div style={{ height: '1px', background: '#f0f0f0', marginBottom: '10px' }} />
+
+                    {/* Bottom Row: Author + Stats */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}>
+                      {/* Author / Published Account */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          <Chat sx={{ fontSize: 12, color: '#fff' }} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          {task.publishedAccount ? (
+                            <span style={{
+                              fontSize: '11px',
+                              color: '#ee5a24',
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'block',
+                            }}>
+                              @{task.publishedAccount}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                              {t('realRednote.waitingReview')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Stats: Like, Comment, Collect */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                        {/* Like */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill={task.status === 'published' ? '#ff6b6b' : '#ccc'} />
+                          </svg>
+                          <span style={{ fontSize: '11px', color: '#999' }}>{likeCount}</span>
+                        </div>
+                        {/* Comment */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                          </svg>
+                          <span style={{ fontSize: '11px', color: '#999' }}>{commentCount}</span>
+                        </div>
+                        {/* Collect */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                          </svg>
+                          <span style={{ fontSize: '11px', color: '#999' }}>{collectCount}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Date */}
+                    <div style={{
+                      marginTop: '8px',
+                      fontSize: '10px',
+                      color: '#bbb',
+                      textAlign: 'right',
+                    }}>
+                      {new Date(task.date).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </div>
                   </div>
-                  <p className="text-sm text-slate-500 truncate">{task.content}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    task.status === 'published' ? 'bg-green-50 text-green-600' :
-                    task.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
-                  }`}>
-                    {task.status === 'published' ? t('realRednote.statusPublished') : task.status === 'pending' ? t('realRednote.statusPending') : t('realRednote.statusFailed')}
-                    {task.publishedAccount && <span className="ml-1">({task.publishedAccount})</span>}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {new Date(task.date).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -4616,6 +4616,190 @@ Return ONLY this JSON structure, nothing else:
   // Real Rednote Post Submission API
   // ==========================================
 
+  // Generate Xiaohongshu post content via AI
+  app.post('/api/real-rednote/generate', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const {
+        persona,
+        photoAnalysis,
+        businessInfo,
+        selectedLocation,
+      } = req.body;
+
+      // Get tenant settings for AI
+      const tenant = await prisma.tenant.findFirst();
+      const apiKey = tenant?.geminiApiKey || process.env.GEMINI_API_KEY;
+
+      if (!apiKey) {
+        // Return fallback content if no API key
+        const fallbackContent = generateFallbackRednotePost(persona, photoAnalysis, businessInfo);
+        return res.json({ content: fallbackContent.content, title: fallbackContent.title });
+      }
+
+      // Build context from photo analysis
+      let photoContext = '';
+      if (photoAnalysis) {
+        photoContext = `
+食物/内容类型：${(photoAnalysis.foodItems || []).join('、')}
+店铺氛围：${(photoAnalysis.atmosphere || []).join('、')}
+整体印象：${photoAnalysis.overallVibe || ''}
+质量评价：${photoAnalysis.quality || ''}
+`;
+      }
+
+      const businessName = selectedLocation?.name || businessInfo?.name || '这家店';
+      const businessCategory = businessInfo?.category || '餐饮';
+      const businessAddress = businessInfo?.address || '';
+
+      // Xiaohongshu post generation prompt
+      const prompt = `你是一个真实的中国小红书用户，正在分享一次真实的用餐体验。你是"${persona?.identity || '一位普通消费者'}"。
+
+店铺信息：${businessName}（${businessCategory}），地址：${businessAddress}
+
+${photoContext ? `照片分析信息（由AI识别）：
+${photoContext}` : ''}
+
+请根据以上信息，写一篇真实自然的小红书风格种草笔记，要求：
+1. 150-300字，语言生动自然，像真实用户在分享
+2. 融入照片中识别到的食物、氛围等元素
+3. 语气亲切，有个人情感和故事感，不要像广告
+4. 包含emoji表情（3-5个），但不要过多
+5. 至少带2-3个相关话题标签（#开头）
+6. 不要提及AI、商家、商业等相关字眼
+7. 可以从第一人称视角描述体验
+
+只输出笔记内容，不要输出JSON或任何其他格式。`;
+
+      console.log('[real-rednote/generate] Generating post for:', businessName, '| persona:', persona?.name);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.9,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1024,
+            },
+          }),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        console.error('[real-rednote/generate] Gemini API error:', errText);
+        const fallback = generateFallbackRednotePost(persona, photoAnalysis, businessInfo);
+        return res.json({ content: fallback.content, title: fallback.title });
+      }
+
+      const geminiData = await geminiRes.json();
+      const generatedText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+      if (!generatedText) {
+        const fallback = generateFallbackRednotePost(persona, photoAnalysis, businessInfo);
+        return res.json({ content: fallback.content, title: fallback.title });
+      }
+
+      // Generate title
+      let title = `${businessName}探店分享`;
+      const titlePrompt = `根据以下小红书笔记内容，生成一个吸引人的标题（15字以内），不要带引号：
+
+${generatedText.substring(0, 200)}
+
+只输出标题文字，不要输出其他内容。`;
+
+      const titleController = new AbortController();
+      const titleTimeout = setTimeout(() => titleController.abort(), 15000);
+
+      const titleRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: titlePrompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 32 },
+          }),
+          signal: titleController.signal,
+        }
+      );
+
+      clearTimeout(titleTimeout);
+
+      if (titleRes.ok) {
+        const titleData = await titleRes.json();
+        const generatedTitle = titleData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (generatedTitle && generatedTitle.length <= 30) {
+          title = generatedTitle;
+        }
+      }
+
+      res.json({ content: generatedText, title });
+    } catch (error: any) {
+      console.error('[real-rednote/generate] Error:', error);
+      // Return fallback on any error
+      const fallback = generateFallbackRednotePost(
+        req.body.persona,
+        req.body.photoAnalysis,
+        req.body.businessInfo
+      );
+      res.json({ content: fallback.content, title: fallback.title });
+    }
+  });
+
+  // Fallback post generator (when no AI key is configured)
+  function generateFallbackRednotePost(persona: any, photoAnalysis: any, businessInfo: any) {
+    const businessName = businessInfo?.name || '这家店';
+    const category = businessInfo?.category || '餐厅';
+    const foodItems = photoAnalysis?.foodItems || ['招牌菜'];
+    const atmosphere = photoAnalysis?.atmosphere || ['环境温馨'];
+    const vibe = photoAnalysis?.overallVibe || '超棒的体验';
+
+    const fallbackPosts = [
+      `今天终于来打卡了这家店！🏠 一进门就被${atmosphere[0]}吸引住了，整个环境${atmosphere[1] || '特别舒服'}，拍照也超出片！
+
+${foodItems[0]}真的名不虚传！味道${vibe}，每一口都是享受～店员服务也超热情，给人一种回家的感觉😊
+
+总之就是一家会反复打卡的店！强烈推荐给大家～
+
+#${category} #周末探店 #宝藏店铺 #美食分享`,
+      `和闺蜜约饭选择了这里，真的太惊喜了！🎉 ${atmosphere[0]}，${vibe}，完全超出预期！
+
+${foodItems[0]}是必点的！份量足味道好，还有${foodItems[1] || '其他菜品'}也很不错，整体性价比超高👍
+
+环境也很适合拍照，随便一拍都是大片感📸 已经迫不及待想再来啦～
+
+#${category} #种草 #美食探店 #宝藏餐厅 #周末去哪玩`,
+      `路过看到这家店就被吸引了，没想到这么好吃！🤩 ${vibe}，${foodItems[0]}做得相当地道！
+
+特别满意的是${atmosphere[0]}，${atmosphere[1] || '氛围感满满'}，很适合朋友聚会或者情侣约会💕
+
+服务也很周到，会主动介绍菜品，体验感拉满！下次带家人再来～
+
+#${category} #美食推荐 #宝藏店铺 #本地生活 #必吃清单`,
+    ];
+
+    const pick = fallbackPosts[Math.floor(Math.random() * fallbackPosts.length)];
+    const titleOptions = [
+      `${businessName}探店 | ${vibe}`,
+      `${atmosphere[0]}的神仙店铺被我找到了！`,
+      `${foodItems[0]}也太绝了！必打卡`,
+    ];
+    const title = titleOptions[Math.floor(Math.random() * titleOptions.length)];
+
+    return { content: pick, title };
+  }
+
   // Submit a new rednote post
   app.post('/api/real-rednote/submit', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
