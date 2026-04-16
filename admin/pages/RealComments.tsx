@@ -436,8 +436,10 @@ function AdminSidebar({ active }: { active: string }) {
           用户管理
         </Link>
         <Link to="/admin/real-comments" className={`sidebar-nav-item ${active === 'comments' ? 'active' : ''}`}>
-          <MessageSquare size={20} />
-          评论管理
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          Google评论
         </Link>
       </nav>
 
